@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 22, 2026 at 02:24 PM
+-- Generation Time: Aug 27, 2026 at 12:40 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -40,7 +40,7 @@ CREATE TABLE `admin_profile` (
 --
 
 INSERT INTO `admin_profile` (`id`, `user_id`, `display_name`, `foto`, `updated_at`) VALUES
-(1, 1, 'Hoshimi Miyabi', 'uploads/profil/admin_6a867fc67c8c9.png', '2026-08-20 04:17:10');
+(1, 1, 'Hoshimi Miyabi', 'uploads/profil/admin_6a8eadc034d7f.png', '2026-08-26 09:11:28');
 
 -- --------------------------------------------------------
 
@@ -96,7 +96,8 @@ CREATE TABLE `buku` (
 INSERT INTO `buku` (`id`, `judul`, `penulis`, `isbn`, `genre`, `sinopsis`, `stok`, `gambar`, `created_at`, `updated_at`) VALUES
 (40, 'haha', '', '', '', '', 1, 'uploads/gambar/buku_6a7bbe1611a12.jpg', '2026-08-10 00:59:56', '2026-08-20 03:25:51'),
 (41, 'baju ku', '', '', '', '', 0, 'uploads/gambar/buku_6a7eb941681d4.jpg', '2026-08-14 06:44:17', '2026-08-22 12:00:30'),
-(42, 'sss', '', '', '', '', 1, 'uploads/gambar/buku_6a87e65bd7e29.jpg', '2026-08-21 05:47:07', '2026-08-21 05:47:07');
+(43, 'Harry Potter and the Philosopher\'s Stone', 'J. K. Rowling', '9780747532743', 'series:Harry_Potter', 'Mr. And Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much.', 1, 'uploads/gambar/buku_isbn_9780747532743_6a8eaea037de2.jpg', '2026-08-26 09:15:19', '2026-08-26 09:15:19'),
+(44, 'The Fragrant Flower Blooms With Dignity 1', '三香見サカ', '9798888771389', 'franchise:薫る花は凛と咲く', '', 1, 'uploads/gambar/buku_isbn_9798888771389_6a8eafb032002.jpg', '2026-08-26 09:19:49', '2026-08-26 09:19:49');
 
 -- --------------------------------------------------------
 
@@ -166,7 +167,8 @@ CREATE TABLE `buku_ratings` (
 INSERT INTO `buku_ratings` (`id`, `user_id`, `buku_id`, `rating`, `created_at`, `updated_at`) VALUES
 (13, 17, 40, 4, '2026-08-13 09:10:48', '2026-08-13 09:10:48'),
 (14, 14, 40, 5, '2026-08-14 13:42:22', '2026-08-14 13:42:22'),
-(15, 1, 41, 1, '2026-08-20 09:58:58', '2026-08-20 09:59:00');
+(15, 1, 41, 1, '2026-08-20 09:58:58', '2026-08-20 09:59:00'),
+(16, 1, 44, 4, '2026-08-26 16:20:00', '2026-08-26 16:20:00');
 
 -- --------------------------------------------------------
 
@@ -256,6 +258,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `foto` varchar(255) NOT NULL DEFAULT '',
   `role` enum('admin','member') DEFAULT 'member',
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   `card_status` enum('active','frozen') NOT NULL DEFAULT 'active' COMMENT 'Dibekukan sementara saat proses Lupa Kartu berlangsung',
@@ -266,18 +269,19 @@ CREATE TABLE `users` (
 -- Dumping data for table `users`
 --
 
-INSERT INTO `users` (`id`, `full_name`, `nik`, `kelas`, `no_hp`, `no_anggota`, `username`, `email`, `password`, `role`, `status`, `card_status`, `created_at`) VALUES
-(1, 'Administrator', '', '', '', 'AN-LAMA-00001', 'admin', 'admin@aksanova.com', '$2y$10$fG5Q3mZaf8XRV5K/s2S7yOULagsXHbA5rZP43ubCi9.Xq9yNerW9y', 'admin', 'approved', 'active', '2026-05-20 04:39:17'),
-(10, 'harris', '', '', '', 'AN-LAMA-00010', 'javaname', 'fremynakano@gmail.com', '$2y$10$.RG3q02ljnrdvkbkF2ISleQl0ySQGnE6bSpbXKYdP4slJ4xtpOcnm', 'member', 'approved', 'active', '2026-06-09 05:43:12'),
-(11, 'kamukamuaku', '', '', '', 'AN-LAMA-00011', 'bika', 'bibikiki@gmail.com', '$2y$10$C0DkJy8wtlN8HNEARk4py.mW0Qai2NhBmVPyx5GTk1Ik3MeYKTgkG', 'member', 'approved', 'active', '2026-08-04 05:26:28'),
-(12, 'arull', '1234567890123456', '12rpl4', '083829165208', 'AN-2026-48267', 'arull', 'syahrulbimansyah@student.smkn1rongga.sch.id', '$2y$10$wzqDNyxrEd0OOkazrMUnJeZW9ad5.5DrmP34iIZ.3/kev76xKSw8q', 'member', 'approved', 'active', '2026-08-05 15:14:49'),
-(13, 'kamukamu', '1234567890123451', '12rpl3', '083829165202', 'AN-2026-38567', 'kamukamu', 'syahrulgantengarul@gmail.com', '$2y$10$MkwjmrDAkQ0rFBbwzsMbQezy1jTQTV0lzLoIBuZxivJIMZBs5XE.q', 'member', 'approved', 'active', '2026-08-05 15:15:32'),
-(14, 'augusta', '09876543211234', '12rpl4', '', 'AN-2026-73326', 'augusta', 'augusta@gmail.com', '$2y$10$hRdPCb5nuKXNhKO0Etz5Jeqkr4jgMUImnZZ1KB1vv1GjKmdsoGY5O', 'member', 'approved', 'active', '2026-08-09 10:43:39'),
-(15, 'Arul Aruldoang', '111111111111111111', 'rpl2', '083816287171', 'AN-2026-93586', 'arularuldoang', 'arularuldoang@gmail.com', '$2y$10$YS0F24uVOjtWBC.TsjQRaumES7SGK01EOQZ6UB1Os7hvVIqH.NQdS', 'member', 'approved', 'active', '2026-08-09 12:31:55'),
-(16, 'akuaku', '1234567890098765', 'xii rpl 3', '08381929997', 'AN-2026-43572', 'akuaku', 'syahrul.bimansyah42@smk.belajar.com', '$2y$10$xQUTf69jeBJfEe2uzEcCP.oeH06XuvGkhLi015XD9gJy7Gl/8Qwg2', 'member', 'approved', 'active', '2026-08-10 01:15:00'),
-(17, 'arull', '1234567890123458', '12rpl4', '083829165209', 'AN-2026-26600', 'arull1', 'haha@gmail.com', '$2y$10$QMV9Y3SnVte6Sk1thXG7Keh4jSLXq6Q0Ns8kA71g5fymNyTZAA6ZK', 'member', 'approved', 'active', '2026-08-13 02:05:48'),
-(18, 'Hendi', '123456789014', '12rpl4', '083829165208', 'AN-2026-71477', 'hendi', 'ahmadfikri@student.smkn1rongga.sch.id', '$2y$10$vSJZ3fvh5Lhzgi6JRKbxIuf00LJJqWw/ICqeih8AVu3ryomNDFHE2', 'member', 'approved', 'active', '2026-08-20 03:12:08'),
-(19, 'arull', '1234567890123455', '12rpl4', '083829165201', 'AN-2026-51899', 'arull2', 'hihi@gmail.com', '$2y$10$1COVdBsrVBPmM8U6L1V2Bus23xx1/T/Rq1k1dRq2ctfGTFKSXkIJq', 'member', 'approved', 'active', '2026-08-22 13:21:17');
+INSERT INTO `users` (`id`, `full_name`, `nik`, `kelas`, `no_hp`, `no_anggota`, `username`, `email`, `password`, `foto`, `role`, `status`, `card_status`, `created_at`) VALUES
+(1, 'Administrator', '', '', '', 'AN-LAMA-00001', 'admin', 'admin@aksanova.com', '$2y$10$fG5Q3mZaf8XRV5K/s2S7yOULagsXHbA5rZP43ubCi9.Xq9yNerW9y', '', 'admin', 'approved', 'active', '2026-05-20 04:39:17'),
+(10, 'harris', '', '', '', 'AN-LAMA-00010', 'javaname', 'fremynakano@gmail.com', '$2y$10$.RG3q02ljnrdvkbkF2ISleQl0ySQGnE6bSpbXKYdP4slJ4xtpOcnm', '', 'member', 'approved', 'active', '2026-06-09 05:43:12'),
+(11, 'kamukamuaku', '', '', '', 'AN-LAMA-00011', 'bika', 'bibikiki@gmail.com', '$2y$10$C0DkJy8wtlN8HNEARk4py.mW0Qai2NhBmVPyx5GTk1Ik3MeYKTgkG', '', 'member', 'approved', 'active', '2026-08-04 05:26:28'),
+(12, 'arull', '1234567890123456', '12rpl4', '083829165208', 'AN-2026-48267', 'arull', 'syahrulbimansyah@student.smkn1rongga.sch.id', '$2y$10$wzqDNyxrEd0OOkazrMUnJeZW9ad5.5DrmP34iIZ.3/kev76xKSw8q', '', 'member', 'approved', 'active', '2026-08-05 15:14:49'),
+(13, 'kamukamu', '1234567890123451', '12rpl3', '083829165202', 'AN-2026-38567', 'kamukamu', 'syahrulgantengarul@gmail.com', '$2y$10$MkwjmrDAkQ0rFBbwzsMbQezy1jTQTV0lzLoIBuZxivJIMZBs5XE.q', '', 'member', 'approved', 'active', '2026-08-05 15:15:32'),
+(14, 'augusta', '09876543211234', '12rpl4', '', 'AN-2026-73326', 'augusta', 'augusta@gmail.com', '$2y$10$hRdPCb5nuKXNhKO0Etz5Jeqkr4jgMUImnZZ1KB1vv1GjKmdsoGY5O', '', 'member', 'approved', 'active', '2026-08-09 10:43:39'),
+(15, 'Arul Aruldoang', '111111111111111111', 'rpl2', '083816287171', 'AN-2026-93586', 'arularuldoang', 'arularuldoang@gmail.com', '$2y$10$YS0F24uVOjtWBC.TsjQRaumES7SGK01EOQZ6UB1Os7hvVIqH.NQdS', '', 'member', 'approved', 'active', '2026-08-09 12:31:55'),
+(16, 'akuaku', '1234567890098765', 'xii rpl 3', '08381929997', 'AN-2026-43572', 'akuaku', 'syahrul.bimansyah42@smk.belajar.com', '$2y$10$xQUTf69jeBJfEe2uzEcCP.oeH06XuvGkhLi015XD9gJy7Gl/8Qwg2', '', 'member', 'approved', 'active', '2026-08-10 01:15:00'),
+(17, 'arull', '1234567890123458', '12rpl4', '083829165209', 'AN-2026-26600', 'arull1', 'haha@gmail.com', '$2y$10$QMV9Y3SnVte6Sk1thXG7Keh4jSLXq6Q0Ns8kA71g5fymNyTZAA6ZK', '', 'member', 'approved', 'active', '2026-08-13 02:05:48'),
+(18, 'Hendi', '123456789014', '12rpl4', '083829165208', 'AN-2026-71477', 'hendi', 'ahmadfikri@student.smkn1rongga.sch.id', '$2y$10$vSJZ3fvh5Lhzgi6JRKbxIuf00LJJqWw/ICqeih8AVu3ryomNDFHE2', '', 'member', 'approved', 'active', '2026-08-20 03:12:08'),
+(19, 'arull', '1234567890123455', '12rpl4', '083829165201', 'AN-2026-51899', 'arull2', 'hihi@gmail.com', '$2y$10$1COVdBsrVBPmM8U6L1V2Bus23xx1/T/Rq1k1dRq2ctfGTFKSXkIJq', '', 'member', 'approved', 'active', '2026-08-22 13:21:17'),
+(20, 'arull00', '1234567890123453', '12rpl7', '083829165205', 'AN-2026-43256', 'arull00', 'syahrulganteng@gmail.com', '$2y$10$FG8c7.JydudoXuX6/.LO9.fAtHGbctFFY75YcUztllfAVxy1dKc7i', 'uploads/anggota/anggota_88f2586a2760e1db.png', 'member', 'approved', 'active', '2026-08-22 14:46:30');
 
 --
 -- Indexes for dumped tables
@@ -378,7 +382,7 @@ ALTER TABLE `banner`
 -- AUTO_INCREMENT for table `buku`
 --
 ALTER TABLE `buku`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=43;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
 
 --
 -- AUTO_INCREMENT for table `buku_favorites`
@@ -396,7 +400,7 @@ ALTER TABLE `buku_likes`
 -- AUTO_INCREMENT for table `buku_ratings`
 --
 ALTER TABLE `buku_ratings`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `peminjaman`
@@ -420,7 +424,7 @@ ALTER TABLE `reminder_log`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=20;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
 
 --
 -- Constraints for dumped tables

@@ -14,7 +14,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         $error = "Username/Email dan kata sandi wajib diisi.";
     } else {
         // Cari user berdasarkan email ATAU username (sesuai yang tertera di kartu anggota)
-        $stmt = mysqli_prepare($conn, "SELECT id, full_name, username, password, role, status FROM users WHERE email = ? OR username = ?");
+        $stmt = mysqli_prepare($conn, "SELECT id, full_name, username, password, role, status, card_status FROM users WHERE email = ? OR username = ?");
         mysqli_stmt_bind_param($stmt, "ss", $identity, $identity);
         mysqli_stmt_execute($stmt);
         $result = mysqli_stmt_get_result($stmt);
@@ -26,6 +26,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 $error = "Akun kamu masih menunggu persetujuan admin. Silakan coba lagi nanti.";
             } elseif ($user["role"] === "member" && $user["status"] === "rejected") {
                 $error = "Pendaftaran kamu ditolak oleh admin. Silakan hubungi petugas perpustakaan.";
+            } elseif (($user["card_status"] ?? "active") === "frozen") {
+                $error = "Kartu anggota ini sedang dibekukan karena ada proses \"Lupa Kartu\" yang belum selesai. Selesaikan proses tersebut untuk mendapatkan kartu baru.";
             } else {
                 // Login berhasil — simpan data ke session
                 $_SESSION["user_id"]   = $user["id"];
@@ -233,15 +235,22 @@ $page_title = "Sign In – AKSA NOVA";
     .input-wrap.pw-visible .eye-on  { display: none; }
     .input-wrap.pw-visible .eye-off { display: block; }
 
+    .forgot-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      margin-bottom: 24px;
+      animation: fadeSlide .7s .32s both;
+    }
+
     .forgot {
       font-size: .8rem;
       color: var(--dim);
       font-weight: 300;
-      margin-bottom: 24px;
       text-decoration: none;
       transition: color var(--trans);
-      align-self: flex-end;
-      animation: fadeSlide .7s .32s both;
+      white-space: nowrap;
     }
     .forgot:hover { color: var(--accent); text-decoration: underline; }
 
@@ -376,6 +385,8 @@ $page_title = "Sign In – AKSA NOVA";
       .left  { padding: 32px 20px 28px; }
       .right { padding: 28px 20px; }
       .btn-primary { max-width: 100%; }
+      .forgot-row { flex-wrap: wrap; gap: 6px 10px; }
+      .forgot { white-space: normal; }
     }
   </style>
 </head>
@@ -426,7 +437,9 @@ $page_title = "Sign In – AKSA NOVA";
         </div>
       </div>
 
-  
+      <div class="forgot-row">
+        <a href="lupa_kartu.php" class="forgot">Kartu hilang / lupa kartu?</a>
+      </div>
 
       <button type="submit" class="btn-primary">Sign In</button>
     </form>

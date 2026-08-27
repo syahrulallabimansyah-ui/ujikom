@@ -12,6 +12,10 @@ $old = [
     "email"     => "",
 ];
 
+// Folder tempat menyimpan foto profil anggota
+$foto_dir = __DIR__ . "/uploads/anggota";
+$foto_web_dir = "uploads/anggota"; // path relatif yang disimpan ke DB & dipakai di <img src>
+
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
     $old["full_name"] = trim($_POST["full_name"] ?? "");
@@ -19,6 +23,8 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $old["nik"]       = trim($_POST["nik"] ?? "");
     $old["no_hp"]     = trim($_POST["no_hp"] ?? "");
     $old["email"]     = trim($_POST["email"] ?? "");
+    $password         = $_POST["password"] ?? "";
+    $password_confirm = $_POST["password_confirm"] ?? "";
 
     // ── Validasi ──
     if ($old["full_name"] === "") {
@@ -36,6 +42,37 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     if ($old["no_hp"] !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $old["no_hp"])) {
         $errors[] = "Nomor HP tidak valid.";
     }
+    if (strlen($password) < 8) {
+        $errors[] = "Kata sandi minimal 8 karakter.";
+    } elseif (!preg_match('/[A-Za-z]/', $password) || !preg_match('/[0-9]/', $password)) {
+        $errors[] = "Kata sandi harus mengandung huruf dan angka.";
+    }
+    if ($password !== $password_confirm) {
+        $errors[] = "Konfirmasi kata sandi tidak sama.";
+    }
+
+    // ── Validasi foto profil (wajib, bisa dari kamera langsung atau galeri) ──
+    $foto_relative_path = "";
+    $foto_error = "";
+    if (!isset($_FILES["foto"]) || $_FILES["foto"]["error"] === UPLOAD_ERR_NO_FILE) {
+        $foto_error = "Foto profil wajib diunggah (ambil foto langsung atau pilih dari galeri).";
+    } elseif ($_FILES["foto"]["error"] !== UPLOAD_ERR_OK) {
+        $foto_error = "Gagal mengunggah foto. Silakan coba lagi.";
+    } else {
+        $foto_tmp  = $_FILES["foto"]["tmp_name"];
+        $foto_size = $_FILES["foto"]["size"];
+        $mime      = function_exists("mime_content_type") ? mime_content_type($foto_tmp) : $_FILES["foto"]["type"];
+        $allowed_mimes = ["image/jpeg" => "jpg", "image/png" => "png", "image/webp" => "webp"];
+
+        if (!isset($allowed_mimes[$mime])) {
+            $foto_error = "Format foto harus JPG, PNG, atau WEBP.";
+        } elseif ($foto_size > 5 * 1024 * 1024) {
+            $foto_error = "Ukuran foto maksimal 5MB.";
+        }
+    }
+    if ($foto_error !== "") {
+        $errors[] = $foto_error;
+    }
 
     // Cek email & NIK belum terdaftar
     if (empty($errors)) {
@@ -47,6 +84,21 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $errors[] = "Email atau NIK sudah terdaftar sebagai anggota.";
         }
         mysqli_stmt_close($stmt);
+    }
+
+    if (empty($errors)) {
+
+        // ── Simpan foto profil ke folder uploads ──
+        if (!is_dir($foto_dir)) {
+            mkdir($foto_dir, 0755, true);
+        }
+        $ext = $allowed_mimes[$mime];
+        $foto_filename = "anggota_" . bin2hex(random_bytes(8)) . "." . $ext;
+        if (!move_uploaded_file($foto_tmp, $foto_dir . "/" . $foto_filename)) {
+            $errors[] = "Gagal menyimpan foto profil. Silakan coba lagi.";
+        } else {
+            $foto_relative_path = $foto_web_dir . "/" . $foto_filename;
+        }
     }
 
     if (empty($errors)) {
@@ -68,20 +120,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $username = $base . $suffix;
         }
 
-        // ── Generate password acak (8 karakter, aman & mudah dibaca) ──
-        $chars_upper = "ABCDEFGHJKLMNPQRSTUVWXYZ"; // tanpa I, O agar tidak rancu
-        $chars_lower = "abcdefghijkmnpqrstuvwxyz"; // tanpa l, o
-        $chars_num   = "23456789";                 // tanpa 0, 1
-        $all_chars   = $chars_upper . $chars_lower . $chars_num;
-
-        $password = $chars_upper[random_int(0, strlen($chars_upper) - 1)]
-                  . $chars_lower[random_int(0, strlen($chars_lower) - 1)]
-                  . $chars_num[random_int(0, strlen($chars_num) - 1)];
-        for ($i = 0; $i < 5; $i++) {
-            $password .= $all_chars[random_int(0, strlen($all_chars) - 1)];
-        }
-        $password = str_shuffle($password);
-
+        // ── Password dibuat sendiri oleh user (lihat validasi di atas) ──
         $hashed = password_hash($password, PASSWORD_DEFAULT);
 
         // ── Generate nomor anggota ──
@@ -100,13 +139,13 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
         // ── Simpan ke database ──
         $stmt = mysqli_prepare($conn,
-            "INSERT INTO users (full_name, nik, kelas, no_hp, no_anggota, username, email, password, role, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'member', 'pending')"
+            "INSERT INTO users (full_name, nik, kelas, no_hp, no_anggota, username, email, password, foto, role, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', 'pending')"
         );
         mysqli_stmt_bind_param(
-            $stmt, "ssssssss",
+            $stmt, "sssssssss",
             $old["full_name"], $old["nik"], $old["kelas"], $old["no_hp"],
-            $no_anggota, $username, $old["email"], $hashed
+            $no_anggota, $username, $old["email"], $hashed, $foto_relative_path
         );
 
         if (mysqli_stmt_execute($stmt)) {
@@ -125,6 +164,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
                 "no_anggota" => $no_anggota,
                 "username"   => $username,
                 "password"   => $password,
+                "foto"       => $foto_relative_path,
+                "status"     => "pending",
+                "reissued"   => false,
             ];
 
             header("Location: kartu_anggota.php");
@@ -132,6 +174,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
         } else {
             $errors[] = "Gagal menyimpan data. Silakan coba lagi.";
             mysqli_stmt_close($stmt);
+            if ($foto_relative_path !== "" && file_exists($foto_dir . "/" . basename($foto_relative_path))) {
+                unlink($foto_dir . "/" . basename($foto_relative_path));
+            }
         }
     }
 }
@@ -278,6 +323,48 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
     .hint { font-size: .68rem; color: var(--ghost); margin-top: 4px; }
 
+    /* ── Upload Foto Profil ── */
+    .foto-field { display: flex; align-items: center; gap: 16px; margin-bottom: 18px; }
+    .foto-preview-wrap {
+      position: relative;
+      width: 84px; height: 84px;
+      border-radius: 50%;
+      overflow: hidden;
+      background: var(--field);
+      border: 1.5px dashed var(--ghost);
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: border-color var(--trans);
+    }
+    .foto-preview-wrap:hover { border-color: var(--accent); }
+    .foto-preview-wrap.has-photo { border-style: solid; border-color: var(--accent); }
+    .foto-preview-wrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
+    .foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--ghost); }
+    .foto-placeholder svg { width: 26px; height: 26px; }
+    .foto-placeholder span { font-size: .58rem; text-align: center; line-height: 1.3; padding: 0 6px; }
+    .foto-info-text { font-size: .78rem; color: var(--dim); font-weight: 500; margin-bottom: 4px; }
+    .foto-hint { font-size: .68rem; color: var(--ghost); line-height: 1.5; }
+    .foto-error { font-size: .7rem; color: #c0392b; margin-top: 4px; display: none; }
+    .foto-error.show { display: block; }
+
+    .input-wrap { position: relative; display: flex; align-items: center; width: 100%; }
+    .input-wrap input { padding-right: 44px; }
+    .toggle-eye {
+      position: absolute;
+      right: 14px;
+      width: 18px;
+      height: 18px;
+      color: var(--ghost);
+      cursor: pointer;
+      transition: color var(--trans);
+    }
+    .toggle-eye:hover { color: var(--accent); }
+    .toggle-eye svg { width: 100%; height: 100%; }
+    .toggle-eye .eye-off { display: none; }
+    .input-wrap.pw-visible .eye-on  { display: none; }
+    .input-wrap.pw-visible .eye-off { display: block; }
+
     .btn-primary {
       width: 100%;
       max-width: 240px;
@@ -384,7 +471,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
   <div class="left">
     <h1 class="form-title">Buat Kartu Anggota</h1>
-    <p class="form-sub">Isi data diri kamu, username &amp; password akan dibuat otomatis</p>
+    <p class="form-sub">Isi data diri kamu, username dibuat otomatis &amp; password kamu tentukan sendiri</p>
 
     <?php if (!empty($errors)): ?>
       <div class="error-box">
@@ -396,7 +483,26 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       </div>
     <?php endif; ?>
 
-    <form method="POST" action="sign_up.php">
+    <form method="POST" action="sign_up.php" enctype="multipart/form-data" id="signupForm">
+      <div class="foto-field">
+        <div class="foto-preview-wrap" id="fotoPreviewWrap" onclick="document.getElementById('fotoInput').click()">
+          <img id="fotoPreviewImg" src="" alt="Pratinjau foto profil">
+          <div class="foto-placeholder" id="fotoPlaceholder">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span>Foto Profil</span>
+          </div>
+        </div>
+        <div>
+          <div class="foto-info-text">Foto Profil untuk Kartu Anggota</div>
+          <p class="foto-hint">Ketuk lingkaran di samping untuk ambil foto langsung dari kamera atau pilih dari galeri. Foto ini akan tampil di kartu anggota kamu.</p>
+          <p class="foto-error" id="fotoError">Foto profil wajib diunggah.</p>
+        </div>
+        <input type="file" name="foto" id="fotoInput" accept="image/*" style="display:none" required>
+      </div>
+
       <div class="field">
         <label>Nama Lengkap</label>
         <input type="text" name="full_name" placeholder="Contoh: Budi Santoso"
@@ -418,7 +524,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
       <div class="row2">
         <div class="field">
-          <label>Nomor HP <span style="font-weight:300;">(opsional)</span></label>
+          <label>Nomor HP</label>
           <input type="text" name="no_hp" placeholder="08xxxxxxxxxx"
                  value="<?= htmlspecialchars($old['no_hp']) ?>">
         </div>
@@ -429,7 +535,30 @@ $page_title = "Daftar Anggota – AKSA NOVA";
         </div>
       </div>
 
-      <p class="hint">Username dan password akan dibuat otomatis oleh sistem dan ditampilkan pada kartu anggota kamu setelah pendaftaran. Simpan baik-baik karena password hanya ditampilkan satu kali.</p>
+      <div class="row2">
+        <div class="field">
+          <label>Buat Kata Sandi</label>
+          <div class="input-wrap" id="pwWrap1">
+            <input type="password" name="password" id="pwInput1" placeholder="Minimal 8 karakter, huruf & angka" autocomplete="new-password" required>
+            <span class="toggle-eye" data-target="pwInput1" data-wrap="pwWrap1" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+            </span>
+          </div>
+        </div>
+        <div class="field">
+          <label>Konfirmasi Kata Sandi</label>
+          <div class="input-wrap" id="pwWrap2">
+            <input type="password" name="password_confirm" id="pwInput2" placeholder="Ulangi kata sandi" autocomplete="new-password" required>
+            <span class="toggle-eye" data-target="pwInput2" data-wrap="pwWrap2" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <p class="hint">Username dibuat otomatis oleh sistem. Kata sandi kamu tentukan sendiri &mdash; ingat baik-baik, karena kata sandi ini juga tercetak pada kartu anggota yang bisa kamu unduh/cetak setelah pendaftaran.</p>
 
       <button type="submit" class="btn-primary">Daftar &amp; Buat Kartu</button>
     </form>
@@ -453,5 +582,49 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
 </div>
 
+<script>
+  // ─── Preview foto profil (dari kamera atau galeri) ───
+  var fotoInput       = document.getElementById('fotoInput');
+  var fotoPreviewWrap = document.getElementById('fotoPreviewWrap');
+  var fotoPreviewImg  = document.getElementById('fotoPreviewImg');
+  var fotoPlaceholder = document.getElementById('fotoPlaceholder');
+  var fotoError       = document.getElementById('fotoError');
+
+  fotoInput.addEventListener('change', function (e) {
+    var file = e.target.files[0];
+    if (!file) return;
+    fotoError.classList.remove('show');
+    var reader = new FileReader();
+    reader.onload = function (ev) {
+      fotoPreviewImg.src = ev.target.result;
+      fotoPreviewImg.style.display = 'block';
+      fotoPlaceholder.style.display = 'none';
+      fotoPreviewWrap.classList.add('has-photo');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  document.getElementById('signupForm').addEventListener('submit', function (e) {
+    if (!fotoInput.files || fotoInput.files.length === 0) {
+      e.preventDefault();
+      fotoError.classList.add('show');
+      fotoPreviewWrap.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  });
+
+  document.querySelectorAll('.toggle-eye').forEach(function (toggle) {
+    var input = document.getElementById(toggle.dataset.target);
+    var wrap  = document.getElementById(toggle.dataset.wrap);
+    function togglePassword() {
+      var isVisible = input.type === 'text';
+      input.type = isVisible ? 'password' : 'text';
+      wrap.classList.toggle('pw-visible', !isVisible);
+    }
+    toggle.addEventListener('click', togglePassword);
+    toggle.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePassword(); }
+    });
+  });
+</script>
 </body>
 </html>

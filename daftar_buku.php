@@ -18,12 +18,29 @@ $per_page   = 10;
 $page       = max(1, (int)($_GET["page"] ?? 1));
 $offset     = ($page - 1) * $per_page;
 
-// ─── Search ───
-$search = trim($_GET["q"] ?? "");
-$where  = "";
+// ─── Search & Filter Kategori ───
+$search   = trim($_GET["q"] ?? "");
+$kategori = trim($_GET["kategori"] ?? "");
+$is_ajax  = isset($_GET["ajax"]) && $_GET["ajax"] == "1";
+
+$conditions = [];
 if ($search !== "") {
-    $s     = mysqli_real_escape_string($conn, $search);
-    $where = "WHERE judul LIKE '%$s%' OR penulis LIKE '%$s%' OR isbn LIKE '%$s%'";
+    $s = mysqli_real_escape_string($conn, $search);
+    $conditions[] = "(judul LIKE '%$s%' OR penulis LIKE '%$s%' OR isbn LIKE '%$s%')";
+}
+if ($kategori !== "") {
+    $k = mysqli_real_escape_string($conn, $kategori);
+    $conditions[] = "genre = '$k'";
+}
+$where = $conditions ? "WHERE " . implode(" AND ", $conditions) : "";
+
+// ─── Daftar kategori (genre) unik untuk dropdown filter ───
+$kategori_list = [];
+$res_kategori = mysqli_query($conn,
+    "SELECT DISTINCT genre FROM buku WHERE genre IS NOT NULL AND genre != '' ORDER BY genre ASC"
+);
+if ($res_kategori) {
+    while ($row = mysqli_fetch_assoc($res_kategori)) $kategori_list[] = $row["genre"];
 }
 
 // ─── Total & data ───
@@ -81,6 +98,11 @@ function getStatus(int $stok): array {
     if ($stok <= 0) return ["habis",   "Kosong"];
     return ["tersedia","Ada"];
 }
+
+// Buffer seluruh output halaman. Untuk request AJAX (live search), buffer ini
+// akan dibuang sepenuhnya sebelum kita kirim hanya fragmen hasil pencarian —
+// supaya tidak ada error "headers already sent" dan tidak ada HTML dobel.
+ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -109,27 +131,32 @@ function getStatus(int $stok): array {
 
     /* ── SIDEBAR ── */
     .sidebar {
-      width:var(--sidebar-w); min-height:100vh; background:var(--sidebar-bg);
+      width:var(--sidebar-w); height:100vh; height:100dvh; background:var(--sidebar-bg);
       display:flex; flex-direction:column; padding:24px 0 20px;
       border-right:1px solid #e8e9f0;
       position:fixed; top:0; left:0; bottom:0; z-index:100; transition:transform var(--trans);
+      overflow-y:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin;
+      box-shadow:2px 0 24px rgba(20,20,50,.05);
     }
-    .sidebar-toggle { display:none; position:fixed; top:14px; left:14px; z-index:200; width:40px; height:40px; border-radius:10px; border:none; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.12); cursor:pointer; align-items:center; justify-content:center; }
+    .sidebar-toggle { display:none; position:fixed; top:14px; left:14px; z-index:200; width:42px; height:42px; border-radius:12px; border:none; background:#fff; box-shadow:0 4px 16px rgba(20,20,50,.16); cursor:pointer; align-items:center; justify-content:center; transition:transform .15s ease; }
+    .sidebar-toggle:active { transform:scale(.9); }
     .sidebar-toggle svg { width:20px; height:20px; color:var(--text); }
-    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:90; }
+    .sidebar-overlay { position:fixed; inset:0; background:rgba(15,15,35,.45); backdrop-filter:blur(2px); z-index:90; opacity:0; visibility:hidden; transition:opacity var(--trans), visibility var(--trans); }
+    .sidebar-overlay.open { opacity:1; visibility:visible; }
     .logo-wrap { display:flex; flex-direction:column; align-items:center; padding:0 18px 24px; border-bottom:1px solid #f0f0f5; }
     .logo-icon { width:52px; height:52px; background:linear-gradient(135deg,#f0f0f8 0%,#fff 100%); border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; box-shadow:0 4px 16px rgba(20,20,20,.15); }
     .logo-icon svg { width:28px; height:28px; color:var(--accent); }
     .logo-name { font-family:'Cormorant Garamond',serif; font-size:1rem; font-weight:700; color:var(--text); letter-spacing:.08em; text-align:center; }
     .logo-sub  { font-size:.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; text-align:center; margin-top:2px; }
     .nav { flex:1; display:flex; flex-direction:column; gap:2px; padding:16px 10px; }
-    .nav-item { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px; font-size:.82rem; font-weight:600; color:var(--muted); cursor:pointer; text-decoration:none; transition:background var(--trans), color var(--trans); }
+    .nav-item { position:relative; display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px; font-size:.82rem; font-weight:600; color:var(--muted); cursor:pointer; text-decoration:none; transition:background var(--trans), color var(--trans); }
     .nav-item:hover  { background:#f0f2ff; color:var(--accent); }
     .nav-item.active { background:#eef0ff; color:var(--accent); }
+    .nav-item.active::before { content:''; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:60%; border-radius:0 4px 4px 0; background:var(--accent); }
     .nav-item svg { width:17px; height:17px; flex-shrink:0; }
     .nav-item.admin-only { color:#e67e22; }
     .nav-item.admin-only:hover { background:#fff4e6; color:#d35400; }
-    .nav-bottom { padding:10px 10px 0; border-top:1px solid #f0f0f5; display:flex; flex-direction:column; gap:2px; }
+    .nav-bottom { padding:10px 10px 0; border-top:1px solid #f0f0f5; display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
 
     /* ── MAIN ── */
     .main { margin-left:var(--sidebar-w); flex:1; padding:24px 24px 32px; min-height:100vh; transition:margin-left var(--trans); }
@@ -142,11 +169,60 @@ function getStatus(int $stok): array {
     .search-wrap svg { width:16px; height:16px; color:var(--muted); }
     .tab-btn { padding:9px 18px; border-radius:50px; border:1px solid #e4e5f0; background:#fff; font-family:'Nunito',sans-serif; font-size:.8rem; font-weight:600; color:var(--muted); cursor:pointer; transition:all var(--trans); text-decoration:none; }
     .tab-btn:hover { border-color:var(--accent); color:var(--accent); }
+    /* Dropdown kategori bergaya chip */
+    .kategori-dropdown { position:relative; flex-shrink:0; }
+    .kategori-trigger {
+      display:flex; align-items:center; gap:8px; height:42px; padding:0 16px; border-radius:50px;
+      border:1px solid #e4e5f0; background:#fff; font-family:'Nunito',sans-serif; font-size:.8rem; font-weight:700;
+      color:var(--muted); cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.04);
+      transition:border-color var(--trans), color var(--trans), background var(--trans), box-shadow var(--trans);
+    }
+    .kategori-trigger svg { width:16px; height:16px; flex-shrink:0; }
+    .kategori-trigger .kategori-chevron { width:13px; height:13px; margin-left:1px; transition:transform var(--trans); }
+    .kategori-trigger span { max-width:130px; overflow:hidden; text-overflow:ellipsis; }
+    .kategori-trigger:hover { border-color:var(--accent); color:var(--accent); }
+    .kategori-trigger.open { border-color:var(--accent); color:var(--accent); box-shadow:0 4px 16px rgba(43,79,255,.14); }
+    .kategori-trigger.open .kategori-chevron { transform:rotate(180deg); }
+    .kategori-trigger.has-value { background:#eef0ff; border-color:var(--accent); color:var(--accent); }
+
+    .kategori-panel {
+      position:absolute; top:calc(100% + 10px); right:0; z-index:150; background:#fff; border-radius:16px;
+      box-shadow:var(--shadow-md); padding:12px; display:flex; flex-wrap:wrap; gap:7px; width:max-content;
+      max-width:300px; opacity:0; visibility:hidden; pointer-events:none;
+      transform:translateY(-8px) scale(.97); transform-origin:top right;
+      transition:opacity .18s cubic-bezier(.22,1,.36,1), transform .18s cubic-bezier(.22,1,.36,1), visibility .18s;
+    }
+    .kategori-panel.open { opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0) scale(1); }
+    .kategori-chip {
+      padding:7px 14px; border-radius:50px; border:1px solid #e4e5f0; background:#f8f9ff;
+      font-family:'Nunito',sans-serif; font-size:.74rem; font-weight:700; color:var(--muted);
+      cursor:pointer; transition:all var(--trans); white-space:nowrap;
+    }
+    .kategori-chip:hover { border-color:var(--accent); color:var(--accent); background:#eef0ff; }
+    .kategori-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 3px 10px rgba(43,79,255,.3); }
+
+    /* Select asli tetap ada untuk aksesibilitas (navigasi keyboard) tapi disembunyikan secara visual */
+    .kategori-select-sr {
+      position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+      clip:rect(0,0,0,0); white-space:nowrap; border:0;
+    }
+    .td-genre-badge {
+      display:inline-block; margin-top:3px; padding:2px 9px; border-radius:20px; background:#eef0ff; color:var(--accent);
+      font-size:.62rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
+    }
+    .mb-genre-badge {
+      display:inline-block; padding:2px 9px; border-radius:20px; background:#eef0ff; color:var(--accent);
+      font-size:.6rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase; margin-top:3px;
+    }
 
     /* Page header */
     .page-header { margin-bottom:18px; }
     .page-title { font-family:'Cormorant Garamond',serif; font-size:1.5rem; font-weight:700; color:var(--text); }
     .page-subtitle { font-size:.78rem; color:var(--muted); margin-top:2px; }
+
+    /* Live search loading state */
+    #searchResultArea { transition: opacity .15s ease; }
+    #searchResultArea.loading-search { opacity: .55; }
 
     /* Table card */
     .table-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow-sm); overflow:hidden; animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
@@ -208,6 +284,31 @@ function getStatus(int $stok): array {
     .page-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
     .page-btn svg { width:13px; height:13px; }
 
+    /* ── Mobile book list (menggantikan tabel di layar HP, tanpa geser ke samping) ── */
+    .mobile-book-list { display:none; flex-direction:column; }
+    .mobile-book-card {
+      display:flex; gap:12px; padding:14px 16px;
+      border-bottom:1px solid #f0f1f8; cursor:pointer;
+      transition:background var(--trans);
+    }
+    .mobile-book-card:last-child { border-bottom:none; }
+    .mobile-book-card:active { background:#f8f9ff; }
+    .mb-cover {
+      width:52px; height:74px; border-radius:8px; flex-shrink:0;
+      overflow:hidden; box-shadow:0 3px 10px rgba(0,0,0,.15); position:relative;
+    }
+    .mb-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+    .mb-cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.78rem; font-weight:800; color:rgba(255,255,255,.85); text-align:center; padding:2px; line-height:1.2; }
+    .mb-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
+    .mb-title { font-weight:800; color:var(--text); font-size:.85rem; line-height:1.3; }
+    .mb-author { font-size:.72rem; color:var(--muted); font-weight:600; }
+    .mb-meta-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:2px; }
+    .mb-rating { display:inline-flex; align-items:center; gap:3px; font-size:.72rem; font-weight:800; color:#d4820a; }
+    .mb-rating.empty { color:#c4c4d4; font-weight:600; }
+    .mb-rating svg { width:12px; height:12px; }
+    .mb-stock { font-size:.7rem; font-weight:700; color:var(--muted); }
+    .mb-actions { display:flex; gap:8px; margin-top:6px; }
+
     /* ── RESPONSIVE ── */
 
     /* Tablet landscape & small desktop */
@@ -219,25 +320,33 @@ function getStatus(int $stok): array {
     /* Tablet portrait */
     @media (max-width:700px) {
       /* Sidebar slide-in */
-      .sidebar { transform:translateX(-100%); }
+      .sidebar { transform:translateX(-100%); width:min(var(--sidebar-w) + 60px, 250px); padding-bottom:max(20px, env(safe-area-inset-bottom)); }
       .sidebar.open { transform:translateX(0); }
-      .sidebar-overlay.open { display:block; }
       .sidebar-toggle { display:flex; }
+      .nav-item { padding:13px 14px; font-size:.86rem; }
+      .nav-item svg { width:18px; height:18px; }
 
       /* Main content shift for hamburger */
-      .main { margin-left:0; padding:68px 12px 28px; }
+      .main { margin-left:0; padding:70px 12px 28px; }
 
       /* Topbar: stack search + buttons */
       .topbar { flex-wrap:wrap; gap:8px; }
-      .search-wrap { max-width:100%; flex:1 1 100%; }
-      .tab-btn { flex-shrink:0; }
+      .search-wrap { max-width:100%; flex:1 1 100%; height:44px; }
+      .tab-btn { flex-shrink:0; padding:10px 18px; min-height:40px; display:inline-flex; align-items:center; }
+
+      /* Dropdown kategori full-width & panel jadi lembar di bawah trigger */
+      .kategori-dropdown { flex:1 1 100%; }
+      .kategori-trigger { width:100%; height:44px; justify-content:space-between; }
+      .kategori-trigger span { max-width:none; flex:1; text-align:left; }
+      .kategori-panel { left:0; right:0; top:calc(100% + 8px); width:auto; max-width:none; transform-origin:top center; transform:translateY(-8px) scale(.98); }
+      .kategori-panel.open { transform:translateY(0) scale(1); }
 
       /* Page header */
       .page-title { font-size:1.25rem; }
 
-      /* Table card scroll on small screens */
-      .table-card { overflow-x:auto; -webkit-overflow-scrolling:touch; }
-      table { min-width:560px; }
+      /* Ganti tabel dengan daftar kartu — tidak perlu geser ke samping lagi */
+      .table-card table { display:none; }
+      .mobile-book-list { display:flex; }
 
       /* Pagination: stack info above buttons */
       .pagination-wrap { flex-direction:column; align-items:flex-start; gap:8px; padding:12px 14px; }
@@ -251,30 +360,14 @@ function getStatus(int $stok): array {
     @media (max-width:480px) {
       .main { padding:64px 10px 24px; }
 
-      /* Table: tighter cells */
-      thead th { padding:10px 10px; font-size:.66rem; }
-      td { padding:10px 10px; font-size:.78rem; }
+      /* Kartu buku lebih ringkas di layar sangat kecil */
+      .mobile-book-card { padding:12px 14px; gap:10px; }
+      .mb-cover { width:46px; height:64px; }
+      .mb-title { font-size:.82rem; }
 
-      /* Book cover smaller */
-      .book-cover-sm { width:34px; height:48px; }
-      .book-identity { gap:8px; }
-      .td-title { font-size:.78rem; }
-      .td-isbn  { font-size:.62rem; }
-
-      /* Action buttons: icon-only (hide "Simpan" text) */
-      .btn-like, .btn-save { padding:5px 7px; }
-      .btn-save span:not([class]) { display:none; }
-
-      /* Rating column: stars smaller */
-      .td-rating svg { width:10px; height:10px; }
-      .td-rating-num { font-size:.66rem; }
-
-      /* Status badge compact */
-      .status-badge { padding:3px 7px; font-size:.62rem; }
-
-      /* Pagination info smaller */
+      /* Pagination info & tombol lebih ringkas */
       .pagination-info { font-size:.7rem; }
-      .page-btn { width:28px; height:28px; font-size:.72rem; }
+      .page-btn { width:32px; height:32px; font-size:.72rem; }
 
       /* Modal detail full-screen feel */
       .detail-modal { margin:0; border-radius:14px 14px 0 0; max-height:96vh; position:fixed; bottom:0; left:0; right:0; width:100%; }
@@ -453,22 +546,46 @@ function getStatus(int $stok): array {
 <main class="main">
 
   <!-- Search bar -->
-  <form method="GET" action="daftar_buku.php">
+  <form method="GET" action="daftar_buku.php" id="searchForm">
     <div class="topbar">
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" name="q" placeholder="Cari berdasarkan judul, penulis, atau ISBN…" value="<?= htmlspecialchars($search) ?>"/>
+        <input type="text" name="q" id="searchInput" placeholder="Cari berdasarkan judul, penulis, atau ISBN…" value="<?= htmlspecialchars($search) ?>" autocomplete="off"/>
       </div>
-      <button type="submit" class="tab-btn">Cari</button>
-      <?php if ($search): ?><a href="daftar_buku.php" class="tab-btn">✕ Reset</a><?php endif; ?>
+      <div class="kategori-dropdown" id="kategoriDropdown">
+        <button type="button" class="kategori-trigger <?= $kategori !== "" ? "has-value" : "" ?>" id="kategoriTrigger" aria-haspopup="listbox" aria-expanded="false">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41 11 3.83A2 2 0 0 0 9.58 3.24H4a1 1 0 0 0-1 1v5.58a2 2 0 0 0 .59 1.42l9.58 9.58a2 2 0 0 0 2.83 0l7.59-7.59a2 2 0 0 0 0-2.82Z"/><circle cx="7.5" cy="7.5" r="1"/></svg>
+          <span id="kategoriTriggerLabel"><?= $kategori !== "" ? htmlspecialchars($kategori) : "Semua Kategori" ?></span>
+          <svg class="kategori-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="kategori-panel" id="kategoriPanel" role="listbox">
+          <button type="button" class="kategori-chip <?= $kategori === "" ? "active" : "" ?>" data-value="">Semua Kategori</button>
+          <?php foreach ($kategori_list as $g): ?>
+            <button type="button" class="kategori-chip <?= $kategori === $g ? "active" : "" ?>" data-value="<?= htmlspecialchars($g) ?>"><?= htmlspecialchars($g) ?></button>
+          <?php endforeach; ?>
+        </div>
+        <select name="kategori" id="kategoriFilter" class="kategori-select-sr" aria-label="Filter kategori buku">
+          <option value="">Semua Kategori</option>
+          <?php foreach ($kategori_list as $g): ?>
+            <option value="<?= htmlspecialchars($g) ?>" <?= $kategori === $g ? "selected" : "" ?>><?= htmlspecialchars($g) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+      <?php if ($search || $kategori): ?><a href="daftar_buku.php" class="tab-btn" id="searchResetBtn">✕ Reset</a><?php endif; ?>
     </div>
   </form>
 
+  <div id="searchResultArea">
+  <?php ob_start(); ?>
   <div class="page-header">
     <div class="page-title">Daftar Buku</div>
     <div class="page-subtitle">
-      <?php if ($search): ?>
+      <?php if ($search && $kategori): ?>
+        <?= $total_buku ?> buku cocok dengan "<strong><?= htmlspecialchars($search) ?></strong>" dalam kategori <strong><?= htmlspecialchars($kategori) ?></strong>
+      <?php elseif ($search): ?>
         <?= $total_buku ?> buku cocok dengan "<strong><?= htmlspecialchars($search) ?></strong>"
+      <?php elseif ($kategori): ?>
+        <?= $total_buku ?> buku dalam kategori <strong><?= htmlspecialchars($kategori) ?></strong>
       <?php else: ?>
         <?= $total_buku ?> buku tersedia di katalog perpustakaan
       <?php endif; ?>
@@ -492,7 +609,13 @@ function getStatus(int $stok): array {
         <?php if (empty($buku_list)): ?>
         <tr class="empty-row">
           <td colspan="6">
-            <?= $search ? "Tidak ada buku yang cocok dengan \"" . htmlspecialchars($search) . "\"." : "Belum ada buku di katalog." ?>
+            <?php if ($search): ?>
+              Tidak ada buku yang cocok dengan "<?= htmlspecialchars($search) ?>"<?= $kategori ? " dalam kategori \"" . htmlspecialchars($kategori) . "\"" : "" ?>.
+            <?php elseif ($kategori): ?>
+              Belum ada buku dalam kategori "<?= htmlspecialchars($kategori) ?>".
+            <?php else: ?>
+              Belum ada buku di katalog.
+            <?php endif; ?>
           </td>
         </tr>
         <?php else: ?>
@@ -518,6 +641,7 @@ function getStatus(int $stok): array {
               <div>
                 <div class="td-title"><?= htmlspecialchars($buku["judul"]) ?></div>
                 <div class="td-isbn"><?= $buku["isbn"] ? "ISBN " . htmlspecialchars($buku["isbn"]) : "" ?></div>
+                <?php if ($buku["genre"]): ?><span class="td-genre-badge"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
               </div>
             </div>
           </td>
@@ -577,11 +701,89 @@ function getStatus(int $stok): array {
       </tbody>
     </table>
 
+    <!-- Daftar kartu untuk layar HP — tampil menggantikan tabel, tanpa perlu geser ke samping -->
+    <div class="mobile-book-list">
+      <?php if (empty($buku_list)): ?>
+        <div class="empty-row">
+          <?php if ($search): ?>
+            Tidak ada buku yang cocok dengan "<?= htmlspecialchars($search) ?>"<?= $kategori ? " dalam kategori \"" . htmlspecialchars($kategori) . "\"" : "" ?>.
+          <?php elseif ($kategori): ?>
+            Belum ada buku dalam kategori "<?= htmlspecialchars($kategori) ?>".
+          <?php else: ?>
+            Belum ada buku di katalog.
+          <?php endif; ?>
+        </div>
+      <?php else: ?>
+        <?php foreach ($buku_list as $i => $buku):
+          $col_m = $cover_cls[$i % count($cover_cls)];
+          [$status_cls_m, $status_label_m] = getStatus((int)$buku["stok"]);
+          $words_m   = preg_split('/\s+/', trim($buku["judul"]));
+          $initial_m = mb_strtoupper(mb_substr($words_m[0], 0, 1)) . (isset($words_m[1]) ? mb_strtoupper(mb_substr($words_m[1], 0, 1)) : "");
+          $rat_m = $rating_counts[$buku["id"]] ?? null;
+        ?>
+        <div class="mobile-book-card" onclick="bukaDetailBuku(<?= $buku['id'] ?>)">
+          <div class="mb-cover <?= $col_m ?>">
+            <?php if ($buku["gambar"] && file_exists($buku["gambar"])): ?>
+              <img src="<?= htmlspecialchars($buku["gambar"]) ?>" alt="<?= htmlspecialchars($buku["judul"]) ?>">
+            <?php else: ?>
+              <div class="mb-cover-initial"><?= htmlspecialchars($initial_m) ?></div>
+            <?php endif; ?>
+          </div>
+          <div class="mb-info">
+            <div class="mb-title"><?= htmlspecialchars($buku["judul"]) ?></div>
+            <div class="mb-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></div>
+            <?php if ($buku["genre"]): ?><span class="mb-genre-badge"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
+            <div class="mb-meta-row">
+              <?php if ($rat_m && $rat_m["total"] > 0): ?>
+                <span class="mb-rating">
+                  <svg viewBox="0 0 24 24" fill="#f5a623" stroke="#f5a623" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                  <?= $rat_m["avg"] ?>
+                </span>
+              <?php else: ?>
+                <span class="mb-rating empty">Belum ada rating</span>
+              <?php endif; ?>
+              <span class="mb-stock"><?= (int)$buku["stok"] ?> stok</span>
+              <span class="status-badge status-<?= $status_cls_m ?>"><span class="dot"></span><?= $status_label_m ?></span>
+            </div>
+            <?php if (!$is_admin):
+              $sudah_like_m = in_array($buku["id"], $liked_ids);
+              $sudah_fav_m  = in_array($buku["id"], $fav_ids);
+              $jml_like_m   = $like_counts[$buku["id"]] ?? 0;
+            ?>
+            <div class="mb-actions" onclick="event.stopPropagation()">
+              <button class="btn-like <?= $sudah_like_m ? 'aktif' : '' ?>"
+                      data-buku-id="<?= $buku['id'] ?>"
+                      onclick="toggleAksi(this, <?= $buku['id'] ?>, 'like')"
+                      title="Suka">
+                <svg viewBox="0 0 24 24" fill="<?= $sudah_like_m ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span><?= $jml_like_m ?></span>
+              </button>
+              <button class="btn-save <?= $sudah_fav_m ? 'aktif' : '' ?>"
+                      data-buku-id="<?= $buku['id'] ?>"
+                      onclick="toggleAksi(this, <?= $buku['id'] ?>, 'favorite')"
+                      title="Simpan">
+                <svg viewBox="0 0 24 24" fill="<?= $sudah_fav_m ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
+                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+                </svg>
+                Simpan
+              </button>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
+        <?php endforeach; ?>
+      <?php endif; ?>
+    </div>
+
     <!-- Pagination -->
     <?php
     $from = $total_buku === 0 ? 0 : $offset + 1;
     $to   = min($offset + $per_page, $total_buku);
-    $qs   = $search ? "&q=" . urlencode($search) : "";
+    $qs   = "";
+    if ($search)   $qs .= "&q=" . urlencode($search);
+    if ($kategori) $qs .= "&kategori=" . urlencode($kategori);
     ?>
     <div class="pagination-wrap">
       <div class="pagination-info">Menampilkan <?= $from ?>–<?= $to ?> dari <?= $total_buku ?> buku</div>
@@ -610,6 +812,17 @@ function getStatus(int $stok): array {
         <?php endif; ?>
       </div>
     </div>
+  </div>
+  <?php
+  $search_result_html = ob_get_clean(); // buffer dalam (khusus area hasil pencarian)
+  if ($is_ajax) {
+      ob_end_clean(); // buang seluruh buffer luar (DOCTYPE, sidebar, dll — belum sempat dikirim ke browser)
+      header("Content-Type: text/html; charset=utf-8");
+      echo $search_result_html;
+      exit;
+  }
+  echo $search_result_html;
+  ?>
   </div>
 
 </main>
@@ -776,6 +989,121 @@ function getStatus(int $stok): array {
       });
   }
 
+  // ─── Live Search (ketik langsung cari, tanpa tombol) ───
+  (function initLiveSearch() {
+    const form    = document.getElementById('searchForm');
+    const input   = document.getElementById('searchInput');
+    const select  = document.getElementById('kategoriFilter');
+    const result  = document.getElementById('searchResultArea');
+    const ddWrap  = document.getElementById('kategoriDropdown');
+    const trigger = document.getElementById('kategoriTrigger');
+    const label   = document.getElementById('kategoriTriggerLabel');
+    const panel   = document.getElementById('kategoriPanel');
+    if (!form || !input || !result) return;
+
+    let debounceTimer = null;
+    let currentRequest = null;
+
+    // Cegah submit form biasa (fallback lama), live search yang ambil alih
+    form.addEventListener('submit', e => e.preventDefault());
+
+    function runSearch(query, kategori) {
+      // Batalkan request sebelumnya yang belum selesai, biar hasil tidak tertukar
+      if (currentRequest) currentRequest.abort();
+      const controller = new AbortController();
+      currentRequest = controller;
+
+      const params = new URLSearchParams({ ajax: '1' });
+      if (query)    params.set('q', query);
+      if (kategori) params.set('kategori', kategori);
+
+      result.classList.add('loading-search');
+
+      fetch('daftar_buku.php?' + params.toString(), { signal: controller.signal })
+        .then(r => r.text())
+        .then(html => {
+          result.innerHTML = html;
+          result.classList.remove('loading-search');
+          // Perbarui URL browser tanpa reload halaman
+          const viewParams = new URLSearchParams();
+          if (query)    viewParams.set('q', query);
+          if (kategori) viewParams.set('kategori', kategori);
+          const qs = viewParams.toString();
+          history.replaceState(null, '', 'daftar_buku.php' + (qs ? '?' + qs : ''));
+        })
+        .catch(err => {
+          if (err.name !== 'AbortError') result.classList.remove('loading-search');
+        });
+    }
+
+    input.addEventListener('input', () => {
+      clearTimeout(debounceTimer);
+      const query = input.value;
+      debounceTimer = setTimeout(() => runSearch(query, select ? select.value : ''), 300);
+    });
+
+    // ─── Dropdown kategori bergaya chip ───
+    function closeKategoriPanel() {
+      if (!panel || !trigger) return;
+      panel.classList.remove('open');
+      trigger.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+    function openKategoriPanel() {
+      if (!panel || !trigger) return;
+      panel.classList.add('open');
+      trigger.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+    // Sumber kebenaran tunggal: set nilai kategori, sinkronkan tampilan trigger + chip, lalu cari (opsional)
+    function setKategori(value, opts) {
+      opts = opts || {};
+      if (select) select.value = value;
+      if (label)  label.textContent = value === '' ? 'Semua Kategori' : value;
+      if (trigger) trigger.classList.toggle('has-value', value !== '');
+      if (panel) {
+        panel.querySelectorAll('.kategori-chip').forEach(function (c) {
+          c.classList.toggle('active', c.dataset.value === value);
+        });
+      }
+      if (opts.search !== false) runSearch(input.value, value);
+    }
+
+    if (trigger && panel && ddWrap) {
+      trigger.addEventListener('click', () => {
+        panel.classList.contains('open') ? closeKategoriPanel() : openKategoriPanel();
+      });
+      panel.querySelectorAll('.kategori-chip').forEach(chip => {
+        chip.addEventListener('click', () => {
+          setKategori(chip.dataset.value);
+          closeKategoriPanel();
+        });
+      });
+      // Klik di luar dropdown / tombol Escape menutup panel
+      document.addEventListener('click', e => {
+        if (!ddWrap.contains(e.target)) closeKategoriPanel();
+      });
+      document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') closeKategoriPanel();
+      });
+    }
+
+    // Dukungan keyboard/aksesibilitas: <select> tersembunyi tetap bisa dioperasikan
+    if (select) {
+      select.addEventListener('change', () => setKategori(select.value));
+    }
+
+    // Tombol reset (jika ada) juga langsung mengosongkan hasil tanpa reload
+    document.addEventListener('click', e => {
+      const resetBtn = e.target.closest('#searchResetBtn');
+      if (!resetBtn) return;
+      e.preventDefault();
+      input.value = '';
+      setKategori('', { search: false });
+      runSearch('', '');
+    });
+  })();
+
   function escHTML(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -918,3 +1246,4 @@ function getStatus(int $stok): array {
 </script>
 </body>
 </html>
+<?php ob_end_flush(); ?>

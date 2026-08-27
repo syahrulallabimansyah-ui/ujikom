@@ -95,6 +95,13 @@ $profil      = $profil_res ? mysqli_fetch_assoc($profil_res) : null;
 $profil_nama = $profil["display_name"] ?? $user_name;
 $profil_foto = $profil["foto"] ?? "";
 
+// ─── Profil user yang sedang login (untuk kartu "Profil Saya" + tombol Update Data Diri) ───
+$my_profile = null;
+if (!$is_guest && !$is_admin) {
+    $res_my = mysqli_query($conn, "SELECT full_name, foto, no_anggota, kelas FROM users WHERE id = $user_id_int");
+    if ($res_my) $my_profile = mysqli_fetch_assoc($res_my);
+}
+
 // ─── Buku yang disimpan user (favorites) ───
 $saved_books = [];
 if (!$is_admin && !$is_guest) {
@@ -178,27 +185,34 @@ if (!$is_admin && !$is_guest) {
 
     /* ── SIDEBAR ── */
     .sidebar {
-      width:var(--sidebar-w); min-height:100vh;
+      width:var(--sidebar-w); height:100vh; height:100dvh;
       background:var(--sidebar-bg);
       display:flex; flex-direction:column;
       padding:24px 0 20px;
       border-right:1px solid var(--border-color,#e8e9f0);
       position:fixed; top:0; left:0; bottom:0;
       z-index:100; transition:transform var(--trans);
+      overflow-y:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin;
+      box-shadow:2px 0 24px rgba(20,20,50,.05);
     }
     .sidebar-toggle {
       display:none; position:fixed;
       top:14px; left:14px; z-index:200;
-      width:40px; height:40px; border-radius:10px;
+      width:42px; height:42px; border-radius:12px;
       border:none; background:#fff;
-      box-shadow:0 2px 10px rgba(0,0,0,.12);
+      box-shadow:0 4px 16px rgba(20,20,50,.16);
       cursor:pointer; align-items:center; justify-content:center;
+      transition:transform .15s ease, box-shadow var(--trans);
     }
+    .sidebar-toggle:active { transform:scale(.9); }
     .sidebar-toggle svg { width:20px; height:20px; color:var(--text); }
     .sidebar-overlay {
-      display:none; position:fixed; inset:0;
-      background:rgba(0,0,0,.4); z-index:90;
+      position:fixed; inset:0;
+      background:rgba(15,15,35,.45); backdrop-filter:blur(2px);
+      z-index:90; opacity:0; visibility:hidden;
+      transition:opacity var(--trans), visibility var(--trans);
     }
+    .sidebar-overlay.open { opacity:1; visibility:visible; }
     .logo-wrap {
       display:flex; flex-direction:column; align-items:center;
       padding:0 18px 24px; border-bottom:1px solid var(--border-color,#f0f0f5);
@@ -218,18 +232,23 @@ if (!$is_admin && !$is_guest) {
     .logo-sub { font-size:.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; text-align:center; margin-top:2px; }
     .nav { flex:1; display:flex; flex-direction:column; gap:2px; padding:16px 10px; }
     .nav-item {
+      position:relative;
       display:flex; align-items:center; gap:10px;
-      padding:10px 14px; border-radius:10px;
+      padding:11px 14px; border-radius:10px;
       font-size:.82rem; font-weight:600; color:var(--muted);
       cursor:pointer; text-decoration:none;
       transition:background var(--trans), color var(--trans);
     }
     .nav-item:hover  { background:#f0f2ff; color:var(--accent); }
     .nav-item.active { background:#eef0ff; color:var(--accent); }
+    .nav-item.active::before {
+      content:''; position:absolute; left:-10px; top:50%; transform:translateY(-50%);
+      width:3px; height:60%; border-radius:0 4px 4px 0; background:var(--accent);
+    }
     .nav-item svg    { width:17px; height:17px; flex-shrink:0; }
     .nav-item.admin-only { color:#e67e22; }
     .nav-item.admin-only:hover { background:#fff4e6; color:#d35400; }
-    .nav-bottom { padding:10px 10px 0; border-top:1px solid var(--border-color,#f0f0f5); display:flex; flex-direction:column; gap:2px; }
+    .nav-bottom { padding:10px 10px 0; border-top:1px solid var(--border-color,#f0f0f5); display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
 
     /* ── MAIN ── */
     .main { margin-left:var(--sidebar-w); flex:1; padding:24px 24px 32px; min-height:100vh; transition:margin-left var(--trans); }
@@ -518,6 +537,26 @@ if (!$is_admin && !$is_guest) {
     .admin-name { font-size:1.1rem; font-weight:800; color:var(--text); }
     .admin-role { font-size:.72rem; color:var(--muted); margin-top:2px; }
 
+    /* Profil Saya (kartu member — akses Update Data Diri) */
+    .profile-card-inner { display:flex; align-items:center; gap:14px; }
+    .profile-avatar {
+      width:52px; height:52px; border-radius:50%; flex-shrink:0;
+      background:#eef0ff; display:flex; align-items:center; justify-content:center;
+      overflow:hidden; border:2px solid #fff; box-shadow:0 0 0 1px var(--card-border,#eef0fc);
+    }
+    .profile-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+    .profile-avatar svg { width:26px; height:26px; color:var(--accent); }
+    .profile-name { font-size:.92rem; font-weight:800; color:var(--text); line-height:1.25; }
+    .profile-meta { font-size:.72rem; color:var(--muted); font-weight:600; margin-top:2px; }
+    .profile-edit-btn {
+      display:flex; align-items:center; justify-content:center; gap:7px;
+      margin-top:14px; padding:10px 14px; border-radius:10px;
+      background:#eef0ff; color:var(--accent); font-size:.78rem; font-weight:800;
+      text-decoration:none; transition:background var(--trans), color var(--trans), transform var(--trans);
+    }
+    .profile-edit-btn svg { width:14px; height:14px; }
+    .profile-edit-btn:hover { background:var(--accent); color:#fff; transform:translateY(-1px); }
+
     /* Empty placeholder */
     .empty-row { color:var(--muted); font-size:.8rem; font-weight:600; padding:20px 0; text-align:center; }
 
@@ -593,7 +632,16 @@ if (!$is_admin && !$is_guest) {
 
     /* Responsive */
     @media (max-width:900px)  { .grid { grid-template-columns:1fr; } .col-right { flex-direction:row; flex-wrap:wrap; } .col-right .section-card { flex:1 1 200px; } .col-right .admin-card { width:100%; } }
-    @media (max-width:700px)  { .sidebar { transform:translateX(-100%); } .sidebar.open { transform:translateX(0); } .sidebar-overlay.open { display:block; } .sidebar-toggle { display:flex; } .main { margin-left:0; padding:70px 14px 24px; } .topbar { flex-wrap:wrap; } .search-wrap { max-width:100%; } }
+    @media (max-width:700px)  {
+      .sidebar { transform:translateX(-100%); width:min(var(--sidebar-w) + 60px, 250px); padding-bottom:max(20px, env(safe-area-inset-bottom)); }
+      .sidebar.open { transform:translateX(0); }
+      .sidebar-toggle { display:flex; }
+      .main { margin-left:0; padding:70px 14px 24px; }
+      .topbar { flex-wrap:wrap; }
+      .search-wrap { max-width:100%; }
+      .nav-item { padding:13px 14px; font-size:.86rem; }
+      .nav-item svg { width:18px; height:18px; }
+    }
     @media (max-width:480px)  { .grid { gap:12px; } .col-right { flex-direction:column; } .col-right .section-card { flex:none; } }
   </style>
 </head>
@@ -949,6 +997,38 @@ if (!$is_admin && !$is_guest) {
           <?php endforeach; ?>
         </div>
         <?php endif; ?>
+      </div>
+      <?php endif; ?>
+
+      <!-- ─── Profil Saya (member login) — akses "Update Data Diri" dipindah ke sini ─── -->
+      <?php if ($my_profile): ?>
+      <div class="section-card profile-card">
+        <div class="section-header">
+          <span class="section-title">Profil Saya</span>
+        </div>
+        <div class="profile-card-inner">
+          <div class="profile-avatar">
+            <?php if (!empty($my_profile["foto"]) && file_exists($my_profile["foto"])): ?>
+              <img src="<?= htmlspecialchars($my_profile["foto"]) ?>?v=<?= filemtime($my_profile["foto"]) ?>" alt="Foto profil"/>
+            <?php else: ?>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            <?php endif; ?>
+          </div>
+          <div class="profile-info">
+            <div class="profile-name"><?= htmlspecialchars($my_profile["full_name"]) ?></div>
+            <div class="profile-meta"><?= htmlspecialchars($my_profile["no_anggota"] ?: "—") ?> · <?= htmlspecialchars($my_profile["kelas"] ?: "—") ?></div>
+          </div>
+        </div>
+        <a href="edit_kartu.php" class="profile-edit-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+          </svg>
+          Update Data Diri
+        </a>
       </div>
       <?php endif; ?>
 

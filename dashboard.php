@@ -116,6 +116,32 @@ if ($skema_lengkap) {
 }
 
 // ─────────────────────────────────────────────
+//  RINGKASAN DENDA (untuk bagian Laporan)
+// ─────────────────────────────────────────────
+$denda_tersedia    = $ada_peminjaman
+    && kolomTersedia($conn, "peminjaman", ["status_denda"])
+    && kolomTersedia($conn, "peminjaman", ["denda"]);
+$denda_belum_count = 0;
+$denda_lunas_count = 0;
+$denda_belum_rp    = 0;
+$denda_lunas_rp    = 0;
+if ($denda_tersedia) {
+    $q = mysqli_query($conn, "SELECT status_denda, COUNT(*) AS c, COALESCE(SUM(denda),0) AS t
+                               FROM peminjaman WHERE denda > 0 GROUP BY status_denda");
+    if ($q) {
+        while ($row = mysqli_fetch_assoc($q)) {
+            if ($row["status_denda"] === "lunas") {
+                $denda_lunas_count = (int)$row["c"];
+                $denda_lunas_rp    = (int)$row["t"];
+            } else {
+                $denda_belum_count += (int)$row["c"];
+                $denda_belum_rp    += (int)$row["t"];
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────
 //  REKAP BULANAN — per tahun kalender (Jan–Des)
 //  Tahun bisa dinavigasi bebas maju/mundur lewat ?tahun=,
 //  jadi rekap TIDAK pernah mentok di satu tahun tertentu —
@@ -181,6 +207,36 @@ if ($skema_lengkap) {
 
 // Warna badge nav (dipakai juga di sidebar)
 $pending_count = $anggota_counts["pending"];
+
+// ─────────────────────────────────────────────
+//  TEKS LAPORAN UNTUK DIKIRIM VIA WHATSAPP
+// ─────────────────────────────────────────────
+$wa_lines   = [];
+$wa_lines[] = "*Laporan Perpustakaan – AKSA NOVA*";
+$wa_lines[] = "Tanggal: " . date('d F Y, H:i');
+$wa_lines[] = "";
+$wa_lines[] = "*Koleksi Buku*";
+$wa_lines[] = "- Total Judul Buku: $total_buku";
+$wa_lines[] = "- Total Stok Fisik: $total_stok";
+$wa_lines[] = "- Sedang Dipinjam: " . ($sedang_dipinjam !== null ? $sedang_dipinjam : '-');
+$wa_lines[] = "";
+$wa_lines[] = "*Keanggotaan*";
+$wa_lines[] = "- Anggota Aktif: {$anggota_counts['approved']}";
+$wa_lines[] = "- Menunggu Persetujuan: {$anggota_counts['pending']}";
+$wa_lines[] = "- Ditolak: {$anggota_counts['rejected']}";
+$wa_lines[] = "";
+$wa_lines[] = "*Aktivitas Peminjaman*";
+$wa_lines[] = "- Peminjaman Bulan Ini: $peminjaman_bulan_ini";
+$wa_lines[] = "- Total Tahun $tahun: $total_tahun_pinjam";
+$wa_lines[] = "- Terlambat Kembali: " . ($terlambat !== null ? $terlambat : '-');
+if ($denda_tersedia) {
+    $wa_lines[] = "";
+    $wa_lines[] = "*Denda*";
+    $wa_lines[] = "- Belum Dibayar ($denda_belum_count): Rp " . number_format($denda_belum_rp, 0, ',', '.');
+    $wa_lines[] = "- Lunas ($denda_lunas_count): Rp " . number_format($denda_lunas_rp, 0, ',', '.');
+}
+$laporan_text = implode("\n", $wa_lines);
+$wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -234,15 +290,64 @@ $pending_count = $anggota_counts["pending"];
     }
     .sidebar-toggle svg { width:20px; height:20px; }
 
+    .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
       width:96px; height:96px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
-      margin-bottom:14px;
+      transition:border-color var(--trans);
     }
+    .avatar-wrap:hover .avatar-circle { border-color:rgba(255,255,255,.55); }
     .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
     .avatar-circle .default-icon { width:52px; height:52px; color:#888; }
+    .avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,.45); display:flex;
+      align-items:center; justify-content:center;
+      opacity:0; transition:opacity .2s;
+    }
+    .avatar-wrap:hover .avatar-overlay { opacity:1; }
+    .avatar-overlay svg { width:24px; height:24px; color:#fff; }
+
+    /* ── Modal Edit Profil ── */
+    .modal-overlay {
+      display:none; position:fixed; inset:0;
+      background:rgba(20,20,30,.55); z-index:500;
+      align-items:center; justify-content:center; padding:20px;
+    }
+    .modal-overlay.open { display:flex; }
+    .modal-box {
+      background:#fff; border-radius:16px; width:100%; max-width:380px;
+      max-height:90vh; overflow-y:auto; padding:24px;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);
+      animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform:scale(.94) translateY(10px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .modal-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; font-weight:700; color:var(--text); }
+    .modal-close { border:none; background:#f0f0f5; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text); }
+    .modal-close svg { width:16px; height:16px; }
+    .img-preview-wrap { position:relative; border:2px dashed #d8d8e4; overflow:hidden; cursor:pointer; }
+    .img-preview-wrap img { width:100%; height:100%; object-fit:cover; }
+    .upload-placeholder { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+    .upload-placeholder svg { width:26px; height:26px; }
+    .form-group { margin-bottom:14px; }
+    .form-label { display:block; font-size:.78rem; font-weight:700; color:var(--text); margin-bottom:6px; }
+    .form-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0e0ea; font-family:'Nunito',sans-serif; font-size:.85rem; }
+    .form-input:focus { outline:none; border-color:var(--accent); }
+    .modal-footer { display:flex; gap:10px; margin-top:18px; }
+    .btn-cancel, .btn-save {
+      flex:1; padding:11px; border-radius:8px; border:none;
+      font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer;
+      transition:opacity var(--trans);
+    }
+    .btn-cancel:hover, .btn-save:hover { opacity:.85; }
+    .btn-cancel { background:#f0f0f5; color:var(--text); }
+    .btn-save { background:var(--accent); color:#fff; }
 
     .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
     .total-badge {
@@ -352,6 +457,29 @@ $pending_count = $anggota_counts["pending"];
 
     .empty-mini { padding:24px 18px; text-align:center; color:var(--muted); font-size:.82rem; }
 
+    /* Laporan ringkasan */
+    .laporan-grid {
+      display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+      gap:14px;
+    }
+    .laporan-card {
+      background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow);
+      padding:16px 18px;
+    }
+    .laporan-card h4 {
+      font-size:.7rem; text-transform:uppercase; letter-spacing:.05em;
+      color:var(--muted); font-weight:800; margin-bottom:10px;
+    }
+    .laporan-row {
+      display:flex; align-items:center; justify-content:space-between;
+      padding:6px 0; font-size:.82rem; color:var(--text);
+      border-bottom:1px solid #f2f2f6;
+    }
+    .laporan-row:last-child { border-bottom:none; }
+    .laporan-row span:last-child { font-weight:800; font-family:'JetBrains Mono', monospace; }
+    .laporan-row.highlight span:last-child { color:#dc2626; }
+    .laporan-row.ok span:last-child { color:#1a8a4a; }
+
     /* Navigasi tahun + cetak */
     .year-nav {
       display:flex; align-items:center; gap:8px; flex-wrap:wrap;
@@ -382,6 +510,14 @@ $pending_count = $anggota_counts["pending"];
       transition:background var(--trans);
     }
     .btn-print:hover { background:#222; }
+    .btn-whatsapp {
+      display:flex; align-items:center; gap:6px;
+      background:#25D366; color:#fff; border:none;
+      padding:7px 16px; border-radius:20px; cursor:pointer;
+      font-family:'Nunito',sans-serif; font-size:.76rem; font-weight:800;
+      text-decoration:none; transition:background var(--trans);
+    }
+    .btn-whatsapp:hover { background:#1ebc59; }
 
     tfoot td {
       padding:12px 16px; font-size:.8rem; font-weight:800; color:var(--text);
@@ -405,19 +541,58 @@ $pending_count = $anggota_counts["pending"];
       .sidebar-toggle { display:flex; }
       .main { margin-left:0; padding:70px 14px 24px; }
       .year-nav { width:100%; }
+      .stat-grid { grid-template-columns:1fr 1fr; }
+
+      /* Tabel rekap jadi kartu bertumpuk supaya tidak perlu geser ke samping */
+      .table-wrap { overflow-x:visible; box-shadow:none; background:transparent; }
+      table { min-width:0; width:100%; border-collapse:separate; border-spacing:0 16px; }
+      thead { display:none; }
+      tbody tr {
+        display:block; background:var(--card); border-radius:var(--radius);
+        box-shadow:var(--shadow); overflow:hidden;
+      }
+      tbody tr:hover { background:var(--card); }
+      tbody tr.row-now { background:var(--card); }
+      tbody tr.row-now td { background:#f0f4ff; }
+      tbody td {
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+        padding:11px 14px; border-bottom:1px solid #f2f2f6; text-align:right;
+      }
+      tbody tr td:last-child { border-bottom:none; }
+      tbody td::before {
+        content:attr(data-label); font-size:.68rem; font-weight:800; color:var(--muted);
+        text-transform:uppercase; letter-spacing:.05em; text-align:left; flex-shrink:0;
+      }
+      tfoot { display:block; }
+      tfoot tr {
+        display:block; background:#fafafe; border-radius:var(--radius);
+        box-shadow:var(--shadow); margin-top:16px; overflow:hidden;
+      }
+      tfoot td {
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+        padding:11px 14px; border-top:none; border-bottom:1px solid #eee; background:transparent;
+      }
+      tfoot td:last-child { border-bottom:none; }
+      tfoot td::before {
+        content:attr(data-label); font-size:.68rem; font-weight:800; color:var(--muted);
+        text-transform:uppercase; letter-spacing:.05em;
+      }
+    }
+    @media (max-width:400px) {
+      .stat-grid { grid-template-columns:1fr; }
     }
 
     /* ── MODE CETAK ── */
     @media print {
       .sidebar, .sidebar-toggle, .sidebar-overlay,
-      .btn-print, .year-nav .nav-btn, .year-nav .year-reset,
+      .btn-print, .btn-whatsapp, .year-nav .nav-btn, .year-nav .year-reset,
       .content-sub, .notice { display:none !important; }
       body { background:#fff; animation:none; }
       .main { margin-left:0; padding:0; }
       .print-header { display:block; margin-bottom:20px; }
       .print-header h1 { font-family:'Cormorant Garamond',serif; font-size:1.5rem; color:#000; }
       .print-header p { font-size:.8rem; color:#444; margin-top:2px; }
-      .stat-card, .table-wrap, .pop-list { box-shadow:none; border:1px solid #ddd; }
+      .stat-card, .table-wrap, .pop-list, .laporan-card { box-shadow:none; border:1px solid #ddd; }
       .two-col { grid-template-columns:1fr; }
       .section { break-inside:avoid; }
       tbody tr:hover { background:transparent; }
@@ -435,22 +610,29 @@ $pending_count = $anggota_counts["pending"];
 
 <!-- Header ini hanya tampil saat dicetak -->
 <div class="print-header">
-  <h1>Laporan Rekap Peminjaman Perpustakaan — AKSA NOVA</h1>
+  <h1>Laporan Perpustakaan — AKSA NOVA</h1>
   <p>Tahun: <?= $tahun ?> &nbsp;·&nbsp; Dicetak oleh: <?= htmlspecialchars($admin_name) ?> &nbsp;·&nbsp; Tanggal cetak: <?= date('d F Y, H:i') ?></p>
 </div>
 
 <aside class="sidebar" id="sidebar">
-  <div class="avatar-circle">
-    <?php if ($admin_foto && file_exists($admin_foto)): ?>
-      <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
-    <?php else: ?>
-      <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
+    <div class="avatar-circle">
+      <?php if ($admin_foto && file_exists($admin_foto)): ?>
+        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
+      <?php else: ?>
+        <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      <?php endif; ?>
+    </div>
+    <div class="avatar-overlay">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
-    <?php endif; ?>
+    </div>
   </div>
   <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
- 
 
   <a class="sidebar-btn active" href="dashboard.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
@@ -459,6 +641,10 @@ $pending_count = $anggota_counts["pending"];
   <a class="sidebar-btn" href="halaman_admin.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Perbarui Buku
+  </a>
+  <a class="sidebar-btn" href="kelola_banner.php">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
+    Kelola Banner
   </a>
   <a class="sidebar-btn" href="daftar_anggota.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -572,19 +758,19 @@ $pending_count = $anggota_counts["pending"];
           <tbody>
             <?php foreach ($rekap_tampil as $r): ?>
             <tr class="<?= $r["is_sekarang"] ? 'row-now' : '' ?>">
-              <td><?= htmlspecialchars($r["label"]) ?><?= $r["is_sekarang"] ? ' <span style="color:var(--muted);font-weight:400;">(bulan ini)</span>' : '' ?></td>
-              <td class="cell-num"><?= $r["total_pinjam"] ?></td>
-              <td class="cell-num"><?= $r["anggota_pinjam"] ?></td>
-              <td class="cell-num"><?= $r["total_kembali"] !== null ? $r["total_kembali"] : '<span class="cell-dash">–</span>' ?></td>
+              <td data-label="Bulan"><?= htmlspecialchars($r["label"]) ?><?= $r["is_sekarang"] ? ' <span style="color:var(--muted);font-weight:400;">(bulan ini)</span>' : '' ?></td>
+              <td class="cell-num" data-label="Total Peminjaman"><?= $r["total_pinjam"] ?></td>
+              <td class="cell-num" data-label="Anggota Meminjam"><?= $r["anggota_pinjam"] ?></td>
+              <td class="cell-num" data-label="Buku Dikembalikan"><?= $r["total_kembali"] !== null ? $r["total_kembali"] : '<span class="cell-dash">–</span>' ?></td>
             </tr>
             <?php endforeach; ?>
           </tbody>
           <tfoot>
             <tr>
-              <td>Total Tahun <?= $tahun ?></td>
-              <td class="cell-num"><?= $total_tahun_pinjam ?></td>
-              <td class="cell-num"><?= $anggota_unik_tahun ?> anggota unik</td>
-              <td class="cell-num"><?= $col_dikembalikan ? $total_tahun_kembali : '<span class="cell-dash">–</span>' ?></td>
+              <td data-label="Bulan">Total Tahun <?= $tahun ?></td>
+              <td class="cell-num" data-label="Total Peminjaman"><?= $total_tahun_pinjam ?></td>
+              <td class="cell-num" data-label="Anggota Meminjam"><?= $anggota_unik_tahun ?> anggota unik</td>
+              <td class="cell-num" data-label="Buku Dikembalikan"><?= $col_dikembalikan ? $total_tahun_kembali : '<span class="cell-dash">–</span>' ?></td>
             </tr>
           </tfoot>
         </table>
@@ -616,7 +802,106 @@ $pending_count = $anggota_counts["pending"];
     </div>
   </div>
 
+  <!-- Laporan ringkasan perpustakaan -->
+  <div class="section" id="laporan">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Laporan Ringkasan</div>
+        <div class="section-sub">Ringkasan koleksi, keanggotaan &amp; denda per hari ini</div>
+      </div>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <a class="btn-whatsapp" href="<?= $wa_link ?>" target="_blank" rel="noopener">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2 22l5.29-1.39a9.87 9.87 0 0 0 4.75 1.21h.01c5.46 0 9.9-4.44 9.9-9.9s-4.44-9.9-9.91-9.9zm5.8 14.06c-.24.68-1.4 1.3-1.93 1.38-.49.08-1.11.11-1.79-.11-.41-.13-.94-.3-1.62-.6-2.85-1.23-4.71-4.1-4.85-4.29-.14-.19-1.16-1.54-1.16-2.94s.73-2.09.99-2.37c.26-.29.56-.36.75-.36l.53.01c.17.01.4-.06.62.48.24.58.81 2 .88 2.14.07.15.12.32.02.52-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.28.28-.12.55.16.28.71 1.17 1.53 1.9 1.05.94 1.94 1.23 2.21 1.37.28.14.44.12.6-.07.16-.19.68-.79.87-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.44.2.5.31.07.12.07.66-.17 1.35z"/></svg>
+          Kirim via WhatsApp
+        </a>
+        <button class="btn-print" onclick="window.print()">🖨️ Cetak Laporan</button>
+      </div>
+    </div>
+
+    <div class="laporan-grid">
+      <div class="laporan-card">
+        <h4>📚 Koleksi Buku</h4>
+        <div class="laporan-row"><span>Total Judul Buku</span><span><?= $total_buku ?></span></div>
+        <div class="laporan-row"><span>Total Stok Fisik</span><span><?= $total_stok ?></span></div>
+        <div class="laporan-row"><span>Sedang Dipinjam</span><span><?= $sedang_dipinjam !== null ? $sedang_dipinjam : '–' ?></span></div>
+      </div>
+
+      <div class="laporan-card">
+        <h4>👥 Keanggotaan</h4>
+        <div class="laporan-row"><span>Anggota Aktif</span><span><?= $anggota_counts["approved"] ?></span></div>
+        <div class="laporan-row"><span>Menunggu Persetujuan</span><span><?= $anggota_counts["pending"] ?></span></div>
+        <div class="laporan-row"><span>Ditolak</span><span><?= $anggota_counts["rejected"] ?></span></div>
+      </div>
+
+      <div class="laporan-card">
+        <h4>📖 Aktivitas Peminjaman</h4>
+        <div class="laporan-row"><span>Peminjaman Bulan Ini</span><span><?= $peminjaman_bulan_ini ?></span></div>
+        <div class="laporan-row"><span>Total Tahun <?= $tahun ?></span><span><?= $total_tahun_pinjam ?></span></div>
+        <div class="laporan-row <?= ($terlambat ?? 0) > 0 ? 'highlight' : '' ?>"><span>Terlambat Kembali</span><span><?= $terlambat !== null ? $terlambat : '–' ?></span></div>
+      </div>
+
+      <div class="laporan-card">
+        <h4>💰 Denda</h4>
+        <?php if (!$denda_tersedia): ?>
+          <div class="empty-mini" style="padding:8px 0;">Data denda belum tersedia.</div>
+        <?php else: ?>
+          <div class="laporan-row <?= $denda_belum_count > 0 ? 'highlight' : '' ?>">
+            <span>Belum Dibayar (<?= $denda_belum_count ?>)</span><span>Rp <?= number_format($denda_belum_rp, 0, ',', '.') ?></span>
+          </div>
+          <div class="laporan-row ok">
+            <span>Lunas (<?= $denda_lunas_count ?>)</span><span>Rp <?= number_format($denda_lunas_rp, 0, ',', '.') ?></span>
+          </div>
+        <?php endif; ?>
+      </div>
+    </div>
+  </div>
+
 </main>
+
+<!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
+<div class="modal-overlay" id="profilModalOverlay">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-title">Edit Profil</div>
+      <button class="modal-close" onclick="closeProfilModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
+      <input type="hidden" name="redirect" value="dashboard.php"/>
+
+      <!-- Preview foto -->
+      <div class="img-preview-wrap" style="aspect-ratio:1/1;max-width:160px;margin:0 auto 18px;border-radius:50%;" onclick="document.getElementById('inputFotoAdmin').click()">
+        <?php if ($admin_foto && file_exists($admin_foto)): ?>
+          <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>" alt="Foto" style="display:block;border-radius:50%;"/>
+          <div class="upload-placeholder" id="profilUploadPlaceholder" style="display:none;">
+        <?php else: ?>
+          <img id="profilPreviewImg" src="" alt="Foto" style="display:none;border-radius:50%;"/>
+          <div class="upload-placeholder" id="profilUploadPlaceholder">
+        <?php endif; ?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span style="font-size:.7rem;">Upload Foto</span>
+          </div>
+      </div>
+      <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
+
+      <div class="form-group">
+        <label class="form-label">Nama Tampilan</label>
+        <input class="form-input" type="text" name="display_name"
+               value="<?= htmlspecialchars($admin_name) ?>"
+               placeholder="Nama yang ditampilkan" required/>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeProfilModal()">Batal</button>
+        <button type="submit" class="btn-save">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script>
 const toggle  = document.getElementById('sidebarToggle');
@@ -624,6 +909,30 @@ const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('sidebarOverlay');
 toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
 overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+
+// ─── Modal Edit Profil ───
+function openProfilModal() {
+  document.getElementById('profilModalOverlay').classList.add('open');
+}
+function closeProfilModal() {
+  document.getElementById('profilModalOverlay').classList.remove('open');
+  document.getElementById('inputFotoAdmin').value = '';
+}
+document.getElementById('profilModalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeProfilModal();
+});
+document.getElementById('inputFotoAdmin').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('profilPreviewImg');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('profilUploadPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
 </script>
 </body>
 </html>

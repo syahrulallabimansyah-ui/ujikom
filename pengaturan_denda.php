@@ -12,6 +12,10 @@ require_once 'db.php';
 assert($conn instanceof mysqli);
 mysqli_set_charset($conn, 'utf8mb4');
 
+// Samakan zona waktu PHP & MySQL supaya konsisten dengan WIB
+date_default_timezone_set('Asia/Jakarta');
+mysqli_query($conn, "SET time_zone = '+07:00'");
+
 $page_title = 'Pengaturan Denda – AKSA NOVA';
 $msg        = '';
 $msg_type   = '';
@@ -170,7 +174,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'tanda
     .total-badge { background:rgba(255,255,255,.18); color:#fff; font-size:.72rem; font-weight:700; padding:4px 12px; border-radius:50px; margin-bottom:8px; text-align:center; }
     .sidebar-btn { width:100%; display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; border:none; background:rgba(255,255,255,.12); color:#fff; font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700; cursor:pointer; margin-bottom:8px; transition:background var(--trans); text-align:left; text-decoration:none; }
     .sidebar-btn:hover { background:rgba(255,255,255,.22); }
-    .sidebar-btn.active { background:rgba(255,255,255,.22); }
+    .sidebar-btn.active { background:rgba(255,255,255,.3); }
     .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
 
     /* MAIN */
@@ -280,10 +284,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'tanda
     </div>
   </div>
   <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
-  <div class="total-badge">⚠️ <?= $stat_belum ?> Belum Bayar</div>
-  <div class="total-badge" style="margin-top:-4px;">✅ <?= $stat_lunas ?> Lunas</div>
-
-  <div style="width:100%;height:1px;background:rgba(255,255,255,.12);margin:10px 0 14px;"></div>
 
   <a class="sidebar-btn" href="dashboard.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
@@ -292,6 +292,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'tanda
   <a class="sidebar-btn" href="halaman_admin.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Perbarui Buku
+  </a>
+  <a class="sidebar-btn" href="kelola_banner.php">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
+    Kelola Banner
+  </a>
+  <a class="sidebar-btn" href="daftar_anggota.php">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Daftar Anggota
   </a>
   <a class="sidebar-btn" href="pinjam_buku.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>

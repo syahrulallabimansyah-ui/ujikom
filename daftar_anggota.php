@@ -35,6 +35,14 @@ if ($action === "approve") {
     }
 }
 
+if ($action === "unfreeze") {
+    $id = (int)($_POST["id"] ?? 0);
+    if ($id > 0) {
+        mysqli_query($conn, "UPDATE users SET card_status='active' WHERE id=$id AND role='member'");
+        $msg = "Kartu anggota berhasil dicairkan kembali."; $msg_type = "success";
+    }
+}
+
 if ($action === "reject") {
     $id = (int)($_POST["id"] ?? 0);
     if ($id > 0) {
@@ -98,7 +106,8 @@ if ($action === "reset_password") {
 // ─────────────────────────────────────────────
 //  AMBIL DATA
 // ─────────────────────────────────────────────
-$search = trim($_GET["q"] ?? "");
+$search  = trim($_GET["q"] ?? "");
+$is_ajax = isset($_GET["ajax"]) && $_GET["ajax"] == "1";
 $filter = $_GET["status"] ?? "all";
 
 $where = ["role = 'member'"];
@@ -123,6 +132,10 @@ $counts = ["pending" => 0, "approved" => 0, "rejected" => 0];
 while ($row = mysqli_fetch_assoc($count_res)) {
     $counts[$row["status"]] = (int)$row["c"];
 }
+
+// Buffer seluruh output halaman. Untuk request AJAX (live search), buffer ini
+// dibuang sepenuhnya sebelum kita kirim hanya fragmen hasil pencarian.
+ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -176,15 +189,64 @@ while ($row = mysqli_fetch_assoc($count_res)) {
     }
     .sidebar-toggle svg { width:20px; height:20px; }
 
+    .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
       width:96px; height:96px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
-      margin-bottom:14px;
+      transition:border-color var(--trans);
     }
+    .avatar-wrap:hover .avatar-circle { border-color:rgba(255,255,255,.55); }
     .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
     .avatar-circle .default-icon { width:52px; height:52px; color:#888; }
+    .avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,.45); display:flex;
+      align-items:center; justify-content:center;
+      opacity:0; transition:opacity .2s;
+    }
+    .avatar-wrap:hover .avatar-overlay { opacity:1; }
+    .avatar-overlay svg { width:24px; height:24px; color:#fff; }
+
+    /* ── Modal Edit Profil ── */
+    .modal-overlay {
+      display:none; position:fixed; inset:0;
+      background:rgba(20,20,30,.55); z-index:500;
+      align-items:center; justify-content:center; padding:20px;
+    }
+    .modal-overlay.open { display:flex; }
+    .modal-box {
+      background:#fff; border-radius:16px; width:100%; max-width:380px;
+      max-height:90vh; overflow-y:auto; padding:24px;
+      box-shadow:0 20px 60px rgba(0,0,0,.25);
+      animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
+    }
+    @keyframes modalIn {
+      from { opacity:0; transform:scale(.94) translateY(10px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .modal-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; font-weight:700; color:var(--text); }
+    .modal-close { border:none; background:#f0f0f5; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text); }
+    .modal-close svg { width:16px; height:16px; }
+    .img-preview-wrap { position:relative; border:2px dashed #d8d8e4; overflow:hidden; cursor:pointer; }
+    .img-preview-wrap img { width:100%; height:100%; object-fit:cover; }
+    .upload-placeholder { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+    .upload-placeholder svg { width:26px; height:26px; }
+    .form-group { margin-bottom:14px; }
+    .form-label { display:block; font-size:.78rem; font-weight:700; color:var(--text); margin-bottom:6px; }
+    .form-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0e0ea; font-family:'Nunito',sans-serif; font-size:.85rem; }
+    .form-input:focus { outline:none; border-color:var(--accent); }
+    .modal-footer { display:flex; gap:10px; margin-top:18px; }
+    .btn-cancel, .btn-save {
+      flex:1; padding:11px; border-radius:8px; border:none;
+      font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer;
+      transition:opacity var(--trans);
+    }
+    .btn-cancel:hover, .btn-save:hover { opacity:.85; }
+    .btn-cancel { background:#f0f0f5; color:var(--text); }
+    .btn-save { background:var(--accent); color:#fff; }
 
     .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
     .total-badge {
@@ -232,7 +294,7 @@ while ($row = mysqli_fetch_assoc($count_res)) {
       font-family: 'JetBrains Mono', monospace;
       background: rgba(255,255,255,.12);
       padding: 8px 14px; border-radius: 8px;
-      font-size: .84rem; display: flex; gap: 16px;
+      font-size: .84rem; display: flex; gap: 16px; flex-wrap: wrap;
     }
 
     .topbar {
@@ -249,6 +311,8 @@ while ($row = mysqli_fetch_assoc($count_res)) {
       color:var(--text); background:transparent;
     }
     .topbar input::placeholder { color:#bbb; }
+    #searchResultArea { transition: opacity .15s ease; }
+    #searchResultArea.loading-search { opacity: .55; }
     .btn-search {
       background:var(--btn-primary); color:#fff;
       border:none; border-radius:20px;
@@ -296,6 +360,15 @@ while ($row = mysqli_fetch_assoc($count_res)) {
     .cell-sub  { font-size:.7rem; color:var(--muted); }
     .cell-mono { font-family:'JetBrains Mono', monospace; font-size:.76rem; }
 
+    .cell-anggota { display:flex; align-items:center; gap:10px; }
+    .member-avatar {
+      width:38px; height:38px; border-radius:50%; flex-shrink:0;
+      overflow:hidden; background:linear-gradient(135deg,#3498db,#1a5276);
+      color:#fff; font-weight:800; font-size:.82rem;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .member-avatar img { width:100%; height:100%; object-fit:cover; display:block; }
+
     .badge {
       display:inline-block; padding:3px 11px; border-radius:20px;
       font-size:.68rem; font-weight:800; white-space:nowrap;
@@ -303,6 +376,7 @@ while ($row = mysqli_fetch_assoc($count_res)) {
     .badge-pending  { background:#fff3cd; color:#8a6100; }
     .badge-approved { background:#e8f5e9; color:#1a8a4a; }
     .badge-rejected { background:#fce4ec; color:#c0392b; }
+    .badge-frozen   { background:#e0e7ff; color:#3730a3; margin-left:6px; }
 
     .row-actions { display:flex; gap:6px; flex-wrap:wrap; }
     .act-btn {
@@ -334,6 +408,35 @@ while ($row = mysqli_fetch_assoc($count_res)) {
       .sidebar.open { transform:translateX(0); }
       .sidebar-toggle { display:flex; }
       .main { margin-left:0; padding:70px 14px 24px; }
+      .topbar { border-radius:14px; height:auto; padding:10px 14px; flex-wrap:wrap; }
+      .btn-search { flex-shrink:0; }
+      .reset-banner { flex-direction:column; align-items:stretch; }
+
+      /* Tabel anggota jadi kartu bertumpuk di layar kecil, biar tombol aksi
+         langsung kelihatan tanpa perlu geser ke samping */
+      .table-wrap { overflow-x:visible; box-shadow:none; background:transparent; }
+      table { min-width:0; width:100%; border-collapse:separate; border-spacing:0 16px; }
+      thead { display:none; }
+      tbody tr {
+        display:block; background:var(--card); border-radius:var(--radius);
+        box-shadow:var(--shadow); overflow:hidden;
+      }
+      tbody tr:hover { background:var(--card); }
+      tbody td {
+        display:flex; align-items:center; justify-content:space-between; gap:12px;
+        padding:12px 14px; border-bottom:1px solid #f2f2f6; text-align:right;
+      }
+      tbody tr td:last-child { border-bottom:none; }
+      tbody td::before {
+        content:attr(data-label); font-size:.68rem; font-weight:800; color:var(--muted);
+        text-transform:uppercase; letter-spacing:.05em; text-align:left; flex-shrink:0;
+      }
+      tbody td[data-label="Anggota"] { flex-direction:column; align-items:flex-start; text-align:left; }
+      tbody td[data-label="Anggota"]::before { margin-bottom:4px; }
+      tbody td[data-label="Aksi"] { flex-direction:column; align-items:stretch; }
+      tbody td[data-label="Aksi"]::before { margin-bottom:6px; }
+      .row-actions { width:100%; justify-content:flex-start; }
+      .act-btn { flex:1; min-width:0; }
     }
   </style>
 </head>
@@ -347,14 +450,22 @@ while ($row = mysqli_fetch_assoc($count_res)) {
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <aside class="sidebar" id="sidebar">
-  <div class="avatar-circle">
-    <?php if ($admin_foto && file_exists($admin_foto)): ?>
-      <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
-    <?php else: ?>
-      <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+  <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
+    <div class="avatar-circle">
+      <?php if ($admin_foto && file_exists($admin_foto)): ?>
+        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
+      <?php else: ?>
+        <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+      <?php endif; ?>
+    </div>
+    <div class="avatar-overlay">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
       </svg>
-    <?php endif; ?>
+    </div>
   </div>
   <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
 
@@ -365,6 +476,10 @@ while ($row = mysqli_fetch_assoc($count_res)) {
   <a class="sidebar-btn" href="halaman_admin.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     Perbarui Buku
+  </a>
+  <a class="sidebar-btn" href="kelola_banner.php">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
+    Kelola Banner
   </a>
   <a class="sidebar-btn active" href="daftar_anggota.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
@@ -418,19 +533,20 @@ while ($row = mysqli_fetch_assoc($count_res)) {
   </div>
   <?php endif; ?>
 
-  <form method="GET" action="">
+  <form method="GET" action="" id="searchForm">
     <?php if ($filter !== "all"): ?><input type="hidden" name="status" value="<?= htmlspecialchars($filter) ?>"><?php endif; ?>
     <div class="topbar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input type="text" name="q" placeholder="Cari anggota berdasarkan nama, NIK, kelas, username, atau email…"
+      <input type="text" name="q" id="searchInput" autocomplete="off" placeholder="Cari anggota berdasarkan nama, NIK, kelas, username, atau email…"
              value="<?= htmlspecialchars($search) ?>"/>
-      <button type="submit" class="btn-search">Cari</button>
       <?php if ($search): ?>
-      <a href="daftar_anggota.php<?= $filter !== 'all' ? '?status=' . urlencode($filter) : '' ?>" style="font-size:.75rem;color:var(--muted);text-decoration:none;white-space:nowrap;">✕ Reset</a>
+      <a href="daftar_anggota.php<?= $filter !== 'all' ? '?status=' . urlencode($filter) : '' ?>" id="searchResetBtn" style="font-size:.75rem;color:var(--muted);text-decoration:none;white-space:nowrap;">✕ Reset</a>
       <?php endif; ?>
     </div>
   </form>
 
+  <div id="searchResultArea">
+  <?php ob_start(); ?>
   <div class="content-header">
     <div class="content-title">
       Daftar Anggota
@@ -478,15 +594,27 @@ while ($row = mysqli_fetch_assoc($count_res)) {
       <tbody>
         <?php foreach ($anggota_list as $a): ?>
         <tr>
-          <td>
-            <div class="cell-name"><?= htmlspecialchars($a["full_name"]) ?></div>
-            <div class="cell-sub"><?= htmlspecialchars($a["email"]) ?></div>
+          <td data-label="Anggota">
+            <div class="cell-anggota">
+              <div class="member-avatar">
+                <?php $foto_anggota = $a["foto"] ?? ""; ?>
+                <?php if ($foto_anggota !== "" && file_exists($foto_anggota)): ?>
+                  <img src="<?= htmlspecialchars($foto_anggota) ?>" alt="Foto <?= htmlspecialchars($a["full_name"]) ?>">
+                <?php else: ?>
+                  <?= htmlspecialchars(mb_strtoupper(mb_substr($a["full_name"], 0, 1))) ?>
+                <?php endif; ?>
+              </div>
+              <div>
+                <div class="cell-name"><?= htmlspecialchars($a["full_name"]) ?></div>
+                <div class="cell-sub"><?= htmlspecialchars($a["email"]) ?></div>
+              </div>
+            </div>
           </td>
-          <td><?= htmlspecialchars($a["kelas"]) ?></td>
-          <td class="cell-mono"><?= htmlspecialchars($a["nik"]) ?></td>
-          <td class="cell-mono"><?= htmlspecialchars($a["no_anggota"]) ?></td>
-          <td class="cell-mono"><?= htmlspecialchars($a["username"]) ?></td>
-          <td>
+          <td data-label="Kelas"><?= htmlspecialchars($a["kelas"]) ?></td>
+          <td class="cell-mono" data-label="NIK"><?= htmlspecialchars($a["nik"]) ?></td>
+          <td class="cell-mono" data-label="No. Anggota"><?= htmlspecialchars($a["no_anggota"]) ?></td>
+          <td class="cell-mono" data-label="Username"><?= htmlspecialchars($a["username"]) ?></td>
+          <td data-label="Status">
             <?php if ($a["status"] === "pending"): ?>
               <span class="badge badge-pending">Menunggu</span>
             <?php elseif ($a["status"] === "approved"): ?>
@@ -494,8 +622,11 @@ while ($row = mysqli_fetch_assoc($count_res)) {
             <?php else: ?>
               <span class="badge badge-rejected">Ditolak</span>
             <?php endif; ?>
+            <?php if (($a["card_status"] ?? "active") === "frozen"): ?>
+              <span class="badge badge-frozen">🔒 Dibekukan (proses Lupa Kartu)</span>
+            <?php endif; ?>
           </td>
-          <td>
+          <td data-label="Aksi">
             <div class="row-actions">
               <?php if ($a["status"] === "pending"): ?>
                 <button class="act-btn act-approve" onclick="kirimAksi('approve', <?= $a['id'] ?>)">Setujui</button>
@@ -506,6 +637,9 @@ while ($row = mysqli_fetch_assoc($count_res)) {
               <?php else: ?>
                 <button class="act-btn act-approve" onclick="kirimAksi('approve', <?= $a['id'] ?>)">Setujui</button>
               <?php endif; ?>
+              <?php if (($a["card_status"] ?? "active") === "frozen"): ?>
+                <button class="act-btn act-reset" onclick="konfirmasiCairkan(<?= $a['id'] ?>, '<?= htmlspecialchars(addslashes($a['full_name'])) ?>')">Cairkan Kartu</button>
+              <?php endif; ?>
               <button class="act-btn act-hapus" onclick="konfirmasiHapusAnggota(<?= $a['id'] ?>, '<?= htmlspecialchars(addslashes($a['full_name'])) ?>')">Hapus</button>
             </div>
           </td>
@@ -515,6 +649,17 @@ while ($row = mysqli_fetch_assoc($count_res)) {
     </table>
   </div>
   <?php endif; ?>
+  <?php
+  $search_result_html = ob_get_clean();
+  if ($is_ajax) {
+      ob_end_clean();
+      header("Content-Type: text/html; charset=utf-8");
+      echo $search_result_html;
+      exit;
+  }
+  echo $search_result_html;
+  ?>
+  </div>
 
 </main>
 
@@ -524,12 +669,81 @@ while ($row = mysqli_fetch_assoc($count_res)) {
   <input type="hidden" name="id" id="aksiId"/>
 </form>
 
+<!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
+<div class="modal-overlay" id="profilModalOverlay">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-title">Edit Profil</div>
+      <button class="modal-close" onclick="closeProfilModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
+      <input type="hidden" name="redirect" value="daftar_anggota.php"/>
+
+      <!-- Preview foto -->
+      <div class="img-preview-wrap" style="aspect-ratio:1/1;max-width:160px;margin:0 auto 18px;border-radius:50%;" onclick="document.getElementById('inputFotoAdmin').click()">
+        <?php if ($admin_foto && file_exists($admin_foto)): ?>
+          <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>" alt="Foto" style="display:block;border-radius:50%;"/>
+          <div class="upload-placeholder" id="profilUploadPlaceholder" style="display:none;">
+        <?php else: ?>
+          <img id="profilPreviewImg" src="" alt="Foto" style="display:none;border-radius:50%;"/>
+          <div class="upload-placeholder" id="profilUploadPlaceholder">
+        <?php endif; ?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span style="font-size:.7rem;">Upload Foto</span>
+          </div>
+      </div>
+      <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
+
+      <div class="form-group">
+        <label class="form-label">Nama Tampilan</label>
+        <input class="form-input" type="text" name="display_name"
+               value="<?= htmlspecialchars($admin_name) ?>"
+               placeholder="Nama yang ditampilkan" required/>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeProfilModal()">Batal</button>
+        <button type="submit" class="btn-save">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
 const toggle  = document.getElementById('sidebarToggle');
 const sidebar = document.getElementById('sidebar');
 const overlay = document.getElementById('sidebarOverlay');
 toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
 overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+
+// ─── Modal Edit Profil ───
+function openProfilModal() {
+  document.getElementById('profilModalOverlay').classList.add('open');
+}
+function closeProfilModal() {
+  document.getElementById('profilModalOverlay').classList.remove('open');
+  document.getElementById('inputFotoAdmin').value = '';
+}
+document.getElementById('profilModalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeProfilModal();
+});
+document.getElementById('inputFotoAdmin').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('profilPreviewImg');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('profilUploadPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
 
 function kirimAksi(action, id) {
   document.getElementById('aksiAction').value = action;
@@ -543,11 +757,76 @@ function konfirmasiReset(id, nama) {
   }
 }
 
+function konfirmasiCairkan(id, nama) {
+  if (confirm(`Cairkan kartu "${nama}"? Gunakan ini hanya jika anggota meninggalkan proses "Lupa Kartu" di tengah jalan tanpa selesai.`)) {
+    kirimAksi('unfreeze', id);
+  }
+}
+
 function konfirmasiHapusAnggota(id, nama) {
   if (confirm(`Hapus anggota "${nama}"? Tindakan ini tidak bisa dibatalkan.`)) {
     kirimAksi('hapus', id);
   }
 }
+
+// ─── Live Search (ketik langsung cari, tanpa tombol) ───
+(function initLiveSearch() {
+  const CURRENT_FILTER = <?= json_encode($filter) ?>;
+  const form   = document.getElementById('searchForm');
+  const input  = document.getElementById('searchInput');
+  const result = document.getElementById('searchResultArea');
+  if (!form || !input || !result) return;
+
+  let debounceTimer = null;
+  let currentRequest = null;
+
+  form.addEventListener('submit', e => e.preventDefault());
+
+  function buildParams(query) {
+    const params = new URLSearchParams();
+    if (query) params.set('q', query);
+    if (CURRENT_FILTER && CURRENT_FILTER !== 'all') params.set('status', CURRENT_FILTER);
+    return params;
+  }
+
+  function runSearch(query) {
+    if (currentRequest) currentRequest.abort();
+    const controller = new AbortController();
+    currentRequest = controller;
+
+    const params = buildParams(query);
+    params.set('ajax', '1');
+    result.classList.add('loading-search');
+
+    fetch('daftar_anggota.php?' + params.toString(), { signal: controller.signal })
+      .then(r => r.text())
+      .then(html => {
+        result.innerHTML = html;
+        result.classList.remove('loading-search');
+        const viewParams = buildParams(query);
+        const qs = viewParams.toString();
+        history.replaceState(null, '', 'daftar_anggota.php' + (qs ? '?' + qs : ''));
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') result.classList.remove('loading-search');
+      });
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const query = input.value;
+    debounceTimer = setTimeout(() => runSearch(query), 300);
+  });
+
+  document.addEventListener('click', e => {
+    const resetBtn = e.target.closest('#searchResetBtn');
+    if (!resetBtn) return;
+    e.preventDefault();
+    input.value = '';
+    runSearch('');
+  });
+})();
 </script>
 </body>
 </html>
+<?php ob_end_flush(); ?>

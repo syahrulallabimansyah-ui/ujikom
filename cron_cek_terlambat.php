@@ -28,6 +28,10 @@ require_once __DIR__ . '/db.php';
 assert($conn instanceof mysqli);
 mysqli_set_charset($conn, 'utf8mb4');
 
+// Samakan zona waktu PHP & MySQL supaya pengecekan keterlambatan tidak meleset dari WIB
+date_default_timezone_set('Asia/Jakarta');
+mysqli_query($conn, "SET time_zone = '+07:00'");
+
 $today = date('Y-m-d');
 
 $res = mysqli_query($conn,

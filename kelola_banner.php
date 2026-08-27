@@ -19,6 +19,11 @@ $profil      = $profil_res ? mysqli_fetch_assoc($profil_res) : null;
 $admin_name  = $profil["display_name"] ?? ($_SESSION["user_name"] ?? "Admin");
 $admin_foto  = $profil["foto"] ?? "";
 
+// Pesan setelah simpan profil
+if (isset($_GET["profil_saved"])) {
+    $msg = "Profil berhasil diperbarui!"; $msg_type = "success";
+}
+
 // ─────────────────────────────────────────────
 //  HELPER: upload gambar banner
 // ─────────────────────────────────────────────
@@ -177,33 +182,79 @@ $total = count($banner_list);
       display: flex; flex-direction: column; align-items: center;
       padding: 28px 20px 16px;
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
+      transition: transform var(--trans);
+      overflow-y: auto;
     }
+    .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; }
+    .sidebar-overlay.open { display:block; }
+    .sidebar-toggle {
+      display:none; position:fixed; top:14px; left:14px; z-index:200;
+      width:40px; height:40px; border-radius:10px; border:none;
+      background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.15);
+      cursor:pointer; align-items:center; justify-content:center;
+    }
+    .sidebar-toggle svg { width:20px; height:20px; }
     .sidebar-header { flex-shrink:0; display:flex; flex-direction:column; align-items:center; width:100%; margin-bottom:14px; }
     .logo-mini { width:46px; height:46px; border-radius:12px; background:rgba(255,255,255,.1); display:flex; align-items:center; justify-content:center; margin-bottom:10px; }
     .logo-mini svg { width:24px; height:24px; color:#fff; }
-    .admin-name-label { color:#fff; font-weight:700; font-size:.85rem; text-align:center; }
-    .sidebar-nav { width:100%; display:flex; flex-direction:column; gap:4px; }
-    .sidebar-btn {
-      display:flex; align-items:center; gap:10px; width:100%;
-      padding:10px 14px; border-radius:10px; border:none; background:transparent;
-      color:rgba(255,255,255,.8); font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:600;
-      text-decoration:none; cursor:pointer; transition:background var(--trans), color var(--trans);
+    .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+    .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
+    .avatar-circle {
+      width:96px; height:96px; border-radius:50%;
+      background:#c0c0c8; overflow:hidden;
+      border:3px solid rgba(255,255,255,.25);
+      display:flex; align-items:center; justify-content:center;
+      transition:border-color .2s;
     }
-    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; }
-    .sidebar-btn:hover { background:rgba(255,255,255,.1); color:#fff; }
-    .sidebar-btn.active { background:#fff; color:var(--btn-primary); }
+    .avatar-wrap:hover .avatar-circle { border-color:rgba(255,255,255,.55); }
+    .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
+    .avatar-circle .default-icon { width:52px; height:52px; color:#888; }
+    .avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,.45); display:flex;
+      align-items:center; justify-content:center;
+      opacity:0; transition:opacity .2s;
+    }
+    .avatar-wrap:hover .avatar-overlay { opacity:1; }
+    .avatar-overlay svg { width:24px; height:24px; color:#fff; }
+    .img-preview-wrap { position:relative; border:2px dashed #d8d8e4; overflow:hidden; cursor:pointer; }
+    .img-preview-wrap img { width:100%; height:100%; object-fit:cover; }
+    .upload-placeholder { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--muted); }
+    .upload-placeholder svg { width:26px; height:26px; }
+    .form-label { display:block; font-size:.78rem; font-weight:700; color:var(--text); margin-bottom:6px; }
+    .form-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0e0ea; font-family:'Nunito',sans-serif; font-size:.85rem; }
+    .form-input:focus { outline:none; border-color:var(--accent); }
+    .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
+    .modal-header .modal-title { margin-bottom:0; }
+    .modal-close { border:none; background:#f0f0f5; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text); }
+    .modal-close svg { width:16px; height:16px; }
+    .sidebar-nav { width:100%; display:flex; flex-direction:column; }
+    .sidebar-btn {
+      width:100%; display:flex; align-items:center; gap:10px;
+      padding:10px 14px; border-radius:8px; border:none;
+      background:rgba(255,255,255,.12); color:#fff;
+      font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700;
+      cursor:pointer; margin-bottom:8px;
+      transition:background var(--trans);
+      text-align:left; text-decoration:none;
+    }
+    .sidebar-btn:hover { background:rgba(255,255,255,.22); }
+    .sidebar-btn.active { background:rgba(255,255,255,.3); }
+    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
 
-    .main { margin-left:var(--sidebar-w); flex:1; padding:28px 32px; }
+    .main { margin-left:var(--sidebar-w); flex:1; padding:28px 32px; transition:margin-left var(--trans); }
     .page-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:20px; flex-wrap:wrap; gap:12px; }
     .page-title { font-family:'Cormorant Garamond',serif; font-size:1.7rem; font-weight:700; color:var(--text); }
     .page-sub { color:var(--muted); font-size:.85rem; margin-top:2px; }
     .btn-add {
       background:var(--accent); color:#fff; border:none; padding:11px 20px; border-radius:10px;
-      font-weight:800; font-size:.85rem; cursor:pointer; display:flex; align-items:center; gap:8px;
+      font-weight:800; font-size:.85rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
       box-shadow:0 4px 14px rgba(43,79,255,.3); transition:transform var(--trans);
+      white-space:nowrap;
     }
     .btn-add:hover { transform:translateY(-2px); }
-    .btn-add svg { width:16px; height:16px; }
+    .btn-add:active { transform:translateY(0); }
+    .btn-add svg { width:16px; height:16px; flex-shrink:0; }
 
     .alert { padding:12px 16px; border-radius:10px; font-size:.85rem; font-weight:600; margin-bottom:18px; }
     .alert.success { background:#e6f9ee; color:#1c7a4c; border:1px solid #b6ecce; }
@@ -269,14 +320,54 @@ $total = count($banner_list);
     .crop-controls svg { width:16px; height:16px; color:var(--muted); flex-shrink:0; }
     .crop-controls input[type=range] { flex:1; accent-color:var(--accent); }
     .crop-hint-small { font-size:.7rem; color:var(--muted); text-align:center; margin-top:8px; }
+
+    @media (max-width:860px) {
+      :root { --sidebar-w:170px; }
+      .avatar-circle { width:76px; height:76px; }
+    }
+    @media (max-width:620px) {
+      .sidebar { transform:translateX(-100%); width:220px; }
+      .sidebar.open { transform:translateX(0); }
+      .sidebar-toggle { display:flex; }
+      .main { margin-left:0; padding:70px 16px 24px; }
+      .page-head { flex-direction:column; align-items:stretch; }
+      .btn-add { width:100%; }
+      .banner-grid { grid-template-columns:1fr; }
+      .icon-btn { width:38px; height:38px; }
+      .modal-footer { flex-direction:column-reverse; }
+      .crop-controls { gap:8px; }
+      .modal-box { padding:18px; }
+    }
   </style>
 </head>
 <body>
 
-<aside class="sidebar">
+<button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+  </svg>
+</button>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="logo-mini">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+    <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
+      <div class="avatar-circle">
+        <?php if ($admin_foto && file_exists($admin_foto)): ?>
+          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
+        <?php else: ?>
+          <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        <?php endif; ?>
+      </div>
+      <div class="avatar-overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </div>
     </div>
     <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
   </div>
@@ -453,7 +544,58 @@ $total = count($banner_list);
   </div>
 </div>
 
+<!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
+<div class="modal-overlay" id="profilModalOverlay">
+  <div class="modal-box" style="max-width:380px;">
+    <div class="modal-header">
+      <div class="modal-title">Edit Profil</div>
+      <button class="modal-close" onclick="closeProfilModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
+      <input type="hidden" name="redirect" value="kelola_banner.php"/>
+
+      <!-- Preview foto -->
+      <div class="img-preview-wrap" style="aspect-ratio:1/1;max-width:160px;margin:0 auto 18px;border-radius:50%;" onclick="document.getElementById('inputFotoAdmin').click()">
+        <?php if ($admin_foto && file_exists($admin_foto)): ?>
+          <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>" alt="Foto" style="display:block;border-radius:50%;"/>
+          <div class="upload-placeholder" id="profilUploadPlaceholder" style="display:none;">
+        <?php else: ?>
+          <img id="profilPreviewImg" src="" alt="Foto" style="display:none;border-radius:50%;"/>
+          <div class="upload-placeholder" id="profilUploadPlaceholder">
+        <?php endif; ?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            <span style="font-size:.7rem;">Upload Foto</span>
+          </div>
+      </div>
+      <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
+
+      <div class="form-group">
+        <label class="form-label">Nama Tampilan</label>
+        <input class="form-input" type="text" name="display_name"
+               value="<?= htmlspecialchars($admin_name) ?>"
+               placeholder="Nama yang ditampilkan" required/>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" onclick="closeProfilModal()">Batal</button>
+        <button type="submit" class="btn-save">Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
+const toggle  = document.getElementById('sidebarToggle');
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebarOverlay');
+toggle?.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
+overlay?.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+
 function bukaModalTambah() {
   document.getElementById('modalTitle').textContent = 'Tambah Banner';
   document.getElementById('formAction').value = 'tambah';
@@ -651,6 +793,30 @@ function terapkanCrop() {
     document.getElementById('modalCropOverlay').classList.remove('open');
   }, 'image/jpeg', 0.92);
 }
+
+// ─── Modal Edit Profil ───
+function openProfilModal() {
+  document.getElementById('profilModalOverlay').classList.add('open');
+}
+function closeProfilModal() {
+  document.getElementById('profilModalOverlay').classList.remove('open');
+  document.getElementById('inputFotoAdmin').value = '';
+}
+document.getElementById('profilModalOverlay').addEventListener('click', function(e) {
+  if (e.target === this) closeProfilModal();
+});
+document.getElementById('inputFotoAdmin').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = document.getElementById('profilPreviewImg');
+    img.src = ev.target.result;
+    img.style.display = 'block';
+    document.getElementById('profilUploadPlaceholder').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+});
 </script>
 </body>
 </html>

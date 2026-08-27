@@ -8,6 +8,12 @@ if (!isset($_SESSION["kartu_data"])) {
 }
 
 $d = $_SESSION["kartu_data"];
+$d["status"]   = $d["status"]   ?? "pending";
+$d["reissued"] = $d["reissued"] ?? false;
+$d["data_updated_only"] = $d["data_updated_only"] ?? false;
+$d["password_changed"]  = $d["password_changed"]  ?? false;
+$d["foto"] = $d["foto"] ?? "";
+$foto_exists = $d["foto"] !== "" && file_exists(__DIR__ . "/" . $d["foto"]);
 $page_title = "Kartu Anggota – AKSA NOVA";
 
 // QR code berisi nomor anggota (di-generate via layanan publik, hanya dipanggil dari browser)
@@ -152,8 +158,10 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     border: 1px solid rgba(255,255,255,.18);
     display: flex; align-items: center; justify-content: center;
     flex-shrink: 0;
+    overflow: hidden;
   }
   .avatar svg { width: 30px; height: 30px; color: #d8d8e8; }
+  .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   .kartu-name { font-size: 1.15rem; font-weight: 600; line-height: 1.25; }
   .kartu-meta { font-size: .74rem; color: #c4c4d8; margin-top: 4px; line-height: 1.7; }
@@ -257,16 +265,40 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 </head>
 <body>
 
-  <h1 class="page-title">Kartu Anggota Kamu Sudah Jadi 🎉</h1>
-  <p class="page-sub">Unduh kartu ini dan simpan baik-baik. Username &amp; password di dalamnya dipakai untuk login dan meminjam buku.</p>
+  <?php if ($d["reissued"]): ?>
+    <h1 class="page-title">Kartu Anggota Baru Kamu Sudah Jadi 🎉</h1>
+    <p class="page-sub">Kartu lama kamu sudah tidak berlaku lagi. Unduh kartu baru ini dan simpan baik-baik. Username &amp; password di dalamnya dipakai untuk login dan meminjam buku.</p>
+  <?php elseif ($d["data_updated_only"]): ?>
+    <h1 class="page-title">Kartu Anggota Kamu Sudah Diperbarui ✅</h1>
+    <p class="page-sub">Data pada kartu sudah diperbarui. Unduh &amp; cetak ulang kartu ini supaya data yang tercetak selalu yang terbaru.</p>
+  <?php else: ?>
+    <h1 class="page-title">Kartu Anggota Kamu Sudah Jadi 🎉</h1>
+    <p class="page-sub">Unduh kartu ini dan simpan baik-baik. Username &amp; password di dalamnya dipakai untuk login dan meminjam buku.</p>
+  <?php endif; ?>
 
+  <?php if ($d["data_updated_only"] && $d["password_changed"]): ?>
+  <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
+    ✅ Data &amp; kata sandi berhasil diperbarui. Kata sandi baru kamu ditampilkan <b>satu kali</b> di kartu ini — catat baik-baik sebelum meninggalkan halaman.
+  </div>
+  <?php elseif ($d["data_updated_only"]): ?>
+  <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
+    ✅ Data berhasil diperbarui. Kata sandi kamu <b>tidak berubah</b>.
+  </div>
+  <?php else: ?>
   <div class="warning">
     ⚠️ Password hanya ditampilkan <b>satu kali</b> di halaman ini. Setelah kamu keluar dari halaman ini, password tidak bisa dilihat lagi (hanya admin yang bisa mereset).
   </div>
+  <?php endif; ?>
 
+  <?php if ($d["status"] === "pending"): ?>
   <div class="warning" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;">
     ⏳ Akun kamu berstatus <b>menunggu persetujuan admin</b>. Kamu belum bisa login sampai admin perpustakaan menyetujui pendaftaran ini. Simpan kartu ini dulu, coba login setelah disetujui.
   </div>
+  <?php elseif ($d["reissued"]): ?>
+  <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
+    ✅ Kartu &amp; password baru kamu sudah aktif. Gunakan kartu ini untuk login mulai sekarang, kartu lama sudah dibekukan permanen.
+  </div>
+  <?php endif; ?>
 
   <div id="kartu">
     <div class="kartu-head">
@@ -282,16 +314,19 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 
     <div class="kartu-body">
       <div class="avatar">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
-          <circle cx="12" cy="8" r="4"/>
-          <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
-        </svg>
+        <?php if ($foto_exists): ?>
+          <img src="<?= htmlspecialchars($d["foto"]) ?>" alt="Foto profil <?= htmlspecialchars($d["full_name"]) ?>" crossorigin="anonymous">
+        <?php else: ?>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+            <circle cx="12" cy="8" r="4"/>
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+        <?php endif; ?>
       </div>
       <div>
         <div class="kartu-name"><?= htmlspecialchars($d["full_name"]) ?></div>
         <div class="kartu-meta">
-          Kelas&nbsp;&nbsp;<b><?= htmlspecialchars($d["kelas"]) ?></b><br>
-          NIK&nbsp;&nbsp;&nbsp;&nbsp;<b><?= htmlspecialchars($d["nik"]) ?></b>
+          Kelas&nbsp;&nbsp;<b><?= htmlspecialchars($d["kelas"]) ?></b>
         </div>
       </div>
     </div>
@@ -304,10 +339,17 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
           <span class="cred-label">Username</span>
           <span class="cred-value"><?= htmlspecialchars($d["username"]) ?></span>
         </div>
+        <?php if ($d["password"] !== ""): ?>
         <div class="cred-row">
           <span class="cred-label">Password</span>
           <span class="cred-value"><?= htmlspecialchars($d["password"]) ?></span>
         </div>
+        <?php else: ?>
+        <div class="cred-row">
+          <span class="cred-label">Password</span>
+          <span class="cred-value" style="color:#9c9cb4;font-size:.72rem;">Tidak berubah</span>
+        </div>
+        <?php endif; ?>
       </div>
       <div>
         <div class="qr-box">
@@ -320,7 +362,11 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 
   <div class="actions">
     <button class="btn btn-download" id="btnDownload">⬇ Unduh Kartu (PNG)</button>
+    <?php if ($d["data_updated_only"]): ?>
+    <a href="beranda.php" class="btn btn-continue" id="btnContinue">Selesai, Kembali ke Beranda &rarr;</a>
+    <?php else: ?>
     <a href="sign_in.php" class="btn btn-continue" id="btnContinue">Selesai, Masuk ke Akun &rarr;</a>
+    <?php endif; ?>
   </div>
 
 <script>

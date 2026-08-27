@@ -28,13 +28,25 @@ if (isset($_GET["profil_saved"])) {
 // ─────────────────────────────────────────────
 //  HELPER: upload gambar
 // ─────────────────────────────────────────────
-function uploadGambar($file): string {
-    if (!isset($file) || $file["error"] !== UPLOAD_ERR_OK) return "";
+function uploadGambar($file, &$error = null): string {
+    $error = "";
+    if (!isset($file) || $file["error"] === UPLOAD_ERR_NO_FILE) return "";
+    if ($file["error"] !== UPLOAD_ERR_OK) {
+        $error = "Upload gambar gagal (kode error {$file['error']}).";
+        return "";
+    }
+    if ($file["size"] > 5 * 1024 * 1024) {
+        $error = "Ukuran gambar melebihi batas 5 MB.";
+        return "";
+    }
     $dir = "uploads/gambar/";
     if (!is_dir($dir)) mkdir($dir, 0775, true);
     $ext      = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
     $allowed  = ["jpg","jpeg","png","webp","gif"];
-    if (!in_array($ext, $allowed)) return "";
+    if (!in_array($ext, $allowed)) {
+        $error = "Format gambar tidak didukung (hanya JPG, PNG, WEBP, GIF).";
+        return "";
+    }
     $filename = uniqid("buku_") . "." . $ext;
     move_uploaded_file($file["tmp_name"], $dir . $filename);
     return $dir . $filename;
@@ -52,17 +64,25 @@ if ($action === "tambah") {
     $isbn    = trim(mysqli_real_escape_string($conn, $_POST["isbn"]     ?? ""));
     $genre   = trim(mysqli_real_escape_string($conn, $_POST["genre"]    ?? ""));
     $sinopsis = trim(mysqli_real_escape_string($conn, $_POST["sinopsis"] ?? ""));
-    $stok    = max(1, (int)($_POST["stok"] ?? 1));
-    $gambar  = uploadGambar($_FILES["gambar"] ?? null);
+    $stok    = max(0, (int)($_POST["stok"] ?? 1));
+    // Cover hasil pencarian otomatis via ISBN (sudah diunduh & disimpan oleh cari_isbn.php)
+    $gambar_auto = trim(mysqli_real_escape_string($conn, $_POST["gambar_auto"] ?? ""));
 
     if ($judul === "") {
         $msg = "Judul buku tidak boleh kosong."; $msg_type = "error";
     } else {
+        // Upload manual (kalau ada) baru dilakukan setelah validasi lolos,
+        // supaya tidak ada file gambar yang ke-upload sia-sia saat form ditolak.
+        $upload_error = "";
+        $gambar_upload = uploadGambar($_FILES["gambar"] ?? null, $upload_error);
+        $gambar = $gambar_upload !== "" ? $gambar_upload : $gambar_auto;
+
         mysqli_query($conn,
             "INSERT INTO buku (judul, penulis, isbn, genre, sinopsis, stok, gambar)
              VALUES ('$judul','$penulis','$isbn','$genre','$sinopsis',$stok,'$gambar')"
         );
         $msg = "Buku berhasil ditambahkan!"; $msg_type = "success";
+        if ($upload_error !== "") { $msg .= " Catatan: $upload_error"; }
     }
 }
 
@@ -74,11 +94,13 @@ if ($action === "update") {
     $isbn    = trim(mysqli_real_escape_string($conn, $_POST["isbn"]    ?? ""));
     $genre    = trim(mysqli_real_escape_string($conn, $_POST["genre"]    ?? ""));
     $sinopsis = trim(mysqli_real_escape_string($conn, $_POST["sinopsis"] ?? ""));
-    $stok    = max(1, (int)($_POST["stok"] ?? 1));
+    $stok    = max(0, (int)($_POST["stok"] ?? 1));
     $gambar_lama = trim(mysqli_real_escape_string($conn, $_POST["gambar_lama"] ?? ""));
+    $gambar_auto = trim(mysqli_real_escape_string($conn, $_POST["gambar_auto"] ?? ""));
 
-    $gambar_baru = uploadGambar($_FILES["gambar"] ?? null);
-    $gambar_final = $gambar_baru !== "" ? $gambar_baru : $gambar_lama;
+    $upload_error = "";
+    $gambar_baru = uploadGambar($_FILES["gambar"] ?? null, $upload_error);
+    $gambar_final = $gambar_baru !== "" ? $gambar_baru : ($gambar_auto !== "" ? $gambar_auto : $gambar_lama);
 
     if ($judul === "" || $id === 0) {
         $msg = "Data tidak valid."; $msg_type = "error";
@@ -89,6 +111,7 @@ if ($action === "update") {
              WHERE id=$id"
         );
         $msg = "Buku berhasil diperbarui!"; $msg_type = "success";
+        if ($upload_error !== "") { $msg .= " Catatan: $upload_error"; }
     }
 }
 
@@ -117,129 +140,14 @@ if ($action === "hapus") {
     }
 }
 
-// ─────────────────────────────────────────────
-//  AKSI CRUD — BANNER (Kelola Banner)
-// ─────────────────────────────────────────────
-function uploadGambarBanner($file): string {
-    if (!isset($file) || $file["error"] !== UPLOAD_ERR_OK) return "";
-    $dir = "uploads/banner/";
-    if (!is_dir($dir)) mkdir($dir, 0775, true);
-    $ext     = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
-    $allowed = ["jpg", "jpeg", "png", "webp", "gif"];
-    if (!in_array($ext, $allowed)) return "";
-    $filename = uniqid("banner_") . "." . $ext;
-    move_uploaded_file($file["tmp_name"], $dir . $filename);
-    return $dir . $filename;
-}
-
-// Tab aktif (dipakai JS untuk otomatis buka tab yang relevan setelah submit form,
-// atau saat diakses lewat link ?tab=banner dari halaman lain)
-$active_tab = ($_GET["tab"] ?? "") === "banner" ? "banner" : "buku";
-
-// TAMBAH BANNER
-if ($action === "banner_tambah") {
-    $active_tab = "banner";
-    $judul    = trim(mysqli_real_escape_string($conn, $_POST["judul"]    ?? ""));
-    $subjudul = trim(mysqli_real_escape_string($conn, $_POST["subjudul"] ?? ""));
-    $link_url = trim(mysqli_real_escape_string($conn, $_POST["link_url"] ?? ""));
-    $gambar   = uploadGambarBanner($_FILES["gambar"] ?? null);
-
-    $r = mysqli_query($conn, "SELECT COALESCE(MAX(urutan),0) AS m FROM banner");
-    $urutan_baru = ((int)(mysqli_fetch_assoc($r)["m"] ?? 0)) + 1;
-
-    if ($gambar === "") {
-        $msg = "Gambar banner wajib diunggah (format: jpg, jpeg, png, webp, gif)."; $msg_type = "error";
-    } else {
-        mysqli_query($conn,
-            "INSERT INTO banner (judul, subjudul, gambar, link_url, urutan, aktif)
-             VALUES ('$judul','$subjudul','$gambar','$link_url',$urutan_baru,1)"
-        );
-        $msg = "Banner berhasil ditambahkan!"; $msg_type = "success";
-    }
-}
-
-// UPDATE BANNER
-if ($action === "banner_update") {
-    $active_tab = "banner";
-    $id       = (int)($_POST["id"] ?? 0);
-    $judul    = trim(mysqli_real_escape_string($conn, $_POST["judul"]    ?? ""));
-    $subjudul = trim(mysqli_real_escape_string($conn, $_POST["subjudul"] ?? ""));
-    $link_url = trim(mysqli_real_escape_string($conn, $_POST["link_url"] ?? ""));
-    $gambar_lama = trim(mysqli_real_escape_string($conn, $_POST["gambar_lama"] ?? ""));
-
-    $gambar_baru  = uploadGambarBanner($_FILES["gambar"] ?? null);
-    $gambar_final = $gambar_baru !== "" ? $gambar_baru : $gambar_lama;
-
-    if ($id === 0) {
-        $msg = "Data banner tidak valid."; $msg_type = "error";
-    } else {
-        if ($gambar_baru !== "" && $gambar_lama !== "" && file_exists($gambar_lama)) {
-            @unlink($gambar_lama);
-        }
-        mysqli_query($conn,
-            "UPDATE banner SET judul='$judul', subjudul='$subjudul',
-             link_url='$link_url', gambar='$gambar_final' WHERE id=$id"
-        );
-        $msg = "Banner berhasil diperbarui!"; $msg_type = "success";
-    }
-}
-
-// HAPUS BANNER
-if ($action === "banner_hapus") {
-    $active_tab = "banner";
-    $id = (int)($_POST["id"] ?? 0);
-    if ($id > 0) {
-        $r = mysqli_query($conn, "SELECT gambar FROM banner WHERE id=$id");
-        if ($r && $row = mysqli_fetch_assoc($r)) {
-            if ($row["gambar"] && file_exists($row["gambar"])) {
-                @unlink($row["gambar"]);
-            }
-        }
-        mysqli_query($conn, "DELETE FROM banner WHERE id=$id");
-        $msg = "Banner berhasil dihapus."; $msg_type = "success";
-    }
-}
-
-// TOGGLE AKTIF/NONAKTIF BANNER
-if ($action === "banner_toggle") {
-    $active_tab = "banner";
-    $id = (int)($_POST["id"] ?? 0);
-    if ($id > 0) {
-        mysqli_query($conn, "UPDATE banner SET aktif = 1 - aktif WHERE id=$id");
-        $msg = "Status banner diperbarui."; $msg_type = "success";
-    }
-}
-
-// UBAH URUTAN BANNER (naik / turun)
-if ($action === "banner_geser") {
-    $active_tab = "banner";
-    $id   = (int)($_POST["id"]   ?? 0);
-    $arah = $_POST["arah"] ?? "";
-    $cur  = mysqli_fetch_assoc(mysqli_query($conn, "SELECT id, urutan FROM banner WHERE id=$id"));
-    if ($cur) {
-        $op  = $arah === "naik" ? "<" : ">";
-        $ord = $arah === "naik" ? "DESC" : "ASC";
-        $tetangga = mysqli_fetch_assoc(mysqli_query($conn,
-            "SELECT id, urutan FROM banner WHERE urutan $op {$cur['urutan']} ORDER BY urutan $ord LIMIT 1"
-        ));
-        if ($tetangga) {
-            mysqli_query($conn, "UPDATE banner SET urutan={$tetangga['urutan']} WHERE id={$cur['id']}");
-            mysqli_query($conn, "UPDATE banner SET urutan={$cur['urutan']} WHERE id={$tetangga['id']}");
-        }
-    }
-}
-
-$banner_list = [];
-$res_banner = mysqli_query($conn, "SELECT * FROM banner ORDER BY urutan ASC, id ASC");
-while ($row = mysqli_fetch_assoc($res_banner)) {
-    $banner_list[] = $row;
-}
-$total_banner = count($banner_list);
+// Catatan: pengelolaan banner (tambah/edit/hapus/urutan/toggle) sudah
+// sepenuhnya dipindahkan ke halaman terpisah kelola_banner.php.
 
 // ─────────────────────────────────────────────
 //  AMBIL DATA
 // ─────────────────────────────────────────────
-$search = trim($_GET["q"] ?? "");
+$search  = trim($_GET["q"] ?? "");
+$is_ajax = isset($_GET["ajax"]) && $_GET["ajax"] == "1";
 $where  = "";
 if ($search !== "") {
     $s     = mysqli_real_escape_string($conn, $search);
@@ -255,6 +163,10 @@ $total = count($buku_list);
 
 // Warna placeholder berputar
 $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
+
+// Buffer seluruh output halaman. Untuk request AJAX (live search), buffer ini
+// dibuang sepenuhnya sebelum kita kirim hanya fragmen hasil pencarian.
+ob_start();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -363,7 +275,7 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
       padding:10px 14px; border-radius:8px; border:none;
       background:rgba(255,255,255,.12); color:#fff;
       font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700;
-      cursor:pointer; margin-bottom:7px;
+      cursor:pointer; margin-bottom:8px;
       transition:background var(--trans);
       text-align:left; text-decoration:none;
       flex-shrink:0;
@@ -398,6 +310,8 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
       color:var(--text); background:transparent;
     }
     .topbar input::placeholder { color:#bbb; }
+    #searchResultArea { transition: opacity .15s ease; }
+    #searchResultArea.loading-search { opacity: .55; }
     .btn-search {
       background:var(--btn-primary); color:#fff;
       border:none; border-radius:20px;
@@ -614,6 +528,18 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
     .form-input:focus, .form-select:focus { border-color:var(--btn-primary); }
     .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
+    .isbn-input-row { display:flex; gap:8px; }
+    .isbn-input-row .form-input { flex:1; }
+    .btn-cari-isbn {
+      flex-shrink:0; width:42px; border-radius:8px; border:1.5px solid #e4e5f0;
+      background:#fff; color:var(--btn-primary); cursor:pointer; font-size:1rem;
+      display:flex; align-items:center; justify-content:center;
+      transition:all var(--trans);
+    }
+    .btn-cari-isbn:hover:not(:disabled) { border-color:var(--btn-primary); background:var(--btn-primary); color:#fff; }
+    .btn-cari-isbn:disabled { opacity:.5; cursor:not-allowed; }
+    .isbn-status { font-size:.7rem; margin-top:5px; line-height:1.4; font-family:'Nunito',sans-serif; }
+
     .modal-footer { display:flex; gap:10px; margin-top:20px; }
     .btn-submit {
       flex:1; padding:11px; border-radius:8px; border:none;
@@ -645,45 +571,8 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
     .book-card:nth-child(6)  { animation-delay:.26s; }
     .book-card:nth-child(n+7){ animation-delay:.30s; }
 
-    /* ── Tab switcher (Kelola Buku / Kelola Banner) ── */
-    .admin-tabs {
-      display:flex; gap:6px; background:#e8e8ef; border-radius:12px;
-      padding:4px; margin-bottom:20px; width:fit-content;
-    }
-    .admin-tab-btn {
-      border:none; background:transparent; color:var(--muted);
-      font-family:'Nunito',sans-serif; font-weight:700; font-size:.82rem;
-      padding:9px 18px; border-radius:9px; cursor:pointer;
-      display:flex; align-items:center; gap:7px;
-      transition:background var(--trans), color var(--trans);
-    }
-    .admin-tab-btn svg { width:15px; height:15px; }
-    .admin-tab-btn.active { background:#fff; color:var(--text); box-shadow:0 2px 8px rgba(0,0,0,.08); }
     .tab-panel { display:none; }
     .tab-panel.active { display:block; }
-
-    /* ── Kelola Banner: grid & kartu ── */
-    .banner-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(270px,1fr)); gap:16px; }
-    .banner-card { background:var(--card); border-radius:var(--radius); box-shadow:0 2px 12px rgba(0,0,0,.07); overflow:hidden; display:flex; flex-direction:column; }
-    .banner-thumb { width:100%; aspect-ratio:16/7; background:#e4e4ee; position:relative; overflow:hidden; }
-    .banner-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
-    .banner-status { position:absolute; top:8px; left:8px; font-size:.62rem; font-weight:800; padding:3px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:.03em; }
-    .banner-status.on  { background:#1c7a4c; color:#fff; }
-    .banner-status.off { background:#7a7a9a; color:#fff; }
-    .banner-order { position:absolute; top:8px; right:8px; background:rgba(0,0,0,.55); color:#fff; font-size:.68rem; font-weight:800; padding:3px 9px; border-radius:20px; }
-    .banner-body { padding:12px 14px; display:flex; flex-direction:column; gap:3px; flex:1; }
-    .banner-judul { font-weight:800; font-size:.85rem; color:var(--text); }
-    .banner-sub { font-size:.74rem; color:var(--muted); line-height:1.4; }
-    .banner-link { font-size:.68rem; color:#2b4fff; word-break:break-all; }
-    .banner-actions { display:flex; gap:6px; padding:10px 14px; border-top:1px solid #f0f0f5; flex-wrap:wrap; }
-    .banner-icon-btn {
-      border:none; background:#f0f0f5; color:var(--text); width:30px; height:30px; border-radius:8px;
-      display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background var(--trans);
-    }
-    .banner-icon-btn svg { width:14px; height:14px; }
-    .banner-icon-btn:hover { background:#e0e0ec; }
-    .banner-icon-btn.danger:hover { background:#fdecec; color:#c0392b; }
-    .banner-icon-btn.grow { flex:1; width:auto; gap:5px; font-size:.72rem; font-weight:700; }
 
     /* ── MODAL DETAIL BUKU ── */
     .detail-overlay {
@@ -876,10 +765,10 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       Perbarui Buku
     </a>
-    <button type="button" class="sidebar-btn" onclick="switchTab('banner')">
+    <a class="sidebar-btn" href="kelola_banner.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
       Kelola Banner
-    </button>
+    </a>
     <a class="sidebar-btn" href="daftar_anggota.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       Daftar Anggota
@@ -891,10 +780,6 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
         <span style="margin-left:auto;background:#e74c3c;color:#fff;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $pending_count ?></span>
       <?php endif; ?>
     </a>
-    <button class="sidebar-btn" onclick="openProfilModal()">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Edit Profil
-    </button>
     <a class="sidebar-btn" href="pinjam_buku.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
@@ -932,36 +817,25 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
   </div>
   <?php endif; ?>
 
-  <!-- Tab switcher -->
-  <div class="admin-tabs">
-    <button type="button" class="admin-tab-btn" id="tabBtnBuku" onclick="switchTab('buku')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-      Kelola Buku
-    </button>
-    <button type="button" class="admin-tab-btn" id="tabBtnBanner" onclick="switchTab('banner')">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
-      Kelola Banner
-    </button>
-  </div>
-
-  <!-- ═══════════ TAB: KELOLA BUKU ═══════════ -->
-  <div class="tab-panel" id="tabPanelBuku">
+  <!-- ═══════════ KELOLA BUKU ═══════════ -->
+  <div class="tab-panel active" id="tabPanelBuku">
 
   <!-- Search -->
-  <form method="GET" action="">
+  <form method="GET" action="" id="searchForm">
     <div class="topbar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
       </svg>
-      <input type="text" name="q" placeholder="Cari buku berdasarkan judul, penulis, atau ISBN…"
+      <input type="text" name="q" id="searchInput" autocomplete="off" placeholder="Cari buku berdasarkan judul, penulis, atau ISBN…"
              value="<?= htmlspecialchars($search) ?>"/>
-      <button type="submit" class="btn-search">Cari</button>
       <?php if ($search): ?>
-      <a href="halaman_admin.php" style="font-size:.75rem;color:var(--muted);text-decoration:none;white-space:nowrap;">✕ Reset</a>
+      <a href="halaman_admin.php" id="searchResetBtn" style="font-size:.75rem;color:var(--muted);text-decoration:none;white-space:nowrap;">✕ Reset</a>
       <?php endif; ?>
     </div>
   </form>
 
+  <div id="searchResultArea">
+  <?php ob_start(); ?>
   <!-- Header -->
   <div class="content-header">
     <div class="content-title">
@@ -1010,88 +884,21 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
     <?php endforeach; ?>
   </div>
   <?php endif; ?>
+  <?php
+  $search_result_html = ob_get_clean();
+  if ($is_ajax) {
+      ob_end_clean();
+      header("Content-Type: text/html; charset=utf-8");
+      echo $search_result_html;
+      exit;
+  }
+  echo $search_result_html;
+  ?>
+  </div>
 
   </div>
   <!-- ═══════════ /TAB: KELOLA BUKU ═══════════ -->
 
-  <!-- ═══════════ TAB: KELOLA BANNER ═══════════ -->
-  <div class="tab-panel" id="tabPanelBanner">
-
-    <div class="content-header">
-      <div class="content-title">
-        Kelola Banner
-        <span style="font-size:.9rem;color:var(--muted);font-family:'Nunito',sans-serif;"> — carousel di halaman beranda (<?= $total_banner ?> banner)</span>
-      </div>
-      <button class="btn-add" onclick="bukaModalBanner('tambah')">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        Tambah Banner
-      </button>
-    </div>
-
-    <?php if (empty($banner_list)): ?>
-    <div class="empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-        <rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/>
-      </svg>
-      <p>Belum ada banner. Tambahkan banner pertama untuk tampil di carousel beranda.</p>
-    </div>
-    <?php else: ?>
-    <div class="banner-grid">
-      <?php foreach ($banner_list as $i => $b): ?>
-      <div class="banner-card">
-        <div class="banner-thumb">
-          <?php if ($b["gambar"] && file_exists($b["gambar"])): ?>
-            <img src="<?= htmlspecialchars($b["gambar"]) ?>" alt="<?= htmlspecialchars($b["judul"]) ?>">
-          <?php endif; ?>
-          <span class="banner-status <?= $b["aktif"] ? "on" : "off" ?>"><?= $b["aktif"] ? "Aktif" : "Nonaktif" ?></span>
-          <span class="banner-order">#<?= $i + 1 ?></span>
-        </div>
-        <div class="banner-body">
-          <div class="banner-judul"><?= $b["judul"] ? htmlspecialchars($b["judul"]) : "<em style='color:#aaa;'>(tanpa judul)</em>" ?></div>
-          <?php if ($b["subjudul"]): ?><div class="banner-sub"><?= htmlspecialchars($b["subjudul"]) ?></div><?php endif; ?>
-          <?php if ($b["link_url"]): ?><div class="banner-link">🔗 <?= htmlspecialchars($b["link_url"]) ?></div><?php endif; ?>
-        </div>
-        <div class="banner-actions">
-          <form method="post" style="display:contents;">
-            <input type="hidden" name="action" value="banner_geser">
-            <input type="hidden" name="id" value="<?= $b["id"] ?>">
-            <button type="submit" name="arah" value="naik" class="banner-icon-btn" title="Naikkan urutan" <?= $i === 0 ? "disabled style='opacity:.35;cursor:default;'" : "" ?>>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="18 15 12 9 6 15"/></svg>
-            </button>
-            <button type="submit" name="arah" value="turun" class="banner-icon-btn" title="Turunkan urutan" <?= $i === count($banner_list)-1 ? "disabled style='opacity:.35;cursor:default;'" : "" ?>>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-            </button>
-          </form>
-          <form method="post" style="display:contents;">
-            <input type="hidden" name="action" value="banner_toggle">
-            <input type="hidden" name="id" value="<?= $b["id"] ?>">
-            <button type="submit" class="banner-icon-btn" title="<?= $b["aktif"] ? "Nonaktifkan" : "Aktifkan" ?>">
-              <?php if ($b["aktif"]): ?>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-              <?php else: ?>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-              <?php endif; ?>
-            </button>
-          </form>
-          <button type="button" class="banner-icon-btn grow" onclick='bukaModalBanner("edit", <?= json_encode($b, JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit
-          </button>
-          <form method="post" style="display:contents;" onsubmit="return confirm('Hapus banner ini?');">
-            <input type="hidden" name="action" value="banner_hapus">
-            <input type="hidden" name="id" value="<?= $b["id"] ?>">
-            <button type="submit" class="banner-icon-btn danger" title="Hapus">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-            </button>
-          </form>
-        </div>
-      </div>
-      <?php endforeach; ?>
-    </div>
-    <?php endif; ?>
-
-  </div>
-  <!-- ═══════════ /TAB: KELOLA BANNER ═══════════ -->
 
 </main>
 
@@ -1154,6 +961,7 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
       <input type="hidden" name="action" id="formAction" value="tambah"/>
       <input type="hidden" name="id"     id="formId"     value=""/>
       <input type="hidden" name="gambar_lama" id="formGambarLama" value=""/>
+      <input type="hidden" name="gambar_auto" id="formGambarAuto" value=""/>
 
       <!-- Preview gambar -->
       <div class="img-preview-wrap" id="previewWrap" onclick="document.getElementById('inputGambar').click()">
@@ -1189,7 +997,17 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">ISBN</label>
-          <input class="form-input" type="text" name="isbn" id="formIsbn" placeholder="978-x-xxx-xxxxx-x"/>
+          <div class="isbn-input-row">
+            <input class="form-input" type="text" name="isbn" id="formIsbn" placeholder="978-x-xxx-xxxxx-x"
+                   autocomplete="off" oninput="onIsbnInput(this.value)"/>
+            <button type="button" class="btn-cari-isbn" id="btnCariIsbn" onclick="cariISBN()"
+                    title="Cari data buku otomatis dari ISBN">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+            </button>
+          </div>
+          <div class="isbn-status" id="isbnStatus"></div>
         </div>
         <div class="form-group">
           <label class="form-label">Stok</label>
@@ -1264,116 +1082,6 @@ $colors = ["col-a","col-b","col-c","col-d","col-e","col-f","col-g","col-h"];
     </div>
   </div>
 </div>
-
-<!-- ═══════════ MODAL TAMBAH / EDIT BANNER ═══════════ -->
-<div class="modal-overlay" id="bannerModalOverlay">
-  <div class="modal" style="max-width:460px;">
-    <div class="modal-header">
-      <div class="modal-title" id="bannerModalTitle">Tambah Banner</div>
-      <button type="button" class="modal-close" onclick="tutupModalBanner()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <form method="post" enctype="multipart/form-data" id="formBanner">
-      <input type="hidden" name="action" id="bannerFormAction" value="banner_tambah">
-      <input type="hidden" name="id" id="bannerFormId" value="">
-      <input type="hidden" name="gambar_lama" id="bannerFormGambarLama" value="">
-
-      <div class="img-preview-wrap" onclick="document.getElementById('bannerInputGambar').click()">
-        <img id="bannerPreviewImg">
-        <div class="upload-placeholder" id="bannerUploadPlaceholder">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <span>Klik untuk unggah gambar banner<br>(disarankan lebar, mis. 1200×500px)</span>
-        </div>
-      </div>
-      <input type="file" name="gambar" id="bannerInputGambar" accept=".jpg,.jpeg,.png,.webp,.gif" style="display:none;">
-
-      <div class="form-group">
-        <label class="form-label">Judul (opsional)</label>
-        <input type="text" class="form-input" name="judul" id="bannerFormJudul" placeholder="Contoh: Promo Baca Bulan Ini">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Sub-judul / Deskripsi (opsional)</label>
-        <input type="text" class="form-input" name="subjudul" id="bannerFormSubjudul" placeholder="Teks pendukung di bawah judul">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Link tujuan saat banner diklik (opsional)</label>
-        <input type="text" class="form-input" name="link_url" id="bannerFormLinkUrl" placeholder="mis. daftar_buku.php atau https://...">
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn-cancel" onclick="tutupModalBanner()" style="flex:1;padding:11px;border-radius:8px;border:none;background:#f0f0f5;color:var(--text);font-weight:800;font-size:.85rem;cursor:pointer;">Batal</button>
-        <button type="submit" class="btn-submit">Simpan</button>
-      </div>
-    </form>
-  </div>
-</div>
-
-<script>
-// ─── Tab switcher (Kelola Buku / Kelola Banner) ───
-function switchTab(tab) {
-  const isBanner = tab === 'banner';
-  document.getElementById('tabPanelBuku').classList.toggle('active', !isBanner);
-  document.getElementById('tabPanelBanner').classList.toggle('active', isBanner);
-  document.getElementById('tabBtnBuku').classList.toggle('active', !isBanner);
-  document.getElementById('tabBtnBanner').classList.toggle('active', isBanner);
-}
-// Buka tab yang relevan saat halaman dimuat (mis. setelah submit form banner)
-switchTab('<?= $active_tab ?>');
-
-// ─── Modal Tambah/Edit Banner ───
-function bukaModalBanner(mode, data) {
-  const img = document.getElementById('bannerPreviewImg');
-  const placeholder = document.getElementById('bannerUploadPlaceholder');
-  document.getElementById('bannerInputGambar').value = '';
-
-  if (mode === 'edit' && data) {
-    document.getElementById('bannerModalTitle').textContent = 'Edit Banner';
-    document.getElementById('bannerFormAction').value = 'banner_update';
-    document.getElementById('bannerFormId').value = data.id;
-    document.getElementById('bannerFormGambarLama').value = data.gambar || '';
-    document.getElementById('bannerFormJudul').value = data.judul || '';
-    document.getElementById('bannerFormSubjudul').value = data.subjudul || '';
-    document.getElementById('bannerFormLinkUrl').value = data.link_url || '';
-    if (data.gambar) {
-      img.src = data.gambar; img.style.display = 'block'; placeholder.style.display = 'none';
-    } else {
-      img.style.display = 'none'; placeholder.style.display = 'flex';
-    }
-  } else {
-    document.getElementById('bannerModalTitle').textContent = 'Tambah Banner';
-    document.getElementById('bannerFormAction').value = 'banner_tambah';
-    document.getElementById('bannerFormId').value = '';
-    document.getElementById('bannerFormGambarLama').value = '';
-    document.getElementById('bannerFormJudul').value = '';
-    document.getElementById('bannerFormSubjudul').value = '';
-    document.getElementById('bannerFormLinkUrl').value = '';
-    img.style.display = 'none'; placeholder.style.display = 'flex';
-  }
-  document.getElementById('bannerModalOverlay').classList.add('open');
-}
-
-function tutupModalBanner() {
-  document.getElementById('bannerModalOverlay').classList.remove('open');
-}
-
-document.getElementById('bannerModalOverlay').addEventListener('click', function(e) {
-  if (e.target === this) tutupModalBanner();
-});
-
-document.getElementById('bannerInputGambar').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = document.getElementById('bannerPreviewImg');
-    img.src = ev.target.result;
-    img.style.display = 'block';
-    document.getElementById('bannerUploadPlaceholder').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-});
-</script>
 
 <script>
 // ─── Modal Detail Buku ───
@@ -1530,13 +1238,15 @@ function openModal(mode, buku = null) {
     document.getElementById('formAction').value        = 'tambah';
     document.getElementById('formId').value            = '';
     document.getElementById('formGambarLama').value    = '';
+    document.getElementById('formGambarAuto').value    = '';
     document.getElementById('formJudul').value         = '';
     document.getElementById('formPenulis').value       = '';
     document.getElementById('formIsbn').value          = '';
-    document.getElementById('formStok').value          = '0';
+    document.getElementById('formStok').value          = '1';
     document.getElementById('formGenre').value         = '';
     document.getElementById('formSinopsis').value      = '';
     document.getElementById('btnSubmit').textContent   = 'Simpan';
+    document.getElementById('isbnStatus').textContent  = '';
     previewImg.style.display = 'none';
     uploadPlaceholder.style.display = 'flex';
   } else {
@@ -1544,6 +1254,7 @@ function openModal(mode, buku = null) {
     document.getElementById('formAction').value        = 'update';
     document.getElementById('formId').value            = buku.id;
     document.getElementById('formGambarLama').value    = buku.gambar;
+    document.getElementById('formGambarAuto').value    = '';
     document.getElementById('formJudul').value         = buku.judul;
     document.getElementById('formPenulis').value       = buku.penulis;
     document.getElementById('formIsbn').value          = buku.isbn;
@@ -1551,6 +1262,7 @@ function openModal(mode, buku = null) {
     document.getElementById('formGenre').value         = buku.genre;
     document.getElementById('formSinopsis').value      = buku.sinopsis || '';
     document.getElementById('btnSubmit').textContent   = 'Perbarui';
+    document.getElementById('isbnStatus').textContent  = '';
 
     if (buku.gambar) {
       previewImg.src = buku.gambar;
@@ -1688,6 +1400,93 @@ function konfirmasiHapus(id, judul) {
   }
 }
 
+// ─── Tambah Buku Otomatis via ISBN ───
+let isbnDebounceTimer = null;
+
+// Dipanggil setiap kali admin mengetik di kolom ISBN.
+// Begitu jumlah digit sudah pas 10 atau 13 (format ISBN valid),
+// pencarian otomatis dijalankan sendiri tanpa perlu klik tombol.
+function onIsbnInput(val) {
+  clearTimeout(isbnDebounceTimer);
+  const digits = val.replace(/[^0-9Xx]/g, '');
+  const statusEl = document.getElementById('isbnStatus');
+
+  if (digits.length === 10 || digits.length === 13) {
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = 'Mengetik lengkap, mencari otomatis…';
+    isbnDebounceTimer = setTimeout(() => cariISBN(), 600);
+  } else {
+    statusEl.textContent = '';
+  }
+}
+
+function cariISBN() {
+  const isbnInput = document.getElementById('formIsbn');
+  const statusEl   = document.getElementById('isbnStatus');
+  const btn        = document.getElementById('btnCariIsbn');
+  const digits     = isbnInput.value.replace(/[^0-9Xx]/g, '');
+
+  if (digits.length !== 10 && digits.length !== 13) {
+    statusEl.style.color = '#e74c3c';
+    statusEl.textContent = '⚠️ ISBN harus terdiri dari 10 atau 13 digit.';
+    return;
+  }
+
+  clearTimeout(isbnDebounceTimer);
+  btn.disabled = true;
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = '⏳ Mencari data buku…';
+
+  fetch('cari_isbn.php?isbn=' + encodeURIComponent(digits))
+    .then(r => r.json())
+    .then(data => {
+      btn.disabled = false;
+
+      if (!data.ok) {
+        statusEl.style.color = '#e74c3c';
+        statusEl.textContent = '⚠️ ' + data.message;
+        if (data.duplikat) {
+          statusEl.textContent += ' (Sudah terdaftar sebagai "' + data.duplikat.judul + '".)';
+        }
+        return;
+      }
+
+      // Isi otomatis field yang masih kosong saja — data yang sudah
+      // diketik manual oleh admin tidak akan ditimpa.
+      const fJudul    = document.getElementById('formJudul');
+      const fPenulis  = document.getElementById('formPenulis');
+      const fGenre    = document.getElementById('formGenre');
+      const fSinopsis = document.getElementById('formSinopsis');
+
+      if (!fJudul.value.trim())    fJudul.value    = data.judul;
+      if (!fPenulis.value.trim())  fPenulis.value  = data.penulis;
+      if (!fGenre.value.trim())    fGenre.value    = data.genre;
+      if (!fSinopsis.value.trim()) fSinopsis.value = data.sinopsis;
+
+      if (data.gambar) {
+        document.getElementById('formGambarAuto').value = data.gambar;
+        const img = document.getElementById('previewImg');
+        img.src = data.gambar;
+        img.style.display = 'block';
+        document.getElementById('uploadPlaceholder').style.display = 'none';
+      }
+
+      statusEl.style.color = '#2ecc71';
+      statusEl.textContent = '✅ Data ditemukan (' + data.sumber + '). Silakan periksa kembali sebelum menyimpan.';
+
+      if (data.duplikat) {
+        statusEl.style.color = '#f39c12';
+        statusEl.textContent = '⚠️ ISBN ini sudah terdaftar sebagai "' + data.duplikat.judul +
+          '" (stok saat ini: ' + data.duplikat.stok + '). Data tetap diisi otomatis, pastikan Anda tidak membuat duplikat.';
+      }
+    })
+    .catch(() => {
+      btn.disabled = false;
+      statusEl.style.color = '#e74c3c';
+      statusEl.textContent = '⚠️ Gagal menghubungi server pencarian ISBN. Periksa koneksi internet server.';
+    });
+}
+
 // ─── Genre Autocomplete ───
 const GENRE_LIST = [
   // Fiksi
@@ -1763,6 +1562,55 @@ function closeGenreDropdown() {
   inp.style.borderRadius = '8px';
   inp.style.borderBottomColor = '';
 }
+
+// ─── Live Search (ketik langsung cari, tanpa tombol) ───
+(function initLiveSearch() {
+  const form   = document.getElementById('searchForm');
+  const input  = document.getElementById('searchInput');
+  const result = document.getElementById('searchResultArea');
+  if (!form || !input || !result) return;
+
+  let debounceTimer = null;
+  let currentRequest = null;
+
+  form.addEventListener('submit', e => e.preventDefault());
+
+  function runSearch(query) {
+    if (currentRequest) currentRequest.abort();
+    const controller = new AbortController();
+    currentRequest = controller;
+
+    const url = 'halaman_admin.php?ajax=1&q=' + encodeURIComponent(query);
+    result.classList.add('loading-search');
+
+    fetch(url, { signal: controller.signal })
+      .then(r => r.text())
+      .then(html => {
+        result.innerHTML = html;
+        result.classList.remove('loading-search');
+        const newUrl = 'halaman_admin.php' + (query ? '?q=' + encodeURIComponent(query) : '');
+        history.replaceState(null, '', newUrl);
+      })
+      .catch(err => {
+        if (err.name !== 'AbortError') result.classList.remove('loading-search');
+      });
+  }
+
+  input.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    const query = input.value;
+    debounceTimer = setTimeout(() => runSearch(query), 300);
+  });
+
+  document.addEventListener('click', e => {
+    const resetBtn = e.target.closest('#searchResetBtn');
+    if (!resetBtn) return;
+    e.preventDefault();
+    input.value = '';
+    runSearch('');
+  });
+})();
 </script>
 </body>
 </html>
+<?php ob_end_flush(); ?>
