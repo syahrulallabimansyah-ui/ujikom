@@ -16,10 +16,19 @@ if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
 
 require_once "db.php";
 
+// Ganti ke true sementara kalau mau lihat detail error API di response JSON
+// (mis. saat development / lagi debug kenapa pencarian gagal).
+// WAJIB matikan lagi (false) di server produksi.
+const ISBN_DEBUG = false;
+
+// Kumpulan pesan error mentah dari tiap sumber, untuk logging/debug.
+$api_errors = [];
+
 // ─────────────────────────────────────────────
 //  HELPER: ambil JSON dari URL eksternal
+//  Return array [data|null, error_message|null, http_code|null]
 // ─────────────────────────────────────────────
-function httpGetJson(string $url, int $timeout = 8) {
+function httpGetJson(string $url, int $timeout = 8): array {
     if (function_exists("curl_init")) {
         $ch = curl_init($url);
         curl_setopt_array($ch, [
@@ -35,20 +44,42 @@ function httpGetJson(string $url, int $timeout = 8) {
         $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $err  = curl_error($ch);
         curl_close($ch);
-        if ($res === false || $err || $code >= 400) return null;
+
+        if ($res === false || $err) {
+            return [null, "cURL error: $err", $code ?: null];
+        }
+        if ($code >= 400) {
+            // Sertakan potongan body respons — biasanya berisi alasan error
+            // dari Google/Open Library (mis. "unknownLocation").
+            $snippet = substr((string)$res, 0, 300);
+            return [null, "HTTP $code dari $url — $snippet", $code];
+        }
         $data = json_decode($res, true);
-        return json_last_error() === JSON_ERROR_NONE ? $data : null;
+        if (json_last_error() !== JSON_ERROR_NONE) {
+            return [null, "JSON tidak valid dari $url: " . json_last_error_msg(), $code];
+        }
+        return [$data, null, $code];
     }
+
     // Fallback kalau ekstensi cURL tidak tersedia di server
-    if (!ini_get("allow_url_fopen")) return null;
+    if (!ini_get("allow_url_fopen")) {
+        return [null, "cURL tidak aktif dan allow_url_fopen juga dimatikan di server.", null];
+    }
     $ctx = stream_context_create(["http" => [
         "timeout" => $timeout,
         "header"  => "User-Agent: AksaNova-Library/1.0\r\n",
+        "ignore_errors" => true,
     ]]);
     $res = @file_get_contents($url, false, $ctx);
-    if ($res === false) return null;
+    if ($res === false) {
+        $err = error_get_last();
+        return [null, "file_get_contents gagal: " . ($err["message"] ?? "unknown"), null];
+    }
     $data = json_decode($res, true);
-    return json_last_error() === JSON_ERROR_NONE ? $data : null;
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        return [null, "JSON tidak valid dari $url: " . json_last_error_msg(), null];
+    }
+    return [$data, null, null];
 }
 
 // ─────────────────────────────────────────────
@@ -125,8 +156,15 @@ $judul = ""; $penulis = ""; $genre = ""; $sinopsis = ""; $gambar_url = ""; $sumb
 
 // ─────────────────────────────────────────────
 //  1) COBA GOOGLE BOOKS API
+//  &country=ID ditambahkan karena tanpa parameter ini, Google Books API
+//  sering gagal menampilkan hasil (atau melempar error "unknownLocation")
+//  saat server tidak bisa dideteksi lokasinya — kasus umum di shared hosting.
 // ─────────────────────────────────────────────
-$g = httpGetJson("https://www.googleapis.com/books/v1/volumes?q=isbn:" . urlencode($isbn));
+[$g, $errG] = httpGetJson(
+    "https://www.googleapis.com/books/v1/volumes?q=isbn:" . urlencode($isbn) . "&country=ID"
+);
+if ($errG) $api_errors["google_books"] = $errG;
+
 if ($g && !empty($g["totalItems"]) && !empty($g["items"][0]["volumeInfo"])) {
     $info = $g["items"][0]["volumeInfo"];
 
@@ -146,11 +184,14 @@ if ($g && !empty($g["totalItems"]) && !empty($g["items"][0]["volumeInfo"])) {
 }
 
 // ─────────────────────────────────────────────
-//  2) FALLBACK: OPEN LIBRARY API (kalau Google Books tidak ketemu)
+//  2) FALLBACK: OPEN LIBRARY API — bibkeys (kalau Google Books tidak ketemu)
 // ─────────────────────────────────────────────
 if ($judul === "") {
-    $ol  = httpGetJson("https://openlibrary.org/api/books?bibkeys=ISBN:" . urlencode($isbn) . "&format=json&jscmd=data");
     $key = "ISBN:" . $isbn;
+    [$ol, $errOL] = httpGetJson(
+        "https://openlibrary.org/api/books?bibkeys=" . urlencode($key) . "&format=json&jscmd=data"
+    );
+    if ($errOL) $api_errors["open_library_bibkeys"] = $errOL;
 
     if ($ol && !empty($ol[$key])) {
         $info = $ol[$key];
@@ -175,14 +216,58 @@ if ($judul === "") {
 }
 
 // ─────────────────────────────────────────────
-//  TIDAK DITEMUKAN DI KEDUA SUMBER
+//  3) FALLBACK KEDUA: OPEN LIBRARY — endpoint search.json
+//  Cakupannya kadang lebih luas daripada endpoint bibkeys di atas,
+//  terutama untuk edisi/cetakan yang datanya tidak lengkap.
 // ─────────────────────────────────────────────
 if ($judul === "") {
-    echo json_encode([
+    [$os, $errOS] = httpGetJson(
+        "https://openlibrary.org/search.json?isbn=" . urlencode($isbn) . "&limit=1"
+    );
+    if ($errOS) $api_errors["open_library_search"] = $errOS;
+
+    if ($os && !empty($os["docs"][0])) {
+        $info = $os["docs"][0];
+
+        $judul   = $info["title"] ?? "";
+        $penulis = !empty($info["author_name"]) ? implode(", ", $info["author_name"]) : "";
+        $genre   = !empty($info["subject"]) ? $info["subject"][0] : "";
+        // Endpoint ini tidak menyediakan sinopsis.
+
+        if (!empty($info["cover_i"])) {
+            $gambar_url = "https://covers.openlibrary.org/b/id/" . $info["cover_i"] . "-L.jpg";
+        }
+        $sumber = "Open Library (search)";
+    }
+}
+
+// ─────────────────────────────────────────────
+//  TIDAK DITEMUKAN DI SEMUA SUMBER
+// ─────────────────────────────────────────────
+if ($judul === "") {
+    // Catat error asli ke log server supaya bisa ditelusuri (tidak "tertelan"
+    // diam-diam seperti sebelumnya). Cek error_log server untuk detailnya.
+    if (!empty($api_errors)) {
+        error_log("[cari_isbn] ISBN $isbn tidak ditemukan. Error API: " . json_encode($api_errors));
+    }
+
+    // Kalau semua sumber gagal dihubungi (bukan cuma "tidak ada datanya"),
+    // beri pesan yang berbeda supaya admin tahu ini masalah koneksi/API,
+    // bukan berarti bukunya memang tidak terdaftar di database manapun.
+    $semua_gagal_konek = count($api_errors) >= 2; // google_books + minimal 1 open library gagal total
+
+    $pesan = $semua_gagal_konek
+        ? "Gagal menghubungi layanan pencarian buku online. Periksa koneksi internet server, lalu coba lagi."
+        : "Buku dengan ISBN tersebut tidak ditemukan di database online. Silakan isi data secara manual.";
+
+    $response = [
         "ok"       => false,
-        "message"  => "Buku dengan ISBN tersebut tidak ditemukan di database online. Silakan isi data secara manual.",
+        "message"  => $pesan,
         "duplikat" => $duplikat,
-    ]);
+    ];
+    if (ISBN_DEBUG) $response["debug_errors"] = $api_errors;
+
+    echo json_encode($response);
     exit;
 }
 
