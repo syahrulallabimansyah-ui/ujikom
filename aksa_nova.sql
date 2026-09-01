@@ -256,6 +256,7 @@ CREATE TABLE `users` (
   `username` varchar(50) NOT NULL,
   `email` varchar(100) NOT NULL,
   `password` varchar(255) NOT NULL,
+  `foto` varchar(255) NOT NULL DEFAULT '',
   `role` enum('admin','member') DEFAULT 'member',
   `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'pending',
   `card_status` enum('active','frozen') NOT NULL DEFAULT 'active' COMMENT 'Dibekukan sementara saat proses Lupa Kartu berlangsung',

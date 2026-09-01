@@ -65,6 +65,9 @@ if ($action === 'pinjam') {
             } else {
                 // Nama peminjam diambil dari data akun anggota, bukan input manual
                 $np  = mysqli_real_escape_string($conn, $anggota_row['full_name']);
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $batas_kembali)) {
+                    $batas_kembali .= ' 23:59:59';
+                }
                 $bk  = mysqli_real_escape_string($conn, $batas_kembali);
                 $wp  = date('Y-m-d H:i:s'); // Waktu pinjam otomatis dari server
 

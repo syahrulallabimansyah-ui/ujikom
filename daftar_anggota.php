@@ -60,6 +60,13 @@ if ($action === "hapus") {
             $msg = "Anggota tidak bisa dihapus karena masih punya $jml riwayat peminjaman.";
             $msg_type = "error";
         } else {
+            // Hapus file foto anggota jika ada
+            $r_foto = mysqli_query($conn, "SELECT foto FROM users WHERE id=$id AND role='member'");
+            if ($r_foto && $row_f = mysqli_fetch_assoc($r_foto)) {
+                if (!empty($row_f["foto"]) && file_exists($row_f["foto"])) {
+                    @unlink($row_f["foto"]);
+                }
+            }
             mysqli_query($conn, "DELETE FROM users WHERE id=$id AND role='member'");
             $msg = "Anggota berhasil dihapus."; $msg_type = "success";
         }

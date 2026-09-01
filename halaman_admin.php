@@ -119,13 +119,6 @@ if ($action === "update") {
 if ($action === "hapus") {
     $id = (int)($_POST["id"] ?? 0);
     if ($id > 0) {
-        // Hapus file gambar jika ada
-        $r = mysqli_query($conn, "SELECT gambar FROM buku WHERE id=$id");
-        if ($r && $row = mysqli_fetch_assoc($r)) {
-            if ($row["gambar"] && file_exists($row["gambar"])) {
-                @unlink($row["gambar"]);
-            }
-        }
         // Cek apakah buku masih punya riwayat peminjaman
         $cek_pinjam = mysqli_query($conn, "SELECT COUNT(*) AS c FROM peminjaman WHERE buku_id=$id");
         $jml_pinjam = (int)(mysqli_fetch_assoc($cek_pinjam)['c'] ?? 0);
@@ -134,6 +127,13 @@ if ($action === "hapus") {
             $msg = "Buku tidak bisa dihapus karena masih ada $jml_pinjam riwayat peminjaman. Hapus semua riwayat peminjaman buku ini terlebih dahulu di halaman Telah Dipinjam.";
             $msg_type = "error";
         } else {
+            // Hapus file gambar jika ada setelah dipastikan buku bisa dihapus
+            $r = mysqli_query($conn, "SELECT gambar FROM buku WHERE id=$id");
+            if ($r && $row = mysqli_fetch_assoc($r)) {
+                if ($row["gambar"] && file_exists($row["gambar"])) {
+                    @unlink($row["gambar"]);
+                }
+            }
             mysqli_query($conn, "DELETE FROM buku WHERE id=$id");
             $msg = "Buku berhasil dihapus."; $msg_type = "success";
         }

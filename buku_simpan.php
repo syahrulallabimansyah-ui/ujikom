@@ -246,7 +246,6 @@ $cover_cls = ["c1","c2","c3","c4","c5","c6","c7","c8"];
   </style>
   <?php require_once "settings_include.php"; ?>
 </head>
-<?php require_once "pengaturan_panel.php"; ?>
 <body>
 
 <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
@@ -587,5 +586,6 @@ $cover_cls = ["c1","c2","c3","c4","c5","c6","c7","c8"];
       </div>`;
   }
 </script>
+<?php require_once "pengaturan_panel.php"; ?>
 </body>
 </html>

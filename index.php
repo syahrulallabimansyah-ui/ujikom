@@ -747,7 +747,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       radial-gradient(ellipse 60% 50% at 78% 18%, rgba(216,184,120,.10), transparent 60%),
       radial-gradient(ellipse 50% 40% at 10% 90%, rgba(216,184,120,.05), transparent 60%),
       linear-gradient(165deg, #101823 0%, #0a0e14 55%, #090c10 100%);
-    padding: 60px clamp(20px, 6vw, 80px) 88px;
+    padding: 40px clamp(20px, 6vw, 80px) 64px;
     overflow: hidden;
   }
   .slide-book::before,
@@ -771,10 +771,10 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .slide-book .frame {
     width: 100%;
     max-width: 1220px;
-    padding: 36px clamp(20px, 4vw, 56px);
+    padding: 26px clamp(18px, 4vw, 48px);
     display: flex;
     flex-direction: column;
-    gap: 28px;
+    gap: 20px;
   }
   /* varian bingkai beraksen emas khusus untuk kartu buku, mengikuti palet referensi */
   .frame-gold { border-color: rgba(216,184,120,.32); }
@@ -785,13 +785,13 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .book-layout {
     display: grid;
     grid-template-columns: 1.08fr .92fr;
-    gap: 44px;
+    gap: 30px;
     align-items: center;
   }
   .book-info .author {
-    font-size: .86rem;
+    font-size: .82rem;
     color: var(--text-dim);
-    margin-bottom: 14px;
+    margin-bottom: 10px;
     font-weight: 300;
     letter-spacing: .02em;
   }
@@ -807,7 +807,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .book-info .author strong { color: var(--gold); font-weight: 500; }
 
   /* baris meta ala "rating / durasi" pada referensi, memakai data yang tersedia */
-  .meta-row { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+  .meta-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
   .meta-chip {
     display: inline-flex;
     align-items: center;
@@ -825,15 +825,15 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .meta-chip--status svg { color: #7fe0a8; }
 
   .book-info .sinopsis {
-    font-size: .95rem;
-    line-height: 1.7;
+    font-size: .9rem;
+    line-height: 1.55;
     color: var(--text-dim);
     font-weight: 300;
-    margin-bottom: 20px;
+    margin-bottom: 14px;
     max-width: 54ch;
   }
 
-  .book-actions { display: flex; flex-wrap: wrap; gap: 16px; }
+  .book-actions { display: flex; flex-wrap: wrap; gap: 12px; }
   .cta-solid,
   .cta-outline {
     display: inline-flex;
@@ -870,7 +870,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 260px;
+    min-height: 220px;
     cursor: pointer;
   }
   .book-cover-wrap:focus-visible { outline: 2px solid var(--teal); outline-offset: 6px; border-radius: 10px; }
@@ -890,7 +890,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     position: relative;
     z-index: 1;
     width: 100%;
-    max-width: 195px;
+    max-width: 172px;
     margin: 0 auto;
     aspect-ratio: 3 / 4.35;
     /* sudut kiri (arah punggung buku) rata, sudut kanan sedikit membulat seperti tumpukan halaman */
@@ -1010,14 +1010,14 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   }
 
   /* ── carousel "buku serupa" — kartu lebih besar & jenuh warnanya ── */
-  .similar-section { border-top: 1px solid rgba(255,255,255,.09); padding-top: 20px; }
+  .similar-section { border-top: 1px solid rgba(255,255,255,.09); padding-top: 14px; }
   .similar-label {
     font-size: .7rem;
     letter-spacing: .3em;
     text-transform: uppercase;
     color: var(--text-faint);
     font-weight: 500;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
   }
   .book-thumbs {
     display: flex;
@@ -1081,32 +1081,32 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .slide-rules {
     position: relative;
     background: radial-gradient(circle at 70% 30%, #131b21 0%, var(--bg) 65%);
-    padding: 90px 20px 120px;
+    padding: 56px 20px 72px;
     overflow: hidden;
   }
   .slide-rules .frame {
     width: 100%;
     max-width: 980px;
-    padding: 44px clamp(22px, 4vw, 52px);
+    padding: 32px clamp(20px, 4vw, 44px);
   }
   .slide-rules h2 {
     font-family: var(--serif);
     font-weight: 700;
-    font-size: clamp(1.8rem, 3vw, 2.3rem);
+    font-size: clamp(1.6rem, 2.6vw, 2.05rem);
     margin-bottom: 6px;
   }
   .slide-rules .lead {
-    font-size: .84rem;
+    font-size: .82rem;
     color: var(--text-dim);
     font-weight: 300;
-    margin-bottom: 28px;
+    margin-bottom: 18px;
     max-width: 56ch;
   }
   .rules-list {
     list-style: none;
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
+    gap: 14px;
   }
   @media (max-width: 900px) {
     .rules-list { grid-template-columns: repeat(2, 1fr); }
@@ -1114,8 +1114,8 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .rules-list li {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding: 24px;
+    gap: 8px;
+    padding: 18px;
     border: 1px solid rgba(255,255,255,.08);
     border-radius: 14px;
     background: rgba(255,255,255,.02);
@@ -1123,21 +1123,21 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .rules-list .num {
     font-family: var(--serif);
     font-weight: 700;
-    font-size: 1.35rem;
+    font-size: 1.2rem;
     color: var(--teal);
   }
   .rules-list h3 {
-    font-size: 1.05rem;
+    font-size: .96rem;
     font-weight: 500;
     letter-spacing: .01em;
     margin-bottom: 2px;
     color: var(--text);
   }
   .rules-list p {
-    font-size: .88rem;
+    font-size: .82rem;
     font-weight: 300;
     color: var(--text-dim);
-    line-height: 1.6;
+    line-height: 1.5;
   }
 
   /* ══════════════════ SLIDE 4 — TENTANG KATALOG (kartu ikon, sengaja berbeda dari Tata Tertib) ══════════════════ */
@@ -1147,7 +1147,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       radial-gradient(ellipse 55% 45% at 12% 12%, rgba(216,184,120,.10), transparent 62%),
       radial-gradient(ellipse 60% 50% at 88% 92%, rgba(216,184,120,.07), transparent 60%),
       linear-gradient(200deg, #101823 0%, #0a0e14 55%, #090c10 100%);
-    padding: 100px clamp(20px, 6vw, 80px) 110px;
+    padding: 64px clamp(20px, 6vw, 80px) 72px;
     overflow: hidden;
   }
   .about-wrap {
@@ -1158,19 +1158,19 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   .about-head {
     text-align: center;
     max-width: 640px;
-    margin: 0 auto 52px;
+    margin: 0 auto 32px;
   }
-  .about-head h2 { margin-bottom: 14px; }
+  .about-head h2 { margin-bottom: 10px; }
   .about-head .lead { margin: 0 auto; }
   .about-grid {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 22px;
+    gap: 16px;
   }
   .about-card {
     position: relative;
-    padding: 30px 26px;
-    border-radius: 20px;
+    padding: 22px 20px;
+    border-radius: 18px;
     background: var(--panel);
     border: 1px solid rgba(255,255,255,.08);
     backdrop-filter: blur(10px);
@@ -1186,26 +1186,26 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 46px;
-    height: 46px;
-    border-radius: 13px;
-    margin-bottom: 18px;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
+    margin-bottom: 12px;
     background: rgba(216,184,120,.12);
     border: 1px solid rgba(216,184,120,.3);
     color: var(--gold);
   }
-  .about-icon svg { width: 22px; height: 22px; }
+  .about-icon svg { width: 20px; height: 20px; }
   .about-card h3 {
-    font-size: .96rem;
+    font-size: .92rem;
     font-weight: 500;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     color: var(--text);
   }
   .about-card p {
-    font-size: .82rem;
+    font-size: .8rem;
     font-weight: 300;
     color: var(--text-dim);
-    line-height: 1.65;
+    line-height: 1.55;
   }
   html.theme-light .about-card { border-color: rgba(0,0,0,.07); }
   html.theme-light .about-card:hover { border-color: rgba(169,120,47,.4); }
@@ -1256,32 +1256,32 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     z-index: 1;
     max-width: 720px;
     margin: 0 auto;
-    padding: clamp(16px, 3vh, 40px) clamp(20px, 6vw, 80px) clamp(10px, 1.5vh, 20px);
+    padding: clamp(10px, 2vh, 28px) clamp(20px, 6vw, 80px) clamp(6px, 1vh, 14px);
     text-align: center;
   }
   .footer-cta h2 {
     font-family: var(--serif);
     font-weight: 700;
-    font-size: clamp(1.35rem, 2.6vw + 1vh, 2.3rem);
+    font-size: clamp(1.25rem, 2.2vw + 1vh, 2rem);
     line-height: 1.12;
     color: var(--text);
-    margin-bottom: 8px;
+    margin-bottom: 6px;
     text-shadow: 0 2px 24px rgba(0,0,0,.4);
   }
   .footer-cta .lead {
-    font-size: .84rem;
+    font-size: .8rem;
     font-weight: 300;
-    line-height: 1.55;
+    line-height: 1.5;
     color: var(--text-dim);
     max-width: 52ch;
-    margin: 0 auto clamp(10px, 1.8vh, 18px);
+    margin: 0 auto clamp(8px, 1.4vh, 14px);
   }
   .footer-highlights {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
-    margin-bottom: clamp(10px, 1.8vh, 18px);
+    margin-bottom: clamp(8px, 1.4vh, 14px);
   }
   .footer-cta-actions {
     display: flex;
@@ -1301,7 +1301,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     position: relative;
     width: 100%;
     border-top: 1px solid rgba(216,184,120,.18);
-    padding: clamp(14px, 2.5vh, 28px) clamp(20px, 6vw, 80px) clamp(66px, 11vh, 92px);
+    padding: clamp(12px, 2vh, 22px) clamp(20px, 6vw, 80px) clamp(60px, 9vh, 80px);
     overflow: hidden;
   }
   .footer-top {
@@ -1702,9 +1702,9 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   body.ticker-hidden .slide-about { padding-bottom: 50px; }
   body.ticker-hidden .site-footer { padding-bottom: 28px; }
 
-  /* layar pendek (HP kecil / landscape) — perkecil lagi konten slide 5 supaya
-     tetap pas satu layar dan tidak perlu discroll sama sekali */
-  @media (max-height: 720px) {
+  /* layar dengan tinggi umum (laptop 13"–14", browser dengan toolbar) — rapikan
+     konten slide 5 lebih awal supaya tidak terpotong overflow:hidden */
+  @media (max-height: 860px) {
     .footer-cta { padding-top: 10px; padding-bottom: 6px; }
     .footer-cta h2 { font-size: clamp(1.1rem, 4vw, 1.6rem); margin-bottom: 4px; }
     .footer-cta .lead {

@@ -142,6 +142,18 @@ if ($action === 'batal_wa') {
     }
 }
 
+// Tandai denda sebagai lunas
+if ($action === 'tandai_lunas') {
+    $pem_id = (int)($_POST['pem_id'] ?? 0);
+    if ($pem_id > 0) {
+        mysqli_query($conn,
+            "UPDATE peminjaman SET status_denda='lunas' WHERE id=$pem_id AND status_denda='belum_bayar'"
+        );
+        $msg = 'Denda berhasil ditandai sebagai lunas.';
+        $msg_type = 'success';
+    }
+}
+
 // ─────────────────────────────────────────────
 //  Filter tab
 // ─────────────────────────────────────────────
@@ -219,7 +231,16 @@ function sisaWaktu(string $batas): array {
     $batas = new DateTimeImmutable($batas);
     if ($now > $batas) {
         $diff = $now->diff($batas);
-        return ['terlambat' => true, 'label' => $diff->days . ' hari terlambat', 'hari' => $diff->days];
+        $hari = (int)$diff->days;
+        if ($hari === 0) {
+            $parts = [];
+            if ($diff->h >= 1) $parts[] = $diff->h . ' jam';
+            if ($diff->i >= 1) $parts[] = $diff->i . ' menit';
+            $label = (!empty($parts) ? implode(' ', $parts) . ' ' : '') . 'terlambat';
+        } else {
+            $label = $hari . ' hari terlambat';
+        }
+        return ['terlambat' => true, 'label' => $label, 'hari' => $hari];
     }
     $diff = $now->diff($batas);
     $parts = [];

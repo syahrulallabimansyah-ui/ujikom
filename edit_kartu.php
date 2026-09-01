@@ -89,8 +89,10 @@ if ($blocked === "" && $_SERVER["REQUEST_METHOD"] === "POST" && ($_POST["action"
         $error = "Alamat email tidak valid.";
     } elseif ($new_no_hp !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $new_no_hp)) {
         $error = "Nomor HP tidak valid.";
-    } elseif ($want_change_password && strlen($new_password) < 6) {
-        $error = "Kata sandi baru minimal 6 karakter.";
+    } elseif ($want_change_password && strlen($new_password) < 8) {
+        $error = "Kata sandi baru minimal 8 karakter.";
+    } elseif ($want_change_password && (!preg_match('/[A-Za-z]/', $new_password) || !preg_match('/[0-9]/', $new_password))) {
+        $error = "Kata sandi baru harus mengandung huruf dan angka.";
     } elseif ($want_change_password && $new_password !== $new_password2) {
         $error = "Konfirmasi kata sandi baru tidak cocok.";
     } else {

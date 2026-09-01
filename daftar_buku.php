@@ -473,7 +473,6 @@ ob_start();
   </style>
   <?php require_once "settings_include.php"; ?>
 </head>
-<?php require_once "pengaturan_panel.php"; ?>
 <body>
 
 <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
@@ -1244,6 +1243,7 @@ ob_start();
       });
   }
 </script>
+<?php require_once "pengaturan_panel.php"; ?>
 </body>
 </html>
 <?php ob_end_flush(); ?>

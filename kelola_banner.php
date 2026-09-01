@@ -134,9 +134,31 @@ if ($action === "geser") {
     }
 }
 
+// JADIKAN LATAR BERANDA
+if ($action === "set_background") {
+    $id = (int)($_POST["id"] ?? 0);
+    if ($id > 0) {
+        $kunci = "banner_background_id";
+        $nilai = (string)$id;
+        $cek = mysqli_query($conn, "SELECT kunci FROM pengaturan WHERE kunci = '$kunci' LIMIT 1");
+        if ($cek && mysqli_num_rows($cek) > 0) {
+            mysqli_query($conn, "UPDATE pengaturan SET nilai = '$nilai' WHERE kunci = '$kunci'");
+        } else {
+            mysqli_query($conn, "INSERT INTO pengaturan (kunci, nilai) VALUES ('$kunci', '$nilai')");
+        }
+        $msg = "Banner berhasil dijadikan latar utama halaman depan!"; $msg_type = "success";
+    }
+}
+
 // ─────────────────────────────────────────────
 //  AMBIL DATA
 // ─────────────────────────────────────────────
+$banner_background_id = 0;
+$bg_res = mysqli_query($conn, "SELECT nilai FROM pengaturan WHERE kunci = 'banner_background_id' LIMIT 1");
+if ($bg_res && $bg_row = mysqli_fetch_assoc($bg_res)) {
+    $banner_background_id = (int)$bg_row["nilai"];
+}
+
 $banner_list = [];
 $res = mysqli_query($conn, "SELECT * FROM banner ORDER BY urutan ASC, id ASC");
 while ($row = mysqli_fetch_assoc($res)) {
@@ -470,6 +492,13 @@ $total = count($banner_list);
               <?php else: ?>
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
               <?php endif; ?>
+            </button>
+          </form>
+          <form method="post" style="display:contents;">
+            <input type="hidden" name="action" value="set_background">
+            <input type="hidden" name="id" value="<?= $b["id"] ?>">
+            <button type="submit" class="icon-btn" title="Jadikan gambar latar Slide 1 di halaman depan" style="<?= $banner_background_id === (int)$b["id"] ? 'background:#e0e7ff;color:#3730a3;' : '' ?>">
+              <svg viewBox="0 0 24 24" fill="<?= $banner_background_id === (int)$b["id"] ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
           </form>
           <button type="button" class="icon-btn grow" onclick='bukaModalEdit(<?= json_encode($b, JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'>

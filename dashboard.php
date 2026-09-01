@@ -88,12 +88,15 @@ if ($skema_lengkap) {
         $sedang_dipinjam = (int)(mysqli_fetch_assoc($q)['c'] ?? 0);
     }
 
-    // Terlambat kembali
-    if ($col_status) {
-        $q = mysqli_query($conn, "SELECT COUNT(*) AS c FROM peminjaman WHERE LOWER($col_status) = 'terlambat'");
+    // Terlambat kembali (pinjaman aktif yang sudah melewati batas waktu kembali)
+    if ($col_status && $col_jatuh_tempo) {
+        $q = mysqli_query($conn, "SELECT COUNT(*) AS c FROM peminjaman WHERE LOWER($col_status) NOT IN ('dikembalikan','selesai','returned','kembali','ditolak','rejected') AND $col_jatuh_tempo < NOW()");
         $terlambat = (int)(mysqli_fetch_assoc($q)['c'] ?? 0);
     } elseif ($col_jatuh_tempo && $col_dikembalikan) {
-        $q = mysqli_query($conn, "SELECT COUNT(*) AS c FROM peminjaman WHERE $col_dikembalikan IS NULL AND $col_jatuh_tempo < CURDATE()");
+        $q = mysqli_query($conn, "SELECT COUNT(*) AS c FROM peminjaman WHERE $col_dikembalikan IS NULL AND $col_jatuh_tempo < NOW()");
+        $terlambat = (int)(mysqli_fetch_assoc($q)['c'] ?? 0);
+    } elseif ($col_status) {
+        $q = mysqli_query($conn, "SELECT COUNT(*) AS c FROM peminjaman WHERE LOWER($col_status) = 'terlambat'");
         $terlambat = (int)(mysqli_fetch_assoc($q)['c'] ?? 0);
     }
 
