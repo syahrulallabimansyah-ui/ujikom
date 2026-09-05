@@ -3,7 +3,7 @@
 declare(strict_types=1);
 session_start();
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: sign_in.php');
     exit;
 }
@@ -29,26 +29,30 @@ $admin_foto = $profil['foto'] ?? '';
 // ─────────────────────────────────────────────
 //  Helper: ambil nilai pengaturan
 // ─────────────────────────────────────────────
-function getSetting(mysqli $db, string $kunci, string $default = ''): string {
-    $k   = mysqli_real_escape_string($db, $kunci);
-    $res = mysqli_query($db, "SELECT nilai FROM pengaturan WHERE kunci='$k' LIMIT 1");
-    $row = $res ? mysqli_fetch_assoc($res) : null;
-    return $row ? $row['nilai'] : $default;
+if (!function_exists('getSetting')) {
+    function getSetting(mysqli $db, string $kunci, string $default = ''): string {
+        $k   = mysqli_real_escape_string($db, $kunci);
+        $res = mysqli_query($db, "SELECT nilai FROM pengaturan WHERE kunci='$k' LIMIT 1");
+        $row = $res ? mysqli_fetch_assoc($res) : null;
+        return $row ? $row['nilai'] : $default;
+    }
 }
 
-function setSetting(mysqli $db, string $kunci, string $nilai): void {
-    $k = mysqli_real_escape_string($db, $kunci);
-    $v = mysqli_real_escape_string($db, $nilai);
-    mysqli_query($db,
-        "INSERT INTO pengaturan (kunci, nilai) VALUES ('$k','$v')
-         ON DUPLICATE KEY UPDATE nilai='$v', updated_at=NOW()"
-    );
+if (!function_exists('setSetting')) {
+    function setSetting(mysqli $db, string $kunci, string $nilai): void {
+        $k = mysqli_real_escape_string($db, $kunci);
+        $v = mysqli_real_escape_string($db, $nilai);
+        mysqli_query($db,
+            "INSERT INTO pengaturan (kunci, nilai) VALUES ('$k','$v')
+             ON DUPLICATE KEY UPDATE nilai='$v', updated_at=NOW()"
+        );
+    }
 }
 
 // ─────────────────────────────────────────────
 //  AKSI: Simpan pengaturan
 // ─────────────────────────────────────────────
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'simpan_pengaturan') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'simpan_pengaturan') {
     $denda_per_hari    = (int)($_POST['denda_per_hari']    ?? 1000);
     $denda_aktif       = isset($_POST['denda_aktif']) ? '1' : '0';
     $grace_period      = max(0, (int)($_POST['grace_period'] ?? 0));
@@ -62,6 +66,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'simpa
         setSetting($conn, 'denda_grace_period',     (string)$grace_period);
 
         $msg = 'Pengaturan denda berhasil disimpan!';
+        $msg_type = 'success';
+    }
+}
+
+// AKSI: Tandai denda lunas
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'tandai_lunas') {
+    $pem_id = (int)($_POST['pem_id'] ?? 0);
+    if ($pem_id > 0) {
+        mysqli_query($conn,
+            "UPDATE peminjaman SET status_denda='lunas' WHERE id=$pem_id AND status_denda='belum_bayar'"
+        );
+        $msg = 'Denda ditandai sebagai lunas.';
         $msg_type = 'success';
     }
 }
@@ -99,39 +115,6 @@ $res = mysqli_query($conn,
 );
 while ($row = mysqli_fetch_assoc($res)) {
     $denda_list[] = $row;
-}
-
-// AKSI: Tandai denda lunas
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && ($_POST['action'] ?? '') === 'tandai_lunas') {
-    $pem_id = (int)($_POST['pem_id'] ?? 0);
-    if ($pem_id > 0) {
-        mysqli_query($conn,
-            "UPDATE peminjaman SET status_denda='lunas' WHERE id=$pem_id AND status_denda='belum_bayar'"
-        );
-        $msg = 'Denda ditandai sebagai lunas.';
-        $msg_type = 'success';
-        // Refresh daftar
-        $denda_list = [];
-        $res = mysqli_query($conn,
-            "SELECT p.*, b.judul, b.penulis
-             FROM peminjaman p
-             INNER JOIN buku b ON b.id = p.buku_id
-             WHERE p.denda > 0 $where_search
-             ORDER BY p.waktu_kembali DESC, p.batas_kembali DESC"
-        );
-        while ($row = mysqli_fetch_assoc($res)) {
-            $denda_list[] = $row;
-        }
-        // refresh stats
-        $stat_belum = (int)(mysqli_fetch_assoc(mysqli_query($conn,
-            "SELECT COUNT(*) AS c FROM peminjaman WHERE status_denda='belum_bayar'"))['c'] ?? 0);
-        $stat_lunas = (int)(mysqli_fetch_assoc(mysqli_query($conn,
-            "SELECT COUNT(*) AS c FROM peminjaman WHERE status_denda='lunas'"))['c'] ?? 0);
-        $total_denda_belum = (int)(mysqli_fetch_assoc(mysqli_query($conn,
-            "SELECT COALESCE(SUM(denda),0) AS t FROM peminjaman WHERE status_denda='belum_bayar'"))['t'] ?? 0);
-        $total_denda_lunas = (int)(mysqli_fetch_assoc(mysqli_query($conn,
-            "SELECT COALESCE(SUM(denda),0) AS t FROM peminjaman WHERE status_denda='lunas'"))['t'] ?? 0);
-    }
 }
 ?>
 <!DOCTYPE html>

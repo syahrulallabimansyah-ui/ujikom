@@ -3,7 +3,7 @@
 session_start();
 
 // Cek login & role admin
-if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "admin") {
+if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
     header("Location: sign_in.php");
     exit;
 }
@@ -43,8 +43,15 @@ function uploadGambar($file, &$error = null): string {
     if (!is_dir($dir)) mkdir($dir, 0775, true);
     $ext      = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
     $allowed  = ["jpg","jpeg","png","webp","gif"];
+    $mime     = function_exists("mime_content_type") ? mime_content_type($file["tmp_name"]) : "";
+    $allowed_mimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
     if (!in_array($ext, $allowed)) {
         $error = "Format gambar tidak didukung (hanya JPG, PNG, WEBP, GIF).";
+        return "";
+    }
+    if ($mime !== "" && !in_array($mime, $allowed_mimes, true)) {
+        $error = "Berkas yang diunggah bukan format gambar yang valid.";
         return "";
     }
     $filename = uniqid("buku_") . "." . $ext;

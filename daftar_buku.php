@@ -62,6 +62,7 @@ $liked_ids = [];
 $fav_ids   = [];
 $like_counts = [];
 $fav_counts  = [];
+$rating_counts = [];
 
 if (!empty($buku_list)) {
     $ids_str = implode(",", array_column($buku_list, "id"));
@@ -94,10 +95,26 @@ if (!empty($buku_list)) {
 $cover_cls = ["c1","c2","c3","c4","c5","c6","c7","c8"];
 
 // Status stok
-function getStatus(int $stok): array {
-    if ($stok <= 0) return ["habis",   "Kosong"];
-    return ["tersedia","Ada"];
+if (!function_exists('getStatus')) {
+    function getStatus(int $stok): array {
+        if ($stok <= 0) return ["habis",   "Kosong"];
+        return ["tersedia","Ada"];
+    }
 }
+
+// ─── Pengaturan musik latar ───
+$musik_aktif = 0;
+$musik_file  = "";
+$musik_judul = "Musik Latar";
+$mgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('musik_aktif','musik_file','musik_judul')");
+if ($mgt) {
+    while ($m = mysqli_fetch_assoc($mgt)) {
+        if ($m["kunci"] === "musik_aktif") $musik_aktif = (int)$m["nilai"];
+        if ($m["kunci"] === "musik_file")  $musik_file  = $m["nilai"];
+        if ($m["kunci"] === "musik_judul") $musik_judul = $m["nilai"] ?: $musik_judul;
+    }
+}
+$musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_file));
 
 // Buffer seluruh output halaman. Untuk request AJAX (live search), buffer ini
 // akan dibuang sepenuhnya sebelum kita kirim hanya fragmen hasil pencarian —
@@ -110,83 +127,170 @@ ob_start();
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet"/>
   <style>
     :root {
-      --bg:         #f4f5f7;
-      --sidebar-bg: #ffffff;
-      --accent:     #2b4fff;
-      --text:       #1a1a2e;
-      --muted:      #7a7a9a;
-      --card:       #ffffff;
+      --bg:         #090c10;
+      --sidebar-bg: #10151b;
+      --accent:     #d8b878;
+      --accent2:    #f0d9a8;
+      --text:       #eef3f4;
+      --muted:      rgba(238,243,244,.65);
+      --card:       #121820;
       --radius:     14px;
       --sidebar-w:  170px;
-      --shadow-sm:  0 2px 12px rgba(0,0,0,.05);
-      --shadow-md:  0 4px 20px rgba(0,0,0,.10);
+      --shadow-sm:  0 2px 12px rgba(0,0,0,.25);
+      --shadow-md:  0 4px 20px rgba(0,0,0,.45);
+      --card-border:rgba(216,184,120,.14);
+      --border-color:rgba(216,184,120,.16);
+      --book-card:  #161e27;
       --trans:      .2s cubic-bezier(.22,1,.36,1);
     }
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Nunito',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; animation:bodyIn .5s ease both; }
-    @keyframes bodyIn { from{opacity:0} to{opacity:1} }
+    html { overflow-x:hidden; }
+    body { font-family:var(--font-family,'Outfit',sans-serif); background:var(--bg); color:var(--text); min-height:100vh; width:100%; max-width:100vw; overflow-x:hidden; display:flex; }
 
     /* ── SIDEBAR ── */
     .sidebar {
       width:var(--sidebar-w); height:100vh; height:100dvh; background:var(--sidebar-bg);
       display:flex; flex-direction:column; padding:24px 0 20px;
-      border-right:1px solid #e8e9f0;
-      position:fixed; top:0; left:0; bottom:0; z-index:100; transition:transform var(--trans);
+      border-right:1px solid var(--border-color, rgba(216,184,120,.15));
+      position:fixed; top:0; left:0; bottom:0; z-index:170; transition:transform var(--trans);
       overflow-y:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin;
-      box-shadow:2px 0 24px rgba(20,20,50,.05);
+      box-shadow:2px 0 24px rgba(0,0,0,.35);
     }
-    .sidebar-toggle { display:none; position:fixed; top:14px; left:14px; z-index:200; width:42px; height:42px; border-radius:12px; border:none; background:#fff; box-shadow:0 4px 16px rgba(20,20,50,.16); cursor:pointer; align-items:center; justify-content:center; transition:transform .15s ease; }
+    .sidebar-toggle { display:none; position:fixed; top:14px; left:14px; z-index:200; width:42px; height:42px; border-radius:12px; border:1px solid var(--border-color, rgba(216,184,120,.2)); background:var(--card, #121820); box-shadow:0 4px 16px rgba(0,0,0,.3); cursor:pointer; align-items:center; justify-content:center; transition:transform .15s ease; }
     .sidebar-toggle:active { transform:scale(.9); }
-    .sidebar-toggle svg { width:20px; height:20px; color:var(--text); }
-    .sidebar-overlay { position:fixed; inset:0; background:rgba(15,15,35,.45); backdrop-filter:blur(2px); z-index:90; opacity:0; visibility:hidden; transition:opacity var(--trans), visibility var(--trans); }
+    .sidebar-toggle svg { width:20px; height:20px; color:var(--accent); }
+    .sidebar-overlay { position:fixed; inset:0; background:rgba(9,12,16,.65); backdrop-filter:blur(3px); z-index:165; opacity:0; visibility:hidden; transition:opacity var(--trans), visibility var(--trans); }
     .sidebar-overlay.open { opacity:1; visibility:visible; }
-    .logo-wrap { display:flex; flex-direction:column; align-items:center; padding:0 18px 24px; border-bottom:1px solid #f0f0f5; }
-    .logo-icon { width:52px; height:52px; background:linear-gradient(135deg,#f0f0f8 0%,#fff 100%); border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; box-shadow:0 4px 16px rgba(20,20,20,.15); }
+    .logo-wrap { display:flex; flex-direction:column; align-items:center; padding:0 18px 24px; border-bottom:1px solid var(--border-color, rgba(216,184,120,.15)); }
+    .logo-icon { width:52px; height:52px; background:linear-gradient(135deg, rgba(216,184,120,.18) 0%, rgba(216,184,120,.05) 100%); border:1px solid rgba(216,184,120,.3); border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
     .logo-icon svg { width:28px; height:28px; color:var(--accent); }
-    .logo-name { font-family:'Cormorant Garamond',serif; font-size:1rem; font-weight:700; color:var(--text); letter-spacing:.08em; text-align:center; }
+    .logo-name { font-family:'Cormorant Garamond',serif; font-size:1.05rem; font-weight:700; color:var(--accent); letter-spacing:.1em; text-align:center; }
     .logo-sub  { font-size:.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; text-align:center; margin-top:2px; }
     .nav { flex:1; display:flex; flex-direction:column; gap:2px; padding:16px 10px; }
     .nav-item { position:relative; display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px; font-size:.82rem; font-weight:600; color:var(--muted); cursor:pointer; text-decoration:none; transition:background var(--trans), color var(--trans); }
-    .nav-item:hover  { background:#f0f2ff; color:var(--accent); }
-    .nav-item.active { background:#eef0ff; color:var(--accent); }
+    .nav-item:hover  { background:rgba(216,184,120,.10); color:var(--accent); }
+    .nav-item.active { background:rgba(216,184,120,.16); color:var(--accent); }
     .nav-item.active::before { content:''; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:60%; border-radius:0 4px 4px 0; background:var(--accent); }
     .nav-item svg { width:17px; height:17px; flex-shrink:0; }
     .nav-item.admin-only { color:#e67e22; }
-    .nav-item.admin-only:hover { background:#fff4e6; color:#d35400; }
-    .nav-bottom { padding:10px 10px 0; border-top:1px solid #f0f0f5; display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
+    .nav-item.admin-only:hover { background:rgba(230,126,34,.12); color:#f39c12; }
+    .nav-bottom { padding:10px 10px 0; border-top:1px solid var(--border-color, rgba(216,184,120,.15)); display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
 
     /* ── MAIN ── */
-    .main { margin-left:var(--sidebar-w); flex:1; padding:24px 24px 32px; min-height:100vh; transition:margin-left var(--trans); }
+    .main { margin-left:var(--sidebar-w); flex:1; min-width:0; max-width:100%; overflow-x:hidden; padding:24px 24px 32px; min-height:100vh; transition:margin-left var(--trans); }
 
     /* Topbar */
     .topbar { display:flex; gap:10px; margin-bottom:22px; align-items:center; }
-    .search-wrap { display:flex; align-items:center; background:#fff; border-radius:50px; padding:0 16px; gap:10px; height:42px; border:1px solid #e4e5f0; flex:1; max-width:420px; box-shadow:0 2px 8px rgba(0,0,0,.04); }
-    .search-wrap input { border:none; outline:none; font-family:'Nunito',sans-serif; font-size:.82rem; color:var(--text); background:transparent; flex:1; }
+    .search-wrap { display:flex; align-items:center; background:var(--card); border-radius:50px; padding:0 16px; gap:10px; height:42px; border:1.5px solid var(--border-color); flex:1; max-width:420px; box-shadow:var(--shadow-sm); transition:border-color var(--trans), box-shadow var(--trans); }
+    .search-wrap:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(216,184,120,.2); }
+    .search-wrap input { border:none; outline:none; font-family:var(--font-family,'Outfit',sans-serif); font-size:.82rem; color:var(--text); background:transparent; flex:1; }
     .search-wrap input::placeholder { color:var(--muted); }
     .search-wrap svg { width:16px; height:16px; color:var(--muted); }
-    .tab-btn { padding:9px 18px; border-radius:50px; border:1px solid #e4e5f0; background:#fff; font-family:'Nunito',sans-serif; font-size:.8rem; font-weight:600; color:var(--muted); cursor:pointer; transition:all var(--trans); text-decoration:none; }
-    .tab-btn:hover { border-color:var(--accent); color:var(--accent); }
+    .tab-btn { padding:9px 18px; border-radius:50px; border:1.5px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.8rem; font-weight:600; color:var(--muted); cursor:pointer; transition:all var(--trans); text-decoration:none; }
+    .tab-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.1); }
+
+    .btn-topbar-mode {
+      appearance: none;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-color, rgba(216,184,120,.3));
+      background: var(--card, rgba(18,24,32,.85));
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent, #d8b878);
+      transition: all var(--trans);
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      flex-shrink: 0;
+    }
+    .btn-topbar-mode:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(216,184,120,.35);
+    }
+    .btn-topbar-mode svg { width: 18px; height: 18px; transition: transform .4s cubic-bezier(.22,1,.36,1); }
+    .btn-topbar-mode .icon-sun { display: none; }
+    html.theme-light .btn-topbar-mode .icon-moon,
+    html.light .btn-topbar-mode .icon-moon { display: none; }
+    html.theme-light .btn-topbar-mode .icon-sun,
+    html.light .btn-topbar-mode .icon-sun { display: block; }
+
+    .btn-musik {
+      appearance: none;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1.5px solid var(--accent, #d8b878);
+      background: rgba(18,24,32,.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent, #d8b878);
+      transition: all var(--trans);
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      flex-shrink: 0;
+    }
+    .btn-musik:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(216,184,120,.35);
+    }
+    .btn-musik svg { width: 18px; height: 18px; }
+    .btn-musik .icon-off { display: block; }
+    .btn-musik .icon-eq  { display: none; align-items: flex-end; gap: 2.5px; height: 16px; }
+    .btn-musik .icon-eq span {
+      display: block;
+      width: 3px;
+      background: var(--accent, #d8b878);
+      border-radius: 2px;
+      animation: eqBar 1s ease-in-out infinite;
+    }
+    .btn-musik .icon-eq span:nth-child(1) { height: 40%; animation-delay: -.6s; }
+    .btn-musik .icon-eq span:nth-child(2) { height: 100%; animation-delay: -.2s; }
+    .btn-musik .icon-eq span:nth-child(3) { height: 65%; animation-delay: -.9s; }
+    @keyframes eqBar { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+    .btn-musik.playing {
+      background: rgba(216,184,120,.18);
+      box-shadow: 0 0 16px rgba(216,184,120,.3);
+    }
+    .btn-musik.playing .icon-off { display: none; }
+    .btn-musik.playing .icon-eq  { display: flex; }
+
+    /* ══════════ NAVBAR ATAS (HUD): dudukan tombol mode & musik ══════════ */
+    .mobile-topbar { display: contents; }
+    .mobile-topbar-divider,
+    .mobile-topbar-brand { display: none; }
+    .page-hud-controls {
+      position: fixed; top: 16px; right: 20px; z-index: 150;
+      display: flex; align-items: center; gap: 10px;
+    }
     /* Dropdown kategori bergaya chip */
     .kategori-dropdown { position:relative; flex-shrink:0; }
     .kategori-trigger {
       display:flex; align-items:center; gap:8px; height:42px; padding:0 16px; border-radius:50px;
-      border:1px solid #e4e5f0; background:#fff; font-family:'Nunito',sans-serif; font-size:.8rem; font-weight:700;
-      color:var(--muted); cursor:pointer; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.04);
+      border:1.5px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.8rem; font-weight:700;
+      color:var(--muted); cursor:pointer; white-space:nowrap; box-shadow:var(--shadow-sm);
       transition:border-color var(--trans), color var(--trans), background var(--trans), box-shadow var(--trans);
     }
     .kategori-trigger svg { width:16px; height:16px; flex-shrink:0; }
     .kategori-trigger .kategori-chevron { width:13px; height:13px; margin-left:1px; transition:transform var(--trans); }
     .kategori-trigger span { max-width:130px; overflow:hidden; text-overflow:ellipsis; }
     .kategori-trigger:hover { border-color:var(--accent); color:var(--accent); }
-    .kategori-trigger.open { border-color:var(--accent); color:var(--accent); box-shadow:0 4px 16px rgba(43,79,255,.14); }
+    .kategori-trigger.open { border-color:var(--accent); color:var(--accent); box-shadow:0 4px 16px rgba(216,184,120,.2); }
     .kategori-trigger.open .kategori-chevron { transform:rotate(180deg); }
-    .kategori-trigger.has-value { background:#eef0ff; border-color:var(--accent); color:var(--accent); }
+    .kategori-trigger.has-value { background:rgba(216,184,120,.15); border-color:var(--accent); color:var(--accent); }
 
     .kategori-panel {
-      position:absolute; top:calc(100% + 10px); right:0; z-index:150; background:#fff; border-radius:16px;
+      position:absolute; top:calc(100% + 10px); right:0; z-index:150; background:var(--card); border:1px solid var(--card-border); border-radius:16px;
       box-shadow:var(--shadow-md); padding:12px; display:flex; flex-wrap:wrap; gap:7px; width:max-content;
       max-width:300px; opacity:0; visibility:hidden; pointer-events:none;
       transform:translateY(-8px) scale(.97); transform-origin:top right;
@@ -194,12 +298,12 @@ ob_start();
     }
     .kategori-panel.open { opacity:1; visibility:visible; pointer-events:auto; transform:translateY(0) scale(1); }
     .kategori-chip {
-      padding:7px 14px; border-radius:50px; border:1px solid #e4e5f0; background:#f8f9ff;
-      font-family:'Nunito',sans-serif; font-size:.74rem; font-weight:700; color:var(--muted);
+      padding:7px 14px; border-radius:50px; border:1px solid var(--border-color); background:rgba(255,255,255,.04);
+      font-family:var(--font-family,'Outfit',sans-serif); font-size:.74rem; font-weight:700; color:var(--muted);
       cursor:pointer; transition:all var(--trans); white-space:nowrap;
     }
-    .kategori-chip:hover { border-color:var(--accent); color:var(--accent); background:#eef0ff; }
-    .kategori-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; box-shadow:0 3px 10px rgba(43,79,255,.3); }
+    .kategori-chip:hover { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.12); }
+    .kategori-chip.active { background:linear-gradient(135deg, #d8b878, #f0d9a8); border-color:var(--accent); color:#090c10; font-weight:800; box-shadow:0 3px 10px rgba(216,184,120,.35); }
 
     /* Select asli tetap ada untuk aksesibilitas (navigasi keyboard) tapi disembunyikan secara visual */
     .kategori-select-sr {
@@ -207,11 +311,13 @@ ob_start();
       clip:rect(0,0,0,0); white-space:nowrap; border:0;
     }
     .td-genre-badge {
-      display:inline-block; margin-top:3px; padding:2px 9px; border-radius:20px; background:#eef0ff; color:var(--accent);
+      display:inline-block; margin-top:3px; padding:2px 9px; border-radius:20px; background:rgba(216,184,120,.12); color:var(--accent);
+      border:1px solid rgba(216,184,120,.2);
       font-size:.62rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase;
     }
     .mb-genre-badge {
-      display:inline-block; padding:2px 9px; border-radius:20px; background:#eef0ff; color:var(--accent);
+      display:inline-block; padding:2px 9px; border-radius:20px; background:rgba(216,184,120,.12); color:var(--accent);
+      border:1px solid rgba(216,184,120,.2);
       font-size:.6rem; font-weight:800; letter-spacing:.03em; text-transform:uppercase; margin-top:3px;
     }
 
@@ -224,24 +330,19 @@ ob_start();
     #searchResultArea { transition: opacity .15s ease; }
     #searchResultArea.loading-search { opacity: .55; }
 
-    /* Table card */
-    .table-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow-sm); overflow:hidden; animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
+    /* ── Grid buku (menggantikan tabel — reflow alami di semua lebar layar, tanpa geser ke samping) ── */
+    .books-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px; animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-    table { width:100%; border-collapse:collapse; }
-    thead { background:#f8f9ff; border-bottom:2px solid #eef0fc; }
-    thead th { padding:13px 16px; font-size:.72rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; text-align:left; white-space:nowrap; }
-    tbody tr { border-bottom:1px solid #f0f1f8; transition:background var(--trans); }
-    tbody tr:last-child { border-bottom:none; }
-    tbody tr:hover { background:#f8f9ff; }
-    td { padding:12px 16px; font-size:.82rem; vertical-align:middle; }
 
-    /* Book identity */
-    .book-identity { display:flex; align-items:center; gap:12px; }
-    .book-cover-sm {
-      width:40px; height:56px; border-radius:6px; flex-shrink:0;
-      overflow:hidden; box-shadow:0 3px 10px rgba(0,0,0,.15); position:relative;
+    .book-card {
+      background:var(--card); border:1px solid var(--card-border, rgba(216,184,120,.12)); border-radius:var(--radius);
+      box-shadow:var(--shadow-sm); overflow:hidden; min-width:0;
+      cursor:pointer; transition:box-shadow var(--trans), transform var(--trans), border-color var(--trans);
+      display:flex; flex-direction:column;
     }
-    .book-cover-sm img { width:100%; height:100%; object-fit:cover; display:block; }
+    .book-card:hover { box-shadow:var(--shadow-md); transform:translateY(-3px); border-color:var(--accent); }
+    .book-cover-wrap { aspect-ratio:2/3; overflow:hidden; position:relative; flex-shrink:0; }
+    .book-cover-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
     .c1 { background:linear-gradient(135deg,#f5a623,#d4820a); }
     .c2 { background:linear-gradient(135deg,#9b59b6,#6c3483); }
     .c3 { background:linear-gradient(135deg,#e74c3c,#922b21); }
@@ -250,197 +351,235 @@ ob_start();
     .c6 { background:linear-gradient(135deg,#e91e63,#880e4f); }
     .c7 { background:linear-gradient(135deg,#ff5722,#bf360c); }
     .c8 { background:linear-gradient(135deg,#607d8b,#263238); }
-    .book-cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.65rem; font-weight:800; color:rgba(255,255,255,.85); text-align:center; padding:2px; line-height:1.2; }
+    .cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.3rem; font-weight:800; color:rgba(255,255,255,.8); }
+    .cover-rating { position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,.7); border:1px solid rgba(216,184,120,.3); color:#d8b878; font-size:.6rem; font-weight:800; padding:2px 7px; border-radius:20px; display:flex; align-items:center; gap:2px; backdrop-filter:blur(3px); }
+    .cover-rating svg { width:9px; height:9px; }
+    .cover-num-badge { position:absolute; top:6px; left:6px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.7); border:1px solid rgba(216,184,120,.3); color:var(--accent); font-size:.62rem; font-weight:800; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px); }
 
-    .td-title  { font-weight:800; color:var(--text); margin-bottom:2px; }
-    .td-isbn   { font-size:.68rem; color:var(--muted); }
-    .td-author { font-weight:600; color:var(--text); }
+    .book-info { padding:10px 12px 12px; flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
+    .bk-title { font-size:.83rem; font-weight:800; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+    .bk-author { font-size:.7rem; color:var(--muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .bk-badges-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px; }
+    .bk-genre { font-size:.6rem; font-weight:700; color:var(--accent); background:rgba(216,184,120,.12); border:1px solid rgba(216,184,120,.2); padding:2px 8px; border-radius:50px; white-space:nowrap; }
 
     /* Status badge */
-    .status-badge { display:inline-flex; align-items:center; gap:5px; font-size:.68rem; font-weight:700; padding:4px 10px; border-radius:50px; }
-    .status-badge .dot { width:6px; height:6px; border-radius:50%; }
-    .status-tersedia { background:#e8f5e9; color:#1a8a4a; }
+    .status-badge { display:inline-flex; align-items:center; gap:5px; font-size:.62rem; font-weight:700; padding:3px 9px; border-radius:50px; white-space:nowrap; }
+    .status-badge .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .status-tersedia { background:rgba(46,204,113,.12); color:#2ecc71; border:1px solid rgba(46,204,113,.25); }
     .status-tersedia .dot { background:#2ecc71; }
-    .status-habis    { background:#fce4ec; color:#c0392b; }
+    .status-habis    { background:rgba(231,76,60,.12); color:#e74c3c; border:1px solid rgba(231,76,60,.25); }
     .status-habis .dot { background:#e74c3c; }
 
-    .td-stock { font-weight:700; color:var(--text); }
+    .bk-stock { font-size:.65rem; font-weight:700; color:var(--muted); }
 
-    /* Rating kolom */
-    .td-rating { display:flex; align-items:center; gap:4px; white-space:nowrap; }
-    .td-rating svg { width:12px; height:12px; }
-    .td-rating-num { font-size:.72rem; font-weight:800; color:#d4820a; }
-    .td-rating-empty { font-size:.7rem; color:#ccc; letter-spacing:1px; }
+    .bk-actions { display:flex; align-items:center; gap:8px; margin-top:8px; padding-top:8px; border-top:1px solid var(--border-color); }
 
     /* Empty state */
-    .empty-row td { text-align:center; padding:50px; color:var(--muted); font-weight:600; font-size:.85rem; }
+    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; gap:14px; color:var(--muted); grid-column:1/-1; text-align:center; }
+    .empty-state svg { width:52px; height:52px; opacity:.3; color:var(--accent); }
+    .empty-state .empty-title { font-size:.95rem; font-weight:800; color:var(--text); }
+    .empty-state .empty-sub { font-size:.8rem; }
 
     /* Pagination */
-    .pagination-wrap { display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-top:1px solid #f0f1f8; background:#fafbff; }
+    .pagination-wrap { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:18px 4px 4px; margin-top:6px; border-top:1px solid var(--border-color); }
     .pagination-info { font-size:.75rem; color:var(--muted); font-weight:600; }
-    .pagination-btns { display:flex; gap:4px; }
-    .page-btn { width:30px; height:30px; border-radius:8px; border:1px solid #e4e5f0; background:#fff; font-family:'Nunito',sans-serif; font-size:.78rem; font-weight:700; color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--trans); text-decoration:none; }
-    .page-btn:hover { border-color:var(--accent); color:var(--accent); }
-    .page-btn.active { background:var(--accent); color:#fff; border-color:var(--accent); }
+    .pagination-btns { display:flex; gap:4px; flex-wrap:wrap; }
+    .page-btn { width:30px; height:30px; border-radius:8px; border:1px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.78rem; font-weight:700; color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--trans); text-decoration:none; }
+    .page-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.1); }
+    .page-btn.active { background:linear-gradient(135deg, #d8b878, #f0d9a8); color:#090c10; border-color:var(--accent); font-weight:800; }
     .page-btn svg { width:13px; height:13px; }
-
-    /* ── Mobile book list (menggantikan tabel di layar HP, tanpa geser ke samping) ── */
-    .mobile-book-list { display:none; flex-direction:column; }
-    .mobile-book-card {
-      display:flex; gap:12px; padding:14px 16px;
-      border-bottom:1px solid #f0f1f8; cursor:pointer;
-      transition:background var(--trans);
-    }
-    .mobile-book-card:last-child { border-bottom:none; }
-    .mobile-book-card:active { background:#f8f9ff; }
-    .mb-cover {
-      width:52px; height:74px; border-radius:8px; flex-shrink:0;
-      overflow:hidden; box-shadow:0 3px 10px rgba(0,0,0,.15); position:relative;
-    }
-    .mb-cover img { width:100%; height:100%; object-fit:cover; display:block; }
-    .mb-cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:.78rem; font-weight:800; color:rgba(255,255,255,.85); text-align:center; padding:2px; line-height:1.2; }
-    .mb-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:3px; }
-    .mb-title { font-weight:800; color:var(--text); font-size:.85rem; line-height:1.3; }
-    .mb-author { font-size:.72rem; color:var(--muted); font-weight:600; }
-    .mb-meta-row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:2px; }
-    .mb-rating { display:inline-flex; align-items:center; gap:3px; font-size:.72rem; font-weight:800; color:#d4820a; }
-    .mb-rating.empty { color:#c4c4d4; font-weight:600; }
-    .mb-rating svg { width:12px; height:12px; }
-    .mb-stock { font-size:.7rem; font-weight:700; color:var(--muted); }
-    .mb-actions { display:flex; gap:8px; margin-top:6px; }
 
     /* ── RESPONSIVE ── */
 
     /* Tablet landscape & small desktop */
     @media (max-width:900px) {
-      .col-hide { display:none; }
       .main { padding:24px 18px 32px; }
     }
 
-    /* Tablet portrait */
-    @media (max-width:700px) {
+    /* Tablet portrait & Mobile */
+    @media (max-width:768px) {
       /* Sidebar slide-in */
-      .sidebar { transform:translateX(-100%); width:min(var(--sidebar-w) + 60px, 250px); padding-bottom:max(20px, env(safe-area-inset-bottom)); }
+      .sidebar {
+        transform:translateX(-100%);
+        width:min(calc(var(--sidebar-w) + 60px), 260px);
+        padding-bottom:max(20px, env(safe-area-inset-bottom));
+      }
       .sidebar.open { transform:translateX(0); }
-      .sidebar-toggle { display:flex; }
       .nav-item { padding:13px 14px; font-size:.86rem; }
       .nav-item svg { width:18px; height:18px; }
 
-      /* Main content shift for hamburger */
-      .main { margin-left:0; padding:70px 12px 28px; }
+      /* Navbar atas mobile: satu bilah utuh, bukan tombol lepas mengambang */
+      .mobile-topbar {
+        display:flex; align-items:center; gap:12px;
+        position:fixed; top:0; left:0; right:0; height:60px;
+        padding:0 14px; padding-top:env(safe-area-inset-top,0);
+        background:var(--sidebar-bg);
+        border-bottom:1px solid var(--border-color, rgba(216,184,120,.15));
+        box-shadow:0 2px 18px rgba(0,0,0,.35);
+        z-index:160;
+        transition:opacity var(--trans), visibility var(--trans);
+      }
+      body.sidebar-open .mobile-topbar {
+        opacity:0;
+        visibility:hidden;
+        pointer-events:none;
+      }
+      .mobile-topbar .sidebar-toggle {
+        display:flex; position:static; box-shadow:none; flex-shrink:0;
+      }
+      .mobile-topbar-divider {
+        display:block; width:1px; height:26px; flex-shrink:0;
+        background:linear-gradient(180deg, transparent, var(--border-color, rgba(216,184,120,.35)) 50%, transparent);
+      }
+      .mobile-topbar-brand {
+        display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden;
+      }
+      .mobile-topbar-brand svg { width:19px; height:19px; color:var(--accent); flex-shrink:0; }
+      .mobile-topbar-brand span {
+        font-family:'Cormorant Garamond',serif; font-weight:700; font-size:.92rem;
+        color:var(--accent); letter-spacing:.04em; white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis;
+      }
+      .mobile-topbar .page-hud-controls {
+        position:static; top:auto; right:auto; margin-left:auto;
+      }
+
+      /* Main content shift for navbar */
+      .main { margin-left:0; padding:78px 14px 28px; }
 
       /* Topbar: stack search + buttons */
       .topbar { flex-wrap:wrap; gap:8px; }
       .search-wrap { max-width:100%; flex:1 1 100%; height:44px; }
-      .tab-btn { flex-shrink:0; padding:10px 18px; min-height:40px; display:inline-flex; align-items:center; }
+      .tab-btn { flex-shrink:0; padding:10px 18px; min-height:44px; display:inline-flex; align-items:center; }
 
       /* Dropdown kategori full-width & panel jadi lembar di bawah trigger */
       .kategori-dropdown { flex:1 1 100%; }
       .kategori-trigger { width:100%; height:44px; justify-content:space-between; }
       .kategori-trigger span { max-width:none; flex:1; text-align:left; }
-      .kategori-panel { left:0; right:0; top:calc(100% + 8px); width:auto; max-width:none; transform-origin:top center; transform:translateY(-8px) scale(.98); }
+      .kategori-panel {
+        left:0; right:0; top:calc(100% + 8px); width:auto; max-width:none;
+        max-height:55vh; overflow-y:auto;
+        transform-origin:top center; transform:translateY(-8px) scale(.98);
+      }
       .kategori-panel.open { transform:translateY(0) scale(1); }
 
       /* Page header */
       .page-title { font-size:1.25rem; }
+      .page-sub { font-size:.78rem; }
 
-      /* Ganti tabel dengan daftar kartu — tidak perlu geser ke samping lagi */
-      .table-card table { display:none; }
-      .mobile-book-list { display:flex; }
+      /* Grid buku tetap reflow, tanpa perlu geser ke samping */
+      .books-grid { grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); }
 
       /* Pagination: stack info above buttons */
-      .pagination-wrap { flex-direction:column; align-items:flex-start; gap:8px; padding:12px 14px; }
-      .pagination-btns { flex-wrap:wrap; }
+      .pagination-wrap { flex-direction:column; align-items:flex-start; gap:8px; }
+      .page-btn { min-width:40px; min-height:40px; }
 
       /* Modal full-width on tablet */
       .detail-modal { max-width:100%; margin:8px; border-radius:12px; }
     }
 
-    /* Mobile portrait */
+    /* Mobile portrait (≤480px) */
     @media (max-width:480px) {
-      .main { padding:64px 10px 24px; }
+      .main { padding:74px 10px 24px; }
 
-      /* Kartu buku lebih ringkas di layar sangat kecil */
-      .mobile-book-card { padding:12px 14px; gap:10px; }
-      .mb-cover { width:46px; height:64px; }
-      .mb-title { font-size:.82rem; }
+      .books-grid { grid-template-columns:repeat(auto-fill,minmax(135px,1fr)); gap:12px; }
+      .bk-title { font-size:.78rem; }
+      .bk-actions { flex-wrap:wrap; gap:6px; }
 
-      /* Pagination info & tombol lebih ringkas */
+      /* Pagination info & tombol lebih ringkas tapi tetap ≥44px touch */
       .pagination-info { font-size:.7rem; }
-      .page-btn { width:32px; height:32px; font-size:.72rem; }
+      .page-btn { width:36px; height:36px; font-size:.72rem; }
 
-      /* Modal detail full-screen feel */
-      .detail-modal { margin:0; border-radius:14px 14px 0 0; max-height:96vh; position:fixed; bottom:0; left:0; right:0; width:100%; }
-      .detail-overlay { align-items:flex-end; }
-      .detail-title { font-size:1.2rem; }
-      .detail-body { padding:16px 16px 20px; }
-      .detail-meta-row { gap:6px; }
-      .detail-meta-chip { font-size:.66rem; padding:5px 9px; }
+      /* Modal detail — bottom sheet feel */
+      .detail-overlay { align-items:flex-end; padding:0; }
+      .detail-modal {
+        margin:0; border-radius:16px 16px 0 0;
+        max-height:92dvh;
+        position:relative; bottom:auto; left:auto; right:auto; width:100%;
+      }
+      .detail-title { font-size:1.15rem; }
+      .detail-body { padding:16px 14px 22px; }
+      .detail-meta-row { gap:5px; flex-wrap:wrap; }
+      .detail-meta-chip { font-size:.64rem; padding:4px 8px; }
       .detail-rating-row { gap:6px; flex-wrap:wrap; }
-      .stars-input svg { width:20px; height:20px; }
-      .detail-footer-btns { gap:8px; }
-      .detail-stat-row { gap:10px; }
+      .stars-input svg { width:22px; height:22px; }
+      .detail-footer-btns { gap:8px; flex-wrap:wrap; }
+      .detail-stat-row { gap:8px; flex-wrap:wrap; }
     }
 
-    /* Like & Simpan */
-    .action-cell { display:flex; align-items:center; gap:6px; }
-    .btn-like, .btn-save {
-      display:inline-flex; align-items:center; gap:4px;
-      padding:5px 10px; border-radius:50px; border:1.5px solid #e4e5f0;
-      background:#fff; font-family:'Nunito',sans-serif;
-      font-size:.7rem; font-weight:700; color:var(--muted);
-      cursor:pointer; transition:all .18s; white-space:nowrap;
-      user-select:none;
+    /* Layar super kecil (≤375px) */
+    @media (max-width:375px) {
+      .main { padding:72px 8px 22px; }
+      .books-grid { grid-template-columns:repeat(2, 1fr); gap:10px; }
+      .bk-title { font-size:.75rem; }
+      .page-title { font-size:1.1rem; }
+      .topbar { gap:6px; }
     }
-    .btn-like svg, .btn-save svg { width:13px; height:13px; flex-shrink:0; transition:transform .2s; }
-    .btn-like:hover  { border-color:#e74c3c; color:#e74c3c; background:#fff5f5; }
-    .btn-save:hover  { border-color:#2b4fff; color:#2b4fff; background:#eef0ff; }
-    .btn-like.aktif  { border-color:#e74c3c; color:#e74c3c; background:#fff0f0; }
-    .btn-save.aktif  { border-color:#2b4fff; color:#2b4fff; background:#eef0ff; }
+
+
+    /* Like & Simpan — tombol ikon bulat berukuran sama, tanpa teks, supaya selalu simetris & tidak pernah tembus di layar kecil */
+    .btn-like, .btn-save {
+      display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
+      position:relative; width:34px; height:34px; padding:0; border-radius:50%;
+      border:1.5px solid var(--border-color); background:rgba(255,255,255,.04);
+      color:var(--muted); cursor:pointer; transition:all .18s; user-select:none;
+    }
+    .btn-like svg, .btn-save svg { width:15px; height:15px; flex-shrink:0; transition:transform .2s; pointer-events:none; }
+    .btn-like:hover  { border-color:#e74c3c; color:#e74c3c; background:rgba(231,76,60,.1); }
+    .btn-save:hover  { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.12); }
+    .btn-like.aktif  { border-color:#e74c3c; color:#e74c3c; background:rgba(231,76,60,.15); }
+    .btn-save.aktif  { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.18); }
     .btn-like.aktif svg { fill:#e74c3c; color:#e74c3c; }
-    .btn-save.aktif  svg { fill:#2b4fff; color:#2b4fff; }
+    .btn-save.aktif  svg { fill:var(--accent); color:var(--accent); }
     .btn-like.pop svg, .btn-save.pop svg { transform:scale(1.4); }
+    .btn-like .like-count-badge {
+      position:absolute; top:-5px; right:-5px; min-width:15px; height:15px; padding:0 3px;
+      border-radius:20px; background:var(--card); border:1px solid var(--border-color);
+      color:var(--muted); font-size:.55rem; font-weight:800; line-height:13px; text-align:center;
+      pointer-events:none;
+    }
+    .btn-like.aktif .like-count-badge { border-color:#e74c3c; color:#e74c3c; }
 
     /* ── MODAL DETAIL BUKU ── */
-    .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:500; align-items:center; justify-content:center; }
+    .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); z-index:500; align-items:center; justify-content:center; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:#fff; border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; box-shadow:0 24px 70px rgba(0,0,0,.28); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; margin:16px; }
+    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; margin:16px; }
     @keyframes modalIn { from{opacity:0;transform:scale(.94) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
-    .detail-cover { width:100%; aspect-ratio:16/9; border-radius:16px 16px 0 0; overflow:hidden; position:relative; background:#1a1a2e; }
+    .detail-cover { width:100%; aspect-ratio:16/9; border-radius:16px 16px 0 0; overflow:hidden; position:relative; background:#10151b; }
     .detail-cover img { width:100%; height:100%; object-fit:cover; display:block; }
     .detail-cover-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-    .detail-cover-placeholder svg { width:56px; height:56px; color:rgba(255,255,255,.25); }
-    .detail-cover-badge { position:absolute; top:12px; right:12px; background:rgba(0,0,0,.55); color:#fff; font-size:.65rem; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; backdrop-filter:blur(4px); }
-    .detail-close-btn { position:absolute; top:12px; left:12px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.5); border:none; display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(4px); transition:background .2s; }
-    .detail-close-btn:hover { background:rgba(0,0,0,.75); }
-    .detail-close-btn svg { width:16px; height:16px; color:#fff; }
+    .detail-cover-placeholder svg { width:56px; height:56px; color:rgba(216,184,120,.35); }
+    .detail-cover-badge { position:absolute; top:12px; right:12px; background:rgba(0,0,0,.65); color:var(--accent); border:1px solid rgba(216,184,120,.3); font-size:.65rem; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; backdrop-filter:blur(4px); }
+    .detail-close-btn { position:absolute; top:12px; left:12px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.65); border:1px solid rgba(216,184,120,.3); display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(4px); transition:background .2s; }
+    .detail-close-btn:hover { background:rgba(0,0,0,.85); }
+    .detail-close-btn svg { width:16px; height:16px; color:var(--accent); }
     .detail-body { padding:20px 22px 24px; }
-    .detail-genre-chip { display:inline-block; background:#eef0ff; color:var(--accent); font-size:.65rem; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px; }
+    .detail-genre-chip { display:inline-block; background:rgba(216,184,120,.12); color:var(--accent); border:1px solid rgba(216,184,120,.25); font-size:.65rem; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px; }
     .detail-title { font-family:'Cormorant Garamond',serif; font-size:1.45rem; font-weight:700; color:var(--text); line-height:1.2; margin-bottom:4px; }
     .detail-author { font-size:.82rem; color:var(--muted); font-weight:600; margin-bottom:14px; }
     .detail-stat-row { display:flex; gap:16px; margin-bottom:16px; }
     .detail-stat { display:flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700; }
     .detail-stat svg { width:15px; height:15px; }
     .detail-stat.likes { color:#e74c3c; }
-    .detail-stat.favs  { color:#2b4fff; }
+    .detail-stat.favs  { color:#f39c12; }
     .detail-body .btn-save {
       display:inline-flex; align-items:center; gap:5px;
-      padding:6px 14px; border-radius:50px; border:1.5px solid #e4e5f0;
-      background:#fff; font-family:'Nunito',sans-serif; font-size:.75rem;
+      padding:6px 14px; border-radius:50px; border:1.5px solid var(--border-color);
+      background:rgba(255,255,255,.04); font-family:var(--font-family,'Outfit',sans-serif); font-size:.75rem;
       font-weight:700; color:var(--muted); cursor:pointer; transition:all .18s;
       user-select:none;
     }
     .detail-body .btn-save svg { width:14px; height:14px; flex-shrink:0; transition:transform .2s; }
-    .detail-body .btn-save:hover { border-color:#2b4fff; color:#2b4fff; background:#eef0ff; }
-    .detail-body .btn-save.aktif { border-color:#2b4fff; color:#2b4fff; background:#eef0ff; }
-    .detail-body .btn-save.aktif svg { fill:#2b4fff; color:#2b4fff; }
+    .detail-body .btn-save:hover { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.12); }
+    .detail-body .btn-save.aktif { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.18); }
+    .detail-body .btn-save.aktif svg { fill:var(--accent); color:var(--accent); }
     .detail-body .btn-save.pop svg { transform:scale(1.4); }
     .detail-meta-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
-    .detail-meta-chip { display:flex; align-items:center; gap:5px; background:#f8f9ff; border:1px solid #eef0fc; border-radius:8px; padding:6px 11px; font-size:.71rem; font-weight:700; color:var(--muted); }
+    .detail-meta-chip { display:flex; align-items:center; gap:5px; background:rgba(255,255,255,.04); border:1px solid var(--card-border, rgba(216,184,120,.14)); border-radius:8px; padding:6px 11px; font-size:.71rem; font-weight:700; color:var(--muted); }
     .detail-meta-chip svg { width:13px; height:13px; flex-shrink:0; }
     .detail-meta-chip span { color:var(--text); }
     .detail-section-label { font-size:.68rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:7px; }
-    .detail-sinopsis { font-size:.83rem; line-height:1.7; color:#3a3a5a; background:#f8f9ff; border-radius:10px; padding:14px 16px; border-left:3px solid var(--accent); }
+    .detail-sinopsis { font-size:.83rem; line-height:1.7; color:var(--text); background:rgba(255,255,255,.03); border-radius:10px; padding:14px 16px; border-left:3px solid var(--accent); border:1px solid var(--card-border, rgba(216,184,120,.12)); }
     .detail-sinopsis-empty { color:var(--muted); font-style:italic; }
 
     /* Rating bintang */
@@ -475,13 +614,48 @@ ob_start();
 </head>
 <body>
 
-<button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <line x1="3" y1="6" x2="21" y2="6"/>
-    <line x1="3" y1="12" x2="21" y2="12"/>
-    <line x1="3" y1="18" x2="21" y2="18"/>
-  </svg>
-</button>
+<header class="mobile-topbar" id="mobileTopbar">
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <span class="mobile-topbar-divider" aria-hidden="true"></span>
+  <div class="mobile-topbar-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+    <span>AKSA NOVA</span>
+  </div>
+
+  <div class="page-hud-controls" id="pageHudControls">
+    <!-- Tombol Ganti Mode Gelap / Terang -->
+    <button type="button" class="btn-topbar-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+      </svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4.2"/>
+        <path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>
+      </svg>
+    </button>
+
+    <?php if ($musik_tampil): ?>
+    <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
+      <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+      </svg>
+      <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <audio id="audioLatar" loop autoplay muted preload="auto">
+      <source src="<?= htmlspecialchars($musik_file) ?>">
+    </audio>
+    <?php endif; ?>
+  </div>
+</header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <aside class="sidebar" id="sidebar">
@@ -501,14 +675,24 @@ ob_start();
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Beranda
     </a>
+    <?php if (!$is_admin && !$is_guest): ?>
+    <a href="dashboard_user.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      Dashboard
+    </a>
+    <?php endif; ?>
     <a href="daftar_buku.php" class="nav-item active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Daftar Buku
     </a>
-    <?php if (!$is_admin): ?>
+    <?php if (!$is_admin && !$is_guest): ?>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       Buku Simpan
+    </a>
+    <a href="edit_kartu.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit Profil
     </a>
     <?php endif; ?>
     <?php if ($is_admin): ?>
@@ -591,190 +775,82 @@ ob_start();
     </div>
   </div>
 
-  <div class="table-card">
-    <table>
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Buku</th>
-          <th class="col-hide">Penulis</th>
-          <th>Rating</th>
-          <th>Stok</th>
-          <th>Status</th>
-          <?php if (!$is_admin): ?><th></th><?php endif; ?>
-        </tr>
-      </thead>
-      <tbody>
-        <?php if (empty($buku_list)): ?>
-        <tr class="empty-row">
-          <td colspan="6">
-            <?php if ($search): ?>
-              Tidak ada buku yang cocok dengan "<?= htmlspecialchars($search) ?>"<?= $kategori ? " dalam kategori \"" . htmlspecialchars($kategori) . "\"" : "" ?>.
-            <?php elseif ($kategori): ?>
-              Belum ada buku dalam kategori "<?= htmlspecialchars($kategori) ?>".
-            <?php else: ?>
-              Belum ada buku di katalog.
-            <?php endif; ?>
-          </td>
-        </tr>
+  <?php if (empty($buku_list)): ?>
+    <div class="empty-state">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <div class="empty-title">Tidak ada buku ditemukan</div>
+      <div class="empty-sub">
+        <?php if ($search): ?>
+          Tidak ada buku yang cocok dengan "<?= htmlspecialchars($search) ?>"<?= $kategori ? " dalam kategori \"" . htmlspecialchars($kategori) . "\"" : "" ?>.
+        <?php elseif ($kategori): ?>
+          Belum ada buku dalam kategori "<?= htmlspecialchars($kategori) ?>".
         <?php else: ?>
-        <?php foreach ($buku_list as $i => $buku):
-          $num   = $offset + $i + 1;
-          $col   = $cover_cls[$i % count($cover_cls)];
-          [$status_cls, $status_label] = getStatus((int)$buku["stok"]);
-          // Inisial dari judul
-          $words   = preg_split('/\s+/', trim($buku["judul"]));
-          $initial = mb_strtoupper(mb_substr($words[0], 0, 1)) . (isset($words[1]) ? mb_strtoupper(mb_substr($words[1], 0, 1)) : "");
-        ?>
-        <tr onclick="bukaDetailBuku(<?= $buku['id'] ?>)" style="cursor:pointer;">
-          <td style="font-weight:800;color:var(--muted);font-size:.78rem;"><?= str_pad($num, 2, "0", STR_PAD_LEFT) ?></td>
-          <td>
-            <div class="book-identity">
-              <div class="book-cover-sm <?= $col ?>">
-                <?php if ($buku["gambar"] && file_exists($buku["gambar"])): ?>
-                  <img src="<?= htmlspecialchars($buku["gambar"]) ?>" alt="<?= htmlspecialchars($buku["judul"]) ?>">
-                <?php else: ?>
-                  <div class="book-cover-initial"><?= htmlspecialchars($initial) ?></div>
-                <?php endif; ?>
-              </div>
-              <div>
-                <div class="td-title"><?= htmlspecialchars($buku["judul"]) ?></div>
-                <div class="td-isbn"><?= $buku["isbn"] ? "ISBN " . htmlspecialchars($buku["isbn"]) : "" ?></div>
-                <?php if ($buku["genre"]): ?><span class="td-genre-badge"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
-              </div>
-            </div>
-          </td>
-          <td class="col-hide"><span class="td-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></span></td>
-          <td onclick="event.stopPropagation()">
-            <?php
-              $rat = $rating_counts[$buku["id"]] ?? null;
-              if ($rat && $rat["total"] > 0):
-                $full = floor($rat["avg"]);
-            ?>
-            <div class="td-rating">
-              <?php for ($s=1;$s<=5;$s++): ?>
-                <svg viewBox="0 0 24 24" fill="<?= $s<=$full?'#f5a623':'none' ?>" stroke="#f5a623" stroke-width="2" stroke-linejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
-                </svg>
-              <?php endfor; ?>
-              <span class="td-rating-num"><?= $rat["avg"] ?></span>
-            </div>
-            <?php else: ?>
-            <span class="td-rating-empty">—</span>
-            <?php endif; ?>
-          </td>
-          <td><span class="td-stock"><?= (int)$buku["stok"] ?></span></td>
-          <td><span class="status-badge status-<?= $status_cls ?>"><span class="dot"></span><?= $status_label ?></span></td>
+          Belum ada buku di katalog.
+        <?php endif; ?>
+      </div>
+    </div>
+  <?php else: ?>
+    <div class="books-grid">
+      <?php foreach ($buku_list as $i => $buku):
+        $num   = $offset + $i + 1;
+        $col   = $cover_cls[$i % count($cover_cls)];
+        [$status_cls, $status_label] = getStatus((int)$buku["stok"]);
+        $words   = preg_split('/\s+/', trim($buku["judul"]));
+        $initial = mb_strtoupper(mb_substr($words[0], 0, 1)) . (isset($words[1]) ? mb_strtoupper(mb_substr($words[1], 0, 1)) : "");
+        $rat = $rating_counts[$buku["id"]] ?? null;
+      ?>
+      <div class="book-card" onclick="bukaDetailBuku(<?= $buku['id'] ?>)" id="card_buku_<?= $buku['id'] ?>">
+        <div class="book-cover-wrap <?= $col ?>">
+          <?php if ($buku["gambar"] && file_exists($buku["gambar"])): ?>
+            <img src="<?= htmlspecialchars($buku["gambar"]) ?>" alt="<?= htmlspecialchars($buku["judul"]) ?>">
+          <?php else: ?>
+            <div class="cover-initial"><?= htmlspecialchars($initial) ?></div>
+          <?php endif; ?>
+          <span class="cover-num-badge"><?= str_pad($num, 2, "0", STR_PAD_LEFT) ?></span>
+          <?php if ($rat && $rat["total"] > 0): ?>
+          <div class="cover-rating">
+            <svg viewBox="0 0 24 24" fill="#ffb800" stroke="#ffb800" stroke-width="1"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <?= $rat["avg"] ?>
+          </div>
+          <?php endif; ?>
+        </div>
+        <div class="book-info">
+          <div class="bk-title"><?= htmlspecialchars($buku["judul"]) ?></div>
+          <div class="bk-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></div>
+          <div class="bk-badges-row">
+            <?php if ($buku["genre"]): ?><span class="bk-genre"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
+            <span class="status-badge status-<?= $status_cls ?>"><span class="dot"></span><?= $status_label ?> · <?= (int)$buku["stok"] ?></span>
+          </div>
           <?php if (!$is_admin):
             $sudah_like = in_array($buku["id"], $liked_ids);
             $sudah_fav  = in_array($buku["id"], $fav_ids);
             $jml_like   = $like_counts[$buku["id"]] ?? 0;
-            $jml_fav    = $fav_counts[$buku["id"]]  ?? 0;
           ?>
-          <td onclick="event.stopPropagation()">
-            <div class="action-cell">
-              <button class="btn-like <?= $sudah_like ? 'aktif' : '' ?>"
-                      data-buku-id="<?= $buku['id'] ?>"
-                      onclick="toggleAksi(this, <?= $buku['id'] ?>, 'like')"
-                      title="Suka">
-                <svg viewBox="0 0 24 24" fill="<?= $sudah_like ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-                <span class="like-count-<?= $buku['id'] ?>"><?= $jml_like ?></span>
-              </button>
-              <button class="btn-save <?= $sudah_fav ? 'aktif' : '' ?>"
-                      data-buku-id="<?= $buku['id'] ?>"
-                      onclick="toggleAksi(this, <?= $buku['id'] ?>, 'favorite')"
-                      title="Simpan">
-                <svg viewBox="0 0 24 24" fill="<?= $sudah_fav ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                </svg>
-                Simpan
-              </button>
-            </div>
-          </td>
-          <?php endif; ?>
-        </tr>
-        <?php endforeach; ?>
-        <?php endif; ?>
-      </tbody>
-    </table>
-
-    <!-- Daftar kartu untuk layar HP — tampil menggantikan tabel, tanpa perlu geser ke samping -->
-    <div class="mobile-book-list">
-      <?php if (empty($buku_list)): ?>
-        <div class="empty-row">
-          <?php if ($search): ?>
-            Tidak ada buku yang cocok dengan "<?= htmlspecialchars($search) ?>"<?= $kategori ? " dalam kategori \"" . htmlspecialchars($kategori) . "\"" : "" ?>.
-          <?php elseif ($kategori): ?>
-            Belum ada buku dalam kategori "<?= htmlspecialchars($kategori) ?>".
-          <?php else: ?>
-            Belum ada buku di katalog.
+          <div class="bk-actions" onclick="event.stopPropagation()">
+            <button class="btn-like <?= $sudah_like ? 'aktif' : '' ?>"
+                    data-buku-id="<?= $buku['id'] ?>"
+                    onclick="toggleAksi(this, <?= $buku['id'] ?>, 'like')"
+                    title="Suka" aria-label="Suka">
+              <svg viewBox="0 0 24 24" fill="<?= $sudah_like ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
+                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+              </svg>
+              <span class="like-count-badge like-count-<?= $buku['id'] ?>"><?= $jml_like ?></span>
+            </button>
+            <button class="btn-save <?= $sudah_fav ? 'aktif' : '' ?>"
+                    data-buku-id="<?= $buku['id'] ?>"
+                    onclick="toggleAksi(this, <?= $buku['id'] ?>, 'favorite')"
+                    title="Simpan" aria-label="Simpan">
+              <svg viewBox="0 0 24 24" fill="<?= $sudah_fav ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
+                <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+              </svg>
+            </button>
+          </div>
           <?php endif; ?>
         </div>
-      <?php else: ?>
-        <?php foreach ($buku_list as $i => $buku):
-          $col_m = $cover_cls[$i % count($cover_cls)];
-          [$status_cls_m, $status_label_m] = getStatus((int)$buku["stok"]);
-          $words_m   = preg_split('/\s+/', trim($buku["judul"]));
-          $initial_m = mb_strtoupper(mb_substr($words_m[0], 0, 1)) . (isset($words_m[1]) ? mb_strtoupper(mb_substr($words_m[1], 0, 1)) : "");
-          $rat_m = $rating_counts[$buku["id"]] ?? null;
-        ?>
-        <div class="mobile-book-card" onclick="bukaDetailBuku(<?= $buku['id'] ?>)">
-          <div class="mb-cover <?= $col_m ?>">
-            <?php if ($buku["gambar"] && file_exists($buku["gambar"])): ?>
-              <img src="<?= htmlspecialchars($buku["gambar"]) ?>" alt="<?= htmlspecialchars($buku["judul"]) ?>">
-            <?php else: ?>
-              <div class="mb-cover-initial"><?= htmlspecialchars($initial_m) ?></div>
-            <?php endif; ?>
-          </div>
-          <div class="mb-info">
-            <div class="mb-title"><?= htmlspecialchars($buku["judul"]) ?></div>
-            <div class="mb-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></div>
-            <?php if ($buku["genre"]): ?><span class="mb-genre-badge"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
-            <div class="mb-meta-row">
-              <?php if ($rat_m && $rat_m["total"] > 0): ?>
-                <span class="mb-rating">
-                  <svg viewBox="0 0 24 24" fill="#f5a623" stroke="#f5a623" stroke-width="2" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  <?= $rat_m["avg"] ?>
-                </span>
-              <?php else: ?>
-                <span class="mb-rating empty">Belum ada rating</span>
-              <?php endif; ?>
-              <span class="mb-stock"><?= (int)$buku["stok"] ?> stok</span>
-              <span class="status-badge status-<?= $status_cls_m ?>"><span class="dot"></span><?= $status_label_m ?></span>
-            </div>
-            <?php if (!$is_admin):
-              $sudah_like_m = in_array($buku["id"], $liked_ids);
-              $sudah_fav_m  = in_array($buku["id"], $fav_ids);
-              $jml_like_m   = $like_counts[$buku["id"]] ?? 0;
-            ?>
-            <div class="mb-actions" onclick="event.stopPropagation()">
-              <button class="btn-like <?= $sudah_like_m ? 'aktif' : '' ?>"
-                      data-buku-id="<?= $buku['id'] ?>"
-                      onclick="toggleAksi(this, <?= $buku['id'] ?>, 'like')"
-                      title="Suka">
-                <svg viewBox="0 0 24 24" fill="<?= $sudah_like_m ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
-                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
-                </svg>
-                <span><?= $jml_like_m ?></span>
-              </button>
-              <button class="btn-save <?= $sudah_fav_m ? 'aktif' : '' ?>"
-                      data-buku-id="<?= $buku['id'] ?>"
-                      onclick="toggleAksi(this, <?= $buku['id'] ?>, 'favorite')"
-                      title="Simpan">
-                <svg viewBox="0 0 24 24" fill="<?= $sudah_fav_m ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2">
-                  <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
-                </svg>
-                Simpan
-              </button>
-            </div>
-            <?php endif; ?>
-          </div>
-        </div>
-        <?php endforeach; ?>
-      <?php endif; ?>
+      </div>
+      <?php endforeach; ?>
     </div>
+  <?php endif; ?>
 
     <!-- Pagination -->
     <?php
@@ -784,6 +860,7 @@ ob_start();
     if ($search)   $qs .= "&q=" . urlencode($search);
     if ($kategori) $qs .= "&kategori=" . urlencode($kategori);
     ?>
+    <?php if ($total_buku > 0): ?>
     <div class="pagination-wrap">
       <div class="pagination-info">Menampilkan <?= $from ?>–<?= $to ?> dari <?= $total_buku ?> buku</div>
       <div class="pagination-btns">
@@ -811,7 +888,7 @@ ob_start();
         <?php endif; ?>
       </div>
     </div>
-  </div>
+    <?php endif; ?>
   <?php
   $search_result_html = ob_get_clean(); // buffer dalam (khusus area hasil pencarian)
   if ($is_ajax) {
@@ -842,8 +919,18 @@ ob_start();
   const toggle  = document.getElementById('sidebarToggle');
   const sidebar = document.getElementById('sidebar');
   const overlay = document.getElementById('sidebarOverlay');
-  toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
-  overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+  if (toggle && sidebar && overlay) {
+    toggle.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+      overlay.classList.toggle('open');
+      document.body.classList.toggle('sidebar-open', sidebar.classList.contains('open'));
+    });
+    overlay.addEventListener('click', () => {
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    });
+  }
 
   const IS_ADMIN = <?= json_encode($is_admin) ?>;
   const IS_GUEST = <?= json_encode($is_guest) ?>;
@@ -936,7 +1023,7 @@ ob_start();
 
         <div class="detail-rating-row" id="ratingRow_${b.id}">
           ${renderStarsDisplay(b.rating_avg, b.rating_total)}
-          <div style="border-left:1px solid #e0e0e0;height:16px;"></div>
+          <div style="border-left:1px solid var(--border-color,rgba(216,184,120,.2));height:16px;"></div>
           <span style="font-size:.72rem;font-weight:700;color:var(--muted);">Nilai kamu:</span>
           ${renderStarsInput(b.id, b.user_rating)}
         </div>
@@ -1242,6 +1329,102 @@ ob_start();
         }
       });
   }
+
+  // ─── Mode Gelap / Terang ───
+  (function () {
+    const btn  = document.getElementById('btnMode');
+    if (!btn) return;
+    const root = document.documentElement;
+
+    function updatePressed() {
+      const isLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
+      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+    }
+    updatePressed();
+
+    btn.addEventListener('click', () => {
+      const isCurrentlyLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
+      const targetMode = isCurrentlyLight ? 'dark' : 'light';
+      if (typeof window.setMode === 'function') {
+        window.setMode(targetMode);
+      } else {
+        root.classList.toggle('theme-light', targetMode === 'light');
+        root.classList.toggle('light', targetMode === 'light');
+        root.classList.toggle('dark', targetMode === 'dark');
+        try { localStorage.setItem('aksanova_theme', targetMode); } catch (e) {}
+      }
+      updatePressed();
+    });
+  })();
+
+  // ─── Musik Latar ───
+  (function () {
+    const btn   = document.getElementById('btnMusik');
+    const audio = document.getElementById('audioLatar');
+    if (!btn || !audio) return;
+
+    audio.volume = 0.55;
+    let userPaused = false;
+    let autoplaySucceeded = false;
+
+    function setPlaying(isPlaying) {
+      btn.classList.toggle('playing', isPlaying);
+      btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+    }
+
+    function removeFallback() {
+      ['click','touchstart','keydown','scroll'].forEach(ev => document.removeEventListener(ev, fallback));
+    }
+
+    function play() {
+      audio.play().then(() => {
+        audio.muted = false;
+        autoplaySucceeded = true;
+        removeFallback();
+        setPlaying(true);
+      }).catch(() => setPlaying(false));
+    }
+
+    function pause() {
+      audio.pause();
+      setPlaying(false);
+    }
+
+    function fallback() {
+      if (userPaused || autoplaySucceeded) return;
+      audio.muted = false;
+      play();
+    }
+
+    audio.play().then(() => {
+      audio.muted = false;
+      autoplaySucceeded = true;
+      setPlaying(true);
+    }).catch(() => {
+      audio.muted = true;
+      audio.play().then(() => {
+        setPlaying(true);
+        ['click','touchstart','keydown','scroll'].forEach(ev => {
+          document.addEventListener(ev, fallback, { once: true, passive: true });
+        });
+      }).catch(() => setPlaying(false));
+    });
+
+    btn.addEventListener('click', () => {
+      if (audio.paused) {
+        userPaused = false;
+        audio.muted = false;
+        play();
+      } else {
+        userPaused = true;
+        pause();
+      }
+    });
+
+    audio.addEventListener('play',  () => setPlaying(true));
+    audio.addEventListener('pause', () => setPlaying(false));
+    audio.addEventListener('ended', () => setPlaying(false));
+  })();
 </script>
 <?php require_once "pengaturan_panel.php"; ?>
 </body>

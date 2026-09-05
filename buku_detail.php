@@ -3,17 +3,19 @@ declare(strict_types=1);
 
 session_start();
 
-function jsonResponse(bool $ok, string $msg = '', mixed $data = null, int $httpCode = 200): never
-{
-    http_response_code($httpCode);
-    header('Content-Type: application/json; charset=utf-8');
+if (!function_exists('jsonResponse')) {
+    function jsonResponse(bool $ok, string $msg = '', mixed $data = null, int $httpCode = 200): never
+    {
+        http_response_code($httpCode);
+        header('Content-Type: application/json; charset=utf-8');
 
-    $payload = ['ok' => $ok];
-    if ($msg !== '')   $payload['msg']  = $msg;
-    if ($data !== null) $payload['buku'] = $data;
+        $payload = ['ok' => $ok];
+        if ($msg !== '')   $payload['msg']  = $msg;
+        if ($data !== null) $payload['buku'] = $data;
 
-    echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
-    exit;
+        echo json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+        exit;
+    }
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────
@@ -34,24 +36,28 @@ if ($id === false || $id === null) {
     jsonResponse(ok: false, msg: 'ID tidak valid', httpCode: 400);
 }
 
-function fetchAll(mysqli $db, string $sql, string $types, mixed ...$params): array
-{
-    $stmt = $db->prepare($sql);
-    if (!$stmt) throw new RuntimeException("Prepare gagal: {$db->error}");
+if (!function_exists('fetchAll')) {
+    function fetchAll(mysqli $db, string $sql, string $types, mixed ...$params): array
+    {
+        $stmt = $db->prepare($sql);
+        if (!$stmt) throw new RuntimeException("Prepare gagal: {$db->error}");
 
-    if ($types !== '') $stmt->bind_param($types, ...$params);
+        if ($types !== '') $stmt->bind_param($types, ...$params);
 
-    $stmt->execute();
-    $result = $stmt->get_result();
-    $rows   = $result->fetch_all(MYSQLI_ASSOC);
-    $stmt->close();
-    return $rows;
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $rows   = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+        return $rows;
+    }
 }
 
-function fetchOne(mysqli $db, string $sql, string $types, mixed ...$params): ?array
-{
-    $rows = fetchAll($db, $sql, $types, ...$params);
-    return $rows[0] ?? null;
+if (!function_exists('fetchOne')) {
+    function fetchOne(mysqli $db, string $sql, string $types, mixed ...$params): ?array
+    {
+        $rows = fetchAll($db, $sql, $types, ...$params);
+        return $rows[0] ?? null;
+    }
 }
 
 // ── Ambil data buku ───────────────────────────────────────────────────────────

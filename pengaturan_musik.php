@@ -3,7 +3,7 @@
 session_start();
 
 // Cek login & role admin
-if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "admin") {
+if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
     header("Location: sign_in.php");
     exit;
 }
@@ -52,7 +52,7 @@ if ($res) {
 // ─────────────────────────────────────────────
 //  AKSI: simpan pengaturan (upload / pilih file, toggle aktif, judul)
 // ─────────────────────────────────────────────
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     $action = $_POST["action"] ?? "simpan";
 
     if ($action === "hapus_file") {
@@ -80,8 +80,16 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
             } else {
                 $ext     = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
                 $allowed = ["mp3", "ogg", "wav", "m4a"];
+                $mime    = function_exists("mime_content_type") ? mime_content_type($file["tmp_name"]) : "";
+                $allowed_mimes = [
+                    "audio/mpeg", "audio/mp3", "audio/ogg", "audio/wav", "audio/x-wav",
+                    "audio/x-m4a", "audio/mp4", "audio/aac", "application/ogg", "audio/vnd.wave"
+                ];
+
                 if (!in_array($ext, $allowed)) {
                     $upload_error = "Format tidak didukung (hanya MP3, OGG, WAV, M4A).";
+                } elseif ($mime !== "" && !in_array($mime, $allowed_mimes, true)) {
+                    $upload_error = "File yang diunggah bukan berkas audio yang valid.";
                 } else {
                     $dir = "uploads/musik/";
                     if (!is_dir($dir)) mkdir($dir, 0775, true);

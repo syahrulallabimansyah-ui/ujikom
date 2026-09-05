@@ -2,7 +2,7 @@
 // daftar_anggota.php — Panel admin untuk kelola anggota (approve/tolak/reset sandi)
 session_start();
 
-if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "admin") {
+if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
     header("Location: sign_in.php");
     exit;
 }

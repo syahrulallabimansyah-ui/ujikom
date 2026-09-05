@@ -6,7 +6,7 @@ declare(strict_types=1);
 session_start();
 
 // Cek login & role admin
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: sign_in.php');
     exit;
 }
@@ -71,17 +71,22 @@ if ($action === 'pinjam') {
                 $bk  = mysqli_real_escape_string($conn, $batas_kembali);
                 $wp  = date('Y-m-d H:i:s'); // Waktu pinjam otomatis dari server
 
-                // Insert peminjaman (tertaut ke user_id anggota)
-                mysqli_query($conn,
-                    "INSERT INTO peminjaman (buku_id, user_id, nama_peminjam, waktu_pinjam, batas_kembali)
-                     VALUES ($buku_id, $user_id, '$np', '$wp', '$bk')"
-                );
-
-                // Kurangi stok
+                // Kurangi stok secara aman (atomic)
                 mysqli_query($conn, "UPDATE buku SET stok = stok - 1 WHERE id = $buku_id AND stok > 0");
 
-                $msg = 'Buku berhasil dipinjam!';
-                $msg_type = 'success';
+                if (mysqli_affected_rows($conn) > 0) {
+                    // Insert peminjaman (tertaut ke user_id anggota)
+                    mysqli_query($conn,
+                        "INSERT INTO peminjaman (buku_id, user_id, nama_peminjam, waktu_pinjam, batas_kembali)
+                         VALUES ($buku_id, $user_id, '$np', '$wp', '$bk')"
+                    );
+
+                    $msg = 'Buku berhasil dipinjam!';
+                    $msg_type = 'success';
+                } else {
+                    $msg = 'Stok buku habis atau baru saja dipinjam oleh peminjam lain.';
+                    $msg_type = 'error';
+                }
             }
         }
     }

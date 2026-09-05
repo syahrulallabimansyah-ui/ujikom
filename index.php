@@ -15,19 +15,23 @@ if ($res) {
 }
 $buku_utama = $buku_list[0] ?? null;
 
-function format_genre($genre) {
-    if (!$genre) return "";
-    $parts = explode(":", $genre);
-    $label = end($parts);
-    $label = str_replace("_", " ", $label);
-    return ucwords($label);
+if (!function_exists('format_genre')) {
+    function format_genre($genre) {
+        if (!$genre) return "";
+        $parts = explode(":", $genre);
+        $label = end($parts);
+        $label = str_replace("_", " ", $label);
+        return ucwords($label);
+    }
 }
 
-function ringkas($teks, $panjang = 220) {
-    $teks = trim(strip_tags($teks ?? ""));
-    if ($teks === "") return "Sinopsis belum tersedia untuk buku ini.";
-    if (mb_strlen($teks) <= $panjang) return $teks;
-    return mb_substr($teks, 0, $panjang) . "…";
+if (!function_exists('ringkas')) {
+    function ringkas($teks, $panjang = 220) {
+        $teks = trim(strip_tags($teks ?? ""));
+        if ($teks === "") return "Sinopsis belum tersedia untuk buku ini.";
+        if (mb_strlen($teks) <= $panjang) return $teks;
+        return mb_substr($teks, 0, $panjang) . "…";
+    }
 }
 
 /* ───────────────────────── Gambar Slide 1 (dipilih admin lewat "Jadikan Latar Beranda" di Kelola Banner) ───────────────────────── */
@@ -105,6 +109,9 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       if (localStorage.getItem('aksanova_theme') === 'light') {
         document.documentElement.classList.add('theme-light');
       }
+      if (localStorage.getItem('aksanova_lite') === '1') {
+        document.documentElement.classList.add('lite');
+      }
     } catch (e) {}
   })();
 </script>
@@ -142,8 +149,58 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     --text-faint:rgba(34, 29, 20, .46);
   }
 
+  /* ══════════════════ MODE TAMPILAN RINGAN ══════════════════
+     Matikan animasi dekoratif, efek blur (backdrop-filter) dan bayangan berat
+     supaya halaman terasa lebih ringan & lancar di perangkat/koneksi lemah. */
+  html.lite * {
+    animation: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  html.lite .hero-glow,
+  html.lite .footer-glow {
+    display: none !important;
+  }
+  html.lite .reveal,
+  html.lite .reveal-item {
+    opacity: 1 !important;
+    transform: none !important;
+  }
+  html.lite .hero-bg-slide,
+  html.lite .hero-bg-slide.active,
+  html.lite .book-cover-wrap.opening .book-cover,
+  html.lite .book-cover-wrap.opening .cover-icon {
+    transform: none !important;
+  }
+  html.lite .btn-musik:hover,
+  html.lite .btn-mode:hover,
+  html.lite .btn-lang:hover,
+  html.lite .btn-lite:hover,
+  html.lite .cta-glow:hover {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+  html.lite .hud-top .brand,
+  html.lite .btn-musik,
+  html.lite .btn-mode,
+  html.lite .btn-lang,
+  html.lite .btn-lite,
+  html.lite .btn-sosial,
+  html.lite .hero-content,
+  html.lite .lang-dropdown,
+  html.lite .sosial-dropdown,
+  html.lite .ticker-bar {
+    box-shadow: none !important;
+  }
+  html.lite * {
+    transition-duration: .01s !important;
+    transition-delay: 0s !important;
+  }
   html, body {
     transition: background-color .35s ease, color .35s ease;
+  }
+  html.lite, html.lite body {
+    transition: none !important;
   }
   .frame, .ticker-bar, .hero-overlay, .slide-hero, .slide-book, .slide-rules,
   .btn-musik, .btn-mode, .btn-lang, .dot span, .meta-chip, .ticker-icon, .ticker-reopen {
@@ -431,6 +488,31 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   html.theme-light .btn-lang { background: rgba(255,255,255,.6); }
   .btn-lang.open { background: rgba(216,184,120,.16); border-color: var(--teal); }
   html.theme-light .btn-lang.open { background: rgba(169,120,47,.14); }
+
+  /* ══════════════════ TOMBOL TAMPILAN RINGAN ══════════════════ */
+  .btn-lite {
+    pointer-events: auto;
+    appearance: none;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 1px solid var(--teal-dim);
+    background: rgba(12,17,22,.55);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--teal);
+    transition: background .2s ease, border-color .2s ease, transform .18s ease, box-shadow .2s ease;
+    box-shadow: 0 6px 18px rgba(0,0,0,.3);
+  }
+  .btn-lite:hover { transform: translateY(-1px); border-color: var(--teal); box-shadow: 0 8px 22px rgba(216,184,120,.25); }
+  .btn-lite svg { width: 18px; height: 18px; }
+  html.theme-light .btn-lite { background: rgba(255,255,255,.6); }
+  .btn-lite.active { background: rgba(216,184,120,.16); border-color: var(--teal); }
+  html.theme-light .btn-lite.active { background: rgba(169,120,47,.14); }
 
   .lang-dropdown {
     position: absolute;
@@ -1644,8 +1726,8 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     .hud-top { padding: 14px 16px; }
     .hud-top .brand { font-size: .78rem; letter-spacing: .16em; }
     .hud-actions { gap: 8px; }
-    .btn-musik, .btn-mode, .btn-lang, .btn-sosial { width: 34px; height: 34px; }
-    .btn-musik svg, .btn-mode svg, .btn-lang svg, .btn-sosial svg { width: 15px; height: 15px; }
+    .btn-musik, .btn-mode, .btn-lang, .btn-lite, .btn-sosial { width: 34px; height: 34px; }
+    .btn-musik svg, .btn-mode svg, .btn-lang svg, .btn-lite svg, .btn-sosial svg { width: 15px; height: 15px; }
     .slide-hero .hero-content h1 { font-size: clamp(2.15rem, 9.5vw, 3rem); }
     .hero-content { padding: 28px 18px; border-radius: 22px; }
     .hero-glow span { filter: blur(40px); }
@@ -1684,7 +1766,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
 
   @media (max-width: 360px) {
     .hud-top { padding: 12px 12px; }
-    .btn-musik, .btn-mode, .btn-lang, .btn-sosial { width: 30px; height: 30px; }
+    .btn-musik, .btn-mode, .btn-lang, .btn-lite, .btn-sosial { width: 30px; height: 30px; }
     .cta-glow { padding: 12px 32px; font-size: .7rem; }
   }
 
@@ -1763,6 +1845,11 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="4.2"/>
         <path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>
+      </svg>
+    </button>
+    <button type="button" class="btn-lite" id="btnLite" aria-label="Aktifkan tampilan ringan" data-id-aria="Aktifkan tampilan ringan" data-en-aria="Enable lite display" title="Tampilan Ringan" data-id-title="Tampilan Ringan (matikan animasi)" data-en-title="Lite Display (disable animations)" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/>
       </svg>
     </button>
     <div class="lang-wrap">
@@ -2178,6 +2265,29 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       root.classList.toggle('theme-light');
       const isLight = root.classList.contains('theme-light');
       try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
+      updatePressed();
+    });
+  })();
+
+  // Tampilan ringan — matikan animasi/blur agar halaman lebih ringan & lancar,
+  // terutama untuk perangkat atau koneksi yang lebih lemah. Pilihan disimpan permanen.
+  (function () {
+    const btn  = document.getElementById('btnLite');
+    if (!btn) return;
+    const root = document.documentElement;
+    const STORAGE_KEY = 'aksanova_lite';
+
+    function updatePressed() {
+      const aktif = root.classList.contains('lite');
+      btn.classList.toggle('active', aktif);
+      btn.setAttribute('aria-pressed', aktif ? 'true' : 'false');
+    }
+    updatePressed();
+
+    btn.addEventListener('click', () => {
+      root.classList.toggle('lite');
+      const aktif = root.classList.contains('lite');
+      try { localStorage.setItem(STORAGE_KEY, aktif ? '1' : '0'); } catch (e) {}
       updatePressed();
     });
   })();

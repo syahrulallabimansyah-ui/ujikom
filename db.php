@@ -13,6 +13,6 @@ if (!$conn) {
     die("Koneksi gagal: " . mysqli_connect_error());
 }
 
-// Set charset agar aman
-mysqli_set_charset($conn, "utf8");
+// Set charset agar aman & mendukung seluruh karakter Unicode / emoji
+mysqli_set_charset($conn, "utf8mb4");
 ?>

@@ -3,8 +3,33 @@
 session_start();
 
 if (!isset($_SESSION["kartu_data"])) {
-    header("Location: sign_up.php");
-    exit;
+    if (isset($_SESSION["user_id"])) {
+        require_once "db.php";
+        $uid = (int)$_SESSION["user_id"];
+        $rq = mysqli_query($conn, "SELECT full_name, nik, kelas, no_hp, email, no_anggota, username, foto, status FROM users WHERE id = $uid");
+        if ($rq && ($u = mysqli_fetch_assoc($rq))) {
+            $_SESSION["kartu_data"] = [
+                "full_name"         => $u["full_name"],
+                "nik"               => $u["nik"],
+                "kelas"             => $u["kelas"],
+                "no_hp"             => $u["no_hp"],
+                "email"             => $u["email"],
+                "no_anggota"        => $u["no_anggota"],
+                "username"          => $u["username"],
+                "foto"              => $u["foto"] ?? "",
+                "status"            => $u["status"] ?? "approved",
+                "reissued"          => false,
+                "data_updated_only" => true,
+                "password_changed"  => false,
+            ];
+        } else {
+            header("Location: sign_up.php");
+            exit;
+        }
+    } else {
+        header("Location: sign_up.php");
+        exit;
+    }
 }
 
 $d = $_SESSION["kartu_data"];
@@ -12,6 +37,7 @@ $d["status"]   = $d["status"]   ?? "pending";
 $d["reissued"] = $d["reissued"] ?? false;
 $d["data_updated_only"] = $d["data_updated_only"] ?? false;
 $d["password_changed"]  = $d["password_changed"]  ?? false;
+$d["password"]          = $d["password"]          ?? "";
 $d["foto"] = $d["foto"] ?? "";
 $foto_exists = $d["foto"] !== "" && file_exists(__DIR__ . "/" . $d["foto"]);
 $page_title = "Kartu Anggota – AKSA NOVA";
@@ -27,6 +53,11 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 <title><?= htmlspecialchars($page_title) ?></title>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+  if (localStorage.getItem('aksanova_theme') === 'light') {
+    document.documentElement.classList.add('theme-light');
+  }
+</script>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -34,29 +65,95 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     --ink: #0f0f14;
     --dim: #6b6b80;
     --ghost: #a8a8b8;
+
+    /* Warna teks/tombol di LUAR kartu — menyesuaikan tema.
+       Default (tema gelap): terang di atas background gelap. */
+    --text-strong: #f4ecd8;
+    --text-soft: #b9b9cc;
+    --outline-color: #eef3f4;
+    --outline-border: rgba(238,243,244,.35);
+    --outline-hover-bg: rgba(238,243,244,.08);
+  }
+
+  /* Tema terang: teks/tombol jadi gelap di atas background terang */
+  html.theme-light {
+    --text-strong: #8a6323;
+    --text-soft: #6b645b;
+    --outline-color: #1a1714;
+    --outline-border: rgba(15,15,20,.35);
+    --outline-hover-bg: rgba(15,15,20,.08);
   }
 
   html, body {
     min-height: 100vh;
     font-family: 'Outfit', sans-serif;
-    background: linear-gradient(135deg, #d4d4e0 0%, #c2c2cf 50%, #d8d8e4 100%);
+    background: linear-gradient(135deg, #090c10 0%, #121820 50%, #090c10 100%);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 40px 16px 60px;
+    color: #eef3f4;
   }
+
+  /* ══════════════════ TOMBOL MODE GELAP / TERANG ══════════════════ */
+  .btn-mode {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 999;
+    appearance: none;
+    cursor: pointer;
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 1px solid rgba(216,184,120,.3);
+    background: rgba(16,21,27,.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #d8b878;
+    transition: background .2s ease, border-color .2s ease, transform .18s ease, box-shadow .2s ease;
+    box-shadow: 0 6px 20px rgba(0,0,0,.4);
+  }
+  .btn-mode:hover {
+    transform: translateY(-2px);
+    border-color: #d8b878;
+    box-shadow: 0 8px 24px rgba(216,184,120,.3);
+  }
+  .btn-mode svg { width: 19px; height: 19px; transition: transform .4s cubic-bezier(.22,1,.36,1); }
+  .btn-mode .icon-sun { display: none; }
+
+  /* ══════════════════ LIGHT THEME OVERRIDES ══════════════════ */
+  html.theme-light, html.theme-light body {
+    background: linear-gradient(135deg, #f6f2e9 0%, #ece4d4 50%, #f7f3ec 100%);
+    color: #1a1714;
+  }
+  html.theme-light .btn-mode {
+    background: rgba(255,255,255,.85);
+    border-color: rgba(154,115,40,.3);
+    color: #9a7328;
+    box-shadow: 0 6px 20px rgba(60,45,20,.12);
+  }
+  html.theme-light .btn-mode:hover {
+    border-color: #9a7328;
+    box-shadow: 0 8px 24px rgba(154,115,40,.22);
+  }
+  html.theme-light .btn-mode .icon-moon { display: none; }
+  html.theme-light .btn-mode .icon-sun  { display: block; }
 
   .page-title {
     font-family: 'Cormorant Garamond', serif;
     font-size: 2rem;
     font-weight: 700;
-    color: var(--ink);
+    color: var(--text-strong);
     margin-bottom: 4px;
     text-align: center;
   }
   .page-sub {
     font-size: .82rem;
-    color: var(--dim);
+    color: var(--text-soft);
     text-align: center;
     max-width: 440px;
     margin-bottom: 30px;
@@ -164,8 +261,8 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   .avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
   .kartu-name { font-size: 1.15rem; font-weight: 600; line-height: 1.25; }
-  .kartu-meta { font-size: .74rem; color: #c4c4d8; margin-top: 4px; line-height: 1.7; }
-  .kartu-meta b { color: #fff; font-weight: 500; }
+  .kartu-meta { font-size: .74rem; color: #e0ac78; margin-top: 4px; line-height: 1.7; font-weight: 500; }
+  .kartu-meta b { color: #e0ac78; font-weight: 600; }
 
   .kartu-divider {
     margin: 0 24px;
@@ -189,7 +286,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     font-size: .6rem;
     letter-spacing: .1em;
     text-transform: uppercase;
-    color: #9c9cb4;
+    color: #adadc7;
     width: 62px;
     flex-shrink: 0;
   }
@@ -248,13 +345,25 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 
   .btn-continue {
     background: transparent;
-    color: var(--ink);
-    border: 1.5px solid rgba(15,15,20,.35);
+    color: var(--outline-color);
+    border: 1.5px solid var(--outline-border);
     text-decoration: none;
     display: inline-flex;
     align-items: center;
   }
-  .btn-continue:hover { background: rgba(15,15,20,.08); }
+  .btn-continue:hover { background: var(--outline-hover-bg); }
+
+  .btn-back {
+    background: transparent;
+    color: var(--text-soft);
+    border: none;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    display: inline-flex;
+    align-items: center;
+    padding: 13px 10px;
+  }
+  .btn-back:hover { color: var(--outline-color); }
 
   @media (max-width: 460px) {
     .kartu-body { flex-direction: row; align-items: flex-start; }
@@ -264,6 +373,17 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 </style>
 </head>
 <body>
+
+<!-- Tombol Ganti Mode Gelap / Terang -->
+<button type="button" class="btn-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
+  <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+  </svg>
+  <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>
+  </svg>
+</button>
 
   <?php if ($d["reissued"]): ?>
     <h1 class="page-title">Kartu Anggota Baru Kamu Sudah Jadi 🎉</h1>
@@ -339,7 +459,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
           <span class="cred-label">Username</span>
           <span class="cred-value"><?= htmlspecialchars($d["username"]) ?></span>
         </div>
-        <?php if ($d["password"] !== ""): ?>
+        <?php if (!empty($d["password"])): ?>
         <div class="cred-row">
           <span class="cred-label">Password</span>
           <span class="cred-value"><?= htmlspecialchars($d["password"]) ?></span>
@@ -347,7 +467,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
         <?php else: ?>
         <div class="cred-row">
           <span class="cred-label">Password</span>
-          <span class="cred-value" style="color:#9c9cb4;font-size:.72rem;">Tidak berubah</span>
+          <span class="cred-value" style="color:#e0ac78;font-size:.74rem;font-weight:500;">Tidak berubah</span>
         </div>
         <?php endif; ?>
       </div>
@@ -362,10 +482,16 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 
   <div class="actions">
     <button class="btn btn-download" id="btnDownload">⬇ Unduh Kartu (PNG)</button>
-    <?php if ($d["data_updated_only"]): ?>
+    <?php if (isset($_SESSION["user_id"])): ?>
+    <a href="dashboard_user.php" class="btn btn-continue" id="btnContinue">Selesai, Kembali ke Dashboard &rarr;</a>
+    <?php elseif ($d["data_updated_only"]): ?>
     <a href="beranda.php" class="btn btn-continue" id="btnContinue">Selesai, Kembali ke Beranda &rarr;</a>
     <?php else: ?>
     <a href="sign_in.php" class="btn btn-continue" id="btnContinue">Selesai, Masuk ke Akun &rarr;</a>
+    <?php endif; ?>
+
+    <?php if (isset($_SESSION["user_id"]) || $d["data_updated_only"]): ?>
+    <a href="sign_in.php" class="btn btn-back">&larr; Kembali ke Halaman Login</a>
     <?php endif; ?>
   </div>
 
@@ -384,6 +510,26 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   document.getElementById('btnContinue').addEventListener('click', function () {
     navigator.sendBeacon('kartu_clear.php');
   });
+
+  // Mode gelap / terang
+  (function () {
+    var btn  = document.getElementById('btnMode');
+    if (!btn) return;
+    var root = document.documentElement;
+    var STORAGE_KEY = 'aksanova_theme';
+
+    function updatePressed() {
+      btn.setAttribute('aria-pressed', root.classList.contains('theme-light') ? 'true' : 'false');
+    }
+    updatePressed();
+
+    btn.addEventListener('click', function () {
+      root.classList.toggle('theme-light');
+      var isLight = root.classList.contains('theme-light');
+      try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
+      updatePressed();
+    });
+  })();
 </script>
 
 </body>

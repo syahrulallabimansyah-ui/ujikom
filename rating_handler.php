@@ -1,6 +1,7 @@
 <?php
 // rating_handler.php — Submit / ambil rating buku (1–5 bintang)
 session_start();
+header('Content-Type: application/json; charset=utf-8');
 
 if (!isset($_SESSION["user_id"])) {
     http_response_code(403);
@@ -11,7 +12,7 @@ if (!isset($_SESSION["user_id"])) {
 require_once "db.php";
 
 $user_id = (int)$_SESSION["user_id"];
-$method  = $_SERVER["REQUEST_METHOD"];
+$method  = $_SERVER["REQUEST_METHOD"] ?? "GET";
 
 // ── GET: ambil rating user untuk 1 buku ──────────────────────
 if ($method === "GET") {
@@ -24,13 +25,13 @@ if ($method === "GET") {
 
     // Rata-rata & jumlah
     $r2  = mysqli_query($conn, "SELECT AVG(rating) AS avg_r, COUNT(*) AS total FROM buku_ratings WHERE buku_id=$buku_id");
-    $row = mysqli_fetch_assoc($r2);
+    $row = $r2 ? mysqli_fetch_assoc($r2) : null;
 
     echo json_encode([
         "ok"          => true,
         "user_rating" => $user_rating,
-        "avg"         => $row["total"] > 0 ? round((float)$row["avg_r"], 1) : 0,
-        "total"       => (int)$row["total"],
+        "avg"         => ($row && (int)($row["total"] ?? 0) > 0) ? round((float)$row["avg_r"], 1) : 0,
+        "total"       => (int)($row["total"] ?? 0),
     ]);
     exit;
 }
@@ -54,14 +55,14 @@ if ($method === "POST") {
 
     // Kembalikan avg & total terbaru
     $r2  = mysqli_query($conn, "SELECT AVG(rating) AS avg_r, COUNT(*) AS total FROM buku_ratings WHERE buku_id=$buku_id");
-    $row = mysqli_fetch_assoc($r2);
+    $row = $r2 ? mysqli_fetch_assoc($r2) : null;
 
     header("Content-Type: application/json");
     echo json_encode([
         "ok"          => true,
         "user_rating" => $rating,
-        "avg"         => round((float)$row["avg_r"], 1),
-        "total"       => (int)$row["total"],
+        "avg"         => $row ? round((float)($row["avg_r"] ?? 0), 1) : 0,
+        "total"       => (int)($row["total"] ?? 0),
     ]);
     exit;
 }

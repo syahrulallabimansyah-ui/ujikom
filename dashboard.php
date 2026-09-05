@@ -2,7 +2,7 @@
 // dashboard.php — Dashboard admin: ringkasan & rekap bulanan peminjaman
 session_start();
 
-if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "admin") {
+if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
     header("Location: sign_in.php");
     exit;
 }
@@ -47,9 +47,9 @@ $ada_peminjaman = tabelAda($conn, "peminjaman");
 
 $col_user         = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["user_id","anggota_id","id_user","id_anggota","member_id"]) : null;
 $col_buku         = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["buku_id","id_buku"]) : null;
-$col_pinjam       = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["tgl_pinjam","tanggal_pinjam","created_at","tgl_peminjaman"]) : null;
-$col_jatuh_tempo  = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["tgl_kembali","tanggal_kembali","batas_kembali","due_date"]) : null;
-$col_dikembalikan = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["tgl_dikembalikan","tanggal_dikembalikan","returned_at","tgl_pengembalian"]) : null;
+$col_pinjam       = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["waktu_pinjam","tgl_pinjam","tanggal_pinjam","created_at","tgl_peminjaman"]) : null;
+$col_jatuh_tempo  = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["batas_kembali","tgl_kembali","tanggal_kembali","due_date"]) : null;
+$col_dikembalikan = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["waktu_kembali","tgl_dikembalikan","tanggal_dikembalikan","returned_at","tgl_pengembalian"]) : null;
 $col_status       = $ada_peminjaman ? kolomTersedia($conn, "peminjaman", ["status"]) : null;
 
 // Skema minimal yang dibutuhkan supaya rekap peminjaman bisa dihitung

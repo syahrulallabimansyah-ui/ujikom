@@ -5,7 +5,7 @@
 declare(strict_types=1);
 session_start();
 
-if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
+if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: sign_in.php');
     exit;
 }
@@ -30,11 +30,13 @@ $admin_name = $profil['display_name'] ?? ($_SESSION['user_name'] ?? 'Admin');
 $admin_foto = $profil['foto'] ?? '';
 
 // ─── Helper: ambil pengaturan ───
-function getSetting(mysqli $db, string $kunci, string $default = ''): string {
-    $k   = mysqli_real_escape_string($db, $kunci);
-    $res = mysqli_query($db, "SELECT nilai FROM pengaturan WHERE kunci='$k' LIMIT 1");
-    $row = $res ? mysqli_fetch_assoc($res) : null;
-    return $row ? $row['nilai'] : $default;
+if (!function_exists('getSetting')) {
+    function getSetting(mysqli $db, string $kunci, string $default = ''): string {
+        $k   = mysqli_real_escape_string($db, $kunci);
+        $res = mysqli_query($db, "SELECT nilai FROM pengaturan WHERE kunci='$k' LIMIT 1");
+        $row = $res ? mysqli_fetch_assoc($res) : null;
+        return $row ? $row['nilai'] : $default;
+    }
 }
 
 // Ambil config denda
@@ -43,15 +45,17 @@ $denda_per_hari = (int)getSetting($conn, 'denda_per_hari', '1000');
 $grace_period   = (int)getSetting($conn, 'denda_grace_period', '0');
 
 // ─── Helper: hitung denda ───
-function hitungDenda(string $batas_kembali, string $waktu_kembali, bool $aktif, int $per_hari, int $grace): array {
-    if (!$aktif) return ['hari' => 0, 'total' => 0];
-    $batas  = new DateTimeImmutable($batas_kembali);
-    $kembali = new DateTimeImmutable($waktu_kembali);
-    if ($kembali <= $batas) return ['hari' => 0, 'total' => 0];
-    $diff  = $batas->diff($kembali);
-    $hari  = $diff->days;
-    $hari_denda = max(0, $hari - $grace);
-    return ['hari' => $hari, 'total' => $hari_denda * $per_hari];
+if (!function_exists('hitungDenda')) {
+    function hitungDenda(string $batas_kembali, string $waktu_kembali, bool $aktif, int $per_hari, int $grace): array {
+        if (!$aktif) return ['hari' => 0, 'total' => 0];
+        $batas  = new DateTimeImmutable($batas_kembali);
+        $kembali = new DateTimeImmutable($waktu_kembali);
+        if ($kembali <= $batas) return ['hari' => 0, 'total' => 0];
+        $diff  = $batas->diff($kembali);
+        $hari  = $diff->days;
+        $hari_denda = max(0, $hari - $grace);
+        return ['hari' => $hari, 'total' => $hari_denda * $per_hari];
+    }
 }
 
 // ─────────────────────────────────────────────
@@ -65,7 +69,7 @@ if ($action === 'kembalikan') {
     if ($pem_id > 0) {
         $cek_res = mysqli_query($conn,
             "SELECT p.buku_id, p.status, p.batas_kembali FROM peminjaman p
-             INNER JOIN buku b ON b.id = p.buku_id
+             LEFT JOIN buku b ON b.id = p.buku_id
              WHERE p.id=$pem_id LIMIT 1"
         );
         $cek = $cek_res ? mysqli_fetch_assoc($cek_res) : null;

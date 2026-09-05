@@ -3,10 +3,20 @@
 session_start();
 require_once "db.php";
 
+// Jika sudah login, langsung arahkan ke halaman utama yang sesuai
+if (isset($_SESSION["user_id"])) {
+    if (($_SESSION["role"] ?? "") === "admin") {
+        header("Location: halaman_admin.php");
+    } else {
+        header("Location: beranda.php");
+    }
+    exit;
+}
+
 $error = "";
 
 // Proses login saat form dikirim
-if ($_SERVER["REQUEST_METHOD"] === "POST") {
+if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     $identity = trim($_POST["email"] ?? "");
     $password = trim($_POST["password"] ?? "");
 
@@ -53,33 +63,37 @@ $page_title = "Sign In – AKSA NOVA";
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <script>
+    if (localStorage.getItem('aksanova_theme') === 'light') {
+      document.documentElement.classList.add('theme-light');
+    }
+  </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --ink:       #0f0f14;
-      --dim:       #6b6b80;
-      --ghost:     #a8a8b8;
-      --surface:   #ffffff;
-      --field:     #f3f3f6;
-      --field-foc: #eaeaef;
-      --panel-bg:  linear-gradient(148deg, #c8c8d4 0%, #8a8a9a 50%, #3e3e50 100%);
-      --accent:    #3e3e50;
-      --ring:      rgba(62,62,80,.28);
+      --ink:       #eef3f4;
+      --dim:       rgba(238,243,244,.68);
+      --ghost:     rgba(238,243,244,.45);
+      --surface:   #10151b;
+      --field:     rgba(255,255,255,.06);
+      --field-foc: rgba(255,255,255,.10);
+      --panel-bg:  linear-gradient(148deg, #0c1008 0%, #16200d 50%, #090c10 100%);
+      --accent:    #d8b878;
+      --ring:      rgba(216,184,120,.28);
       --radius-lg: 26px;
       --radius-md: 10px;
-      --shadow:    0 32px 80px rgba(0,0,0,.45);
+      --shadow:    0 32px 80px rgba(0,0,0,.75);
       --trans:     .25s cubic-bezier(.22,1,.36,1);
     }
 
     html, body {
       min-height: 100vh;
-      background: #dcdce4;
       display: flex;
       align-items: center;
       justify-content: center;
       font-family: 'Outfit', sans-serif;
-      background: linear-gradient(135deg, #d4d4e0 0%, #c2c2cf 50%, #d8d8e4 100%);
+      background: linear-gradient(135deg, #090c10 0%, #0e1318 50%, #090c10 100%);
       background-size: 300% 300%;
       animation: bgShift 10s ease infinite;
     }
@@ -97,6 +111,7 @@ $page_title = "Sign In – AKSA NOVA";
       overflow: hidden;
       display: flex;
       box-shadow: var(--shadow);
+      border: 1px solid rgba(216,184,120,.18);
       animation: riseIn .9s cubic-bezier(.22,1,.36,1) both;
     }
 
@@ -107,7 +122,7 @@ $page_title = "Sign In – AKSA NOVA";
 
     .left {
       flex: 0 0 54%;
-      background: var(--surface);
+      background: #10151b;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -121,8 +136,8 @@ $page_title = "Sign In – AKSA NOVA";
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, #3e3e50, #8a8a9a, #3e3e50);
+      height: 3px;
+      background: linear-gradient(90deg, transparent, #d8b878, #f0d9a8, #d8b878, transparent);
       background-size: 200% 100%;
       animation: shimmer 3s linear infinite;
     }
@@ -136,7 +151,7 @@ $page_title = "Sign In – AKSA NOVA";
       font-family: 'Cormorant Garamond', serif;
       font-size: 2.4rem;
       font-weight: 700;
-      color: var(--ink);
+      color: #d8b878;
       margin-bottom: 10px;
       letter-spacing: -0.5px;
       animation: fadeSlide .7s .1s both;
@@ -144,7 +159,7 @@ $page_title = "Sign In – AKSA NOVA";
 
     .form-sub {
       font-size: .82rem;
-      color: var(--ghost);
+      color: rgba(238,243,244,.55);
       font-weight: 300;
       margin-bottom: 30px;
       animation: fadeSlide .7s .18s both;
@@ -158,9 +173,9 @@ $page_title = "Sign In – AKSA NOVA";
     /* Pesan error */
     .error-msg {
       width: 100%;
-      background: #fff0f0;
-      border: 1px solid #f5c6cb;
-      color: #c0392b;
+      background: rgba(192,57,43,.15);
+      border: 1px solid rgba(192,57,43,.5);
+      color: #e07070;
       font-size: .8rem;
       padding: 10px 14px;
       border-radius: var(--radius-md);
@@ -189,7 +204,7 @@ $page_title = "Sign In – AKSA NOVA";
       left: 16px;
       width: 17px;
       height: 17px;
-      color: var(--ghost);
+      color: rgba(238,243,244,.35);
       pointer-events: none;
       transition: color var(--trans);
     }
@@ -197,25 +212,25 @@ $page_title = "Sign In – AKSA NOVA";
     .input-wrap input {
       width: 100%;
       padding: 14px 18px 14px 44px;
-      border: 1.5px solid transparent;
+      border: 1.5px solid rgba(216,184,120,.15);
       border-radius: var(--radius-md);
-      background: var(--field);
+      background: rgba(255,255,255,.05);
       font-family: 'Outfit', sans-serif;
       font-size: .88rem;
-      color: var(--ink);
+      color: #eef3f4;
       outline: none;
       transition: background var(--trans), border-color var(--trans), box-shadow var(--trans);
     }
 
-    .input-wrap input::placeholder { color: var(--ghost); }
+    .input-wrap input::placeholder { color: rgba(238,243,244,.35); }
 
     .input-wrap input:focus {
-      background: var(--field-foc);
-      border-color: var(--accent);
-      box-shadow: 0 0 0 3px var(--ring);
+      background: rgba(216,184,120,.08);
+      border-color: #d8b878;
+      box-shadow: 0 0 0 3px rgba(216,184,120,.2);
     }
 
-    .input-wrap:focus-within svg { color: var(--accent); }
+    .input-wrap:focus-within svg { color: #d8b878; }
 
     /* Toggle lihat password */
     .toggle-eye {
@@ -224,12 +239,12 @@ $page_title = "Sign In – AKSA NOVA";
       left: auto;
       width: 19px;
       height: 19px;
-      color: var(--ghost);
+      color: rgba(238,243,244,.35);
       cursor: pointer;
       pointer-events: auto;
       transition: color var(--trans);
     }
-    .toggle-eye:hover { color: var(--accent); }
+    .toggle-eye:hover { color: #d8b878; }
     .toggle-eye svg { position: static; width: 100%; height: 100%; }
     .toggle-eye .eye-off { display: none; }
     .input-wrap.pw-visible .eye-on  { display: none; }
@@ -246,13 +261,13 @@ $page_title = "Sign In – AKSA NOVA";
 
     .forgot {
       font-size: .8rem;
-      color: var(--dim);
+      color: rgba(238,243,244,.5);
       font-weight: 300;
       text-decoration: none;
       transition: color var(--trans);
       white-space: nowrap;
     }
-    .forgot:hover { color: var(--accent); text-decoration: underline; }
+    .forgot:hover { color: #d8b878; text-decoration: underline; }
 
     .btn-primary {
       width: 100%;
@@ -260,36 +275,36 @@ $page_title = "Sign In – AKSA NOVA";
       padding: 13px 0;
       border: none;
       border-radius: 50px;
-      background: var(--ink);
-      color: #fff;
+      background: linear-gradient(135deg, #d8b878, #f0d9a8);
+      color: #090c10;
       font-family: 'Outfit', sans-serif;
       font-size: .88rem;
-      font-weight: 600;
-      letter-spacing: .04em;
+      font-weight: 700;
+      letter-spacing: .06em;
       cursor: pointer;
-      transition: background var(--trans), transform .15s, box-shadow var(--trans);
+      transition: box-shadow var(--trans), transform .15s;
       animation: fadeSlide .7s .38s both;
     }
 
-    .btn-primary:hover { background: #1a1a2a; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
+    .btn-primary:hover { box-shadow: 0 8px 28px rgba(216,184,120,.45); transform: translateY(-1px); }
     .btn-primary:active { transform: scale(.97); }
 
     .btn-guest {
       display: block;
       margin-top: 14px;
       font-size: .78rem;
-      color: var(--dim);
+      color: rgba(238,243,244,.45);
       font-weight: 500;
       text-decoration: none;
       text-align: center;
       transition: color var(--trans);
       animation: fadeSlide .7s .42s both;
     }
-    .btn-guest:hover { color: var(--accent); text-decoration: underline; }
+    .btn-guest:hover { color: #d8b878; text-decoration: underline; }
 
     .right {
       flex: 1;
-      background: var(--panel-bg);
+      background: linear-gradient(148deg, #0c1008 0%, #16200d 50%, #090c10 100%);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -314,9 +329,9 @@ $page_title = "Sign In – AKSA NOVA";
       opacity: .18;
       animation: orbFloat 8s ease-in-out infinite;
     }
-    .orb-1 { width:160px;height:160px;background:#fff;top:10%;left:5%; animation-delay:0s; }
-    .orb-2 { width:100px;height:100px;background:#ccc;bottom:15%;right:8%; animation-delay:3s; }
-    .orb-3 { width:80px;height:80px;background:#888;top:55%;left:20%; animation-delay:5s; }
+    .orb-1 { width:160px;height:160px;background:#d8b878;top:10%;left:5%; animation-delay:0s; }
+    .orb-2 { width:100px;height:100px;background:#a07840;bottom:15%;right:8%; animation-delay:3s; }
+    .orb-3 { width:80px;height:80px;background:#e8c88a;top:55%;left:20%; animation-delay:5s; }
 
     @keyframes orbFloat {
       0%,100% { transform: translateY(0) scale(1); }
@@ -333,7 +348,7 @@ $page_title = "Sign In – AKSA NOVA";
       font-family: 'Cormorant Garamond', serif;
       font-size: 2.5rem;
       font-weight: 700;
-      color: #1a1a26;
+      color: #d8b878;
       line-height: 1.1;
       margin-bottom: 14px;
     }
@@ -341,7 +356,7 @@ $page_title = "Sign In – AKSA NOVA";
     .right-sub {
       font-size: .86rem;
       font-weight: 300;
-      color: #2e2e3a;
+      color: rgba(238,243,244,.68);
       line-height: 1.8;
       margin-bottom: 38px;
     }
@@ -349,10 +364,10 @@ $page_title = "Sign In – AKSA NOVA";
     .btn-outline {
       display: inline-block;
       padding: 11px 38px;
-      border: 1.5px solid rgba(30,30,40,.45);
+      border: 1.5px solid rgba(216,184,120,.45);
       border-radius: 50px;
       background: transparent;
-      color: #1a1a26;
+      color: #d8b878;
       font-family: 'Outfit', sans-serif;
       font-size: .76rem;
       font-weight: 500;
@@ -363,9 +378,9 @@ $page_title = "Sign In – AKSA NOVA";
     }
 
     .btn-outline:hover {
-      background: rgba(20,20,30,.12);
-      border-color: rgba(20,20,30,.7);
-      box-shadow: 0 6px 20px rgba(0,0,0,.15);
+      background: rgba(216,184,120,.12);
+      border-color: rgba(216,184,120,.8);
+      box-shadow: 0 6px 20px rgba(216,184,120,.2);
       transform: translateY(-1px);
     }
 
@@ -381,16 +396,160 @@ $page_title = "Sign In – AKSA NOVA";
       .left::before { height: 3px; }
     }
 
-    @media (max-width: 420px) {
-      .left  { padding: 32px 20px 28px; }
-      .right { padding: 28px 20px; }
-      .btn-primary { max-width: 100%; }
-      .forgot-row { flex-wrap: wrap; gap: 6px 10px; }
-      .forgot { white-space: normal; }
+    /* ══════════════════ TOMBOL MODE GELAP / TERANG ══════════════════ */
+    .btn-mode {
+      position: fixed;
+      top: 18px;
+      right: 18px;
+      z-index: 999;
+      appearance: none;
+      cursor: pointer;
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid rgba(216,184,120,.3);
+      background: rgba(16,21,27,.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #d8b878;
+      transition: background .2s ease, border-color .2s ease, transform .18s ease, box-shadow .2s ease;
+      box-shadow: 0 6px 20px rgba(0,0,0,.4);
+    }
+    .btn-mode:hover {
+      transform: translateY(-2px);
+      border-color: #d8b878;
+      box-shadow: 0 8px 24px rgba(216,184,120,.3);
+    }
+    .btn-mode svg { width: 19px; height: 19px; transition: transform .4s cubic-bezier(.22,1,.36,1); }
+    .btn-mode .icon-sun { display: none; }
+
+    /* ══════════════════ LIGHT THEME OVERRIDES ══════════════════ */
+    html.theme-light {
+      --ink:       #1a1714;
+      --dim:       #6b645b;
+      --ghost:     #9c9489;
+      --surface:   #ffffff;
+      --field:     rgba(0,0,0,.04);
+      --field-foc: rgba(0,0,0,.07);
+      --panel-bg:  linear-gradient(148deg, #f5efe6 0%, #ece2d0 50%, #f9f5ee 100%);
+      --accent:    #9a7328;
+      --ring:      rgba(154,115,40,.28);
+      --shadow:    0 32px 80px rgba(70,50,20,.14);
+    }
+    html.theme-light, html.theme-light body {
+      background: linear-gradient(135deg, #f6f2e9 0%, #ece4d4 50%, #f7f3ec 100%);
+    }
+    html.theme-light .btn-mode {
+      background: rgba(255,255,255,.85);
+      border-color: rgba(154,115,40,.3);
+      color: #9a7328;
+      box-shadow: 0 6px 20px rgba(60,45,20,.12);
+    }
+    html.theme-light .btn-mode:hover {
+      border-color: #9a7328;
+      box-shadow: 0 8px 24px rgba(154,115,40,.22);
+    }
+    html.theme-light .btn-mode .icon-moon { display: none; }
+    html.theme-light .btn-mode .icon-sun  { display: block; }
+    html.theme-light .card {
+      background: #ffffff;
+      border-color: rgba(154,115,40,.2);
+      box-shadow: 0 24px 60px rgba(60,45,20,.12);
+    }
+    html.theme-light .left {
+      background: #ffffff;
+    }
+    html.theme-light .form-title {
+      color: #8a6323;
+    }
+    html.theme-light .form-sub {
+      color: #6b645b;
+    }
+    html.theme-light .input-wrap input {
+      background: #fdfbf7;
+      border-color: rgba(154,115,40,.22);
+      color: #1a1714;
+    }
+    html.theme-light .input-wrap input::placeholder {
+      color: #9c9489;
+    }
+    html.theme-light .input-wrap input:focus {
+      background: #ffffff;
+      border-color: #9a7328;
+      box-shadow: 0 0 0 3px rgba(154,115,40,.18);
+    }
+    html.theme-light .input-wrap > svg {
+      color: #9c9489;
+    }
+    html.theme-light .input-wrap:focus-within svg {
+      color: #9a7328;
+    }
+    html.theme-light .toggle-eye {
+      color: #9c9489;
+    }
+    html.theme-light .toggle-eye:hover {
+      color: #9a7328;
+    }
+    html.theme-light .forgot {
+      color: #6b645b;
+    }
+    html.theme-light .forgot:hover {
+      color: #9a7328;
+    }
+    html.theme-light .btn-primary {
+      background: linear-gradient(135deg, #d8b878, #caa055);
+      color: #1a1205;
+      box-shadow: 0 6px 20px rgba(154,115,40,.25);
+    }
+    html.theme-light .btn-primary:hover {
+      box-shadow: 0 8px 28px rgba(154,115,40,.38);
+    }
+    html.theme-light .btn-guest {
+      color: #6b645b;
+    }
+    html.theme-light .btn-guest:hover {
+      color: #9a7328;
+    }
+    html.theme-light .right {
+      background: linear-gradient(148deg, #f8f4ec 0%, #ece1ce 50%, #f4ede0 100%);
+    }
+    html.theme-light .right-title {
+      color: #8a6323;
+    }
+    html.theme-light .right-sub {
+      color: #6b645b;
+    }
+    html.theme-light .btn-outline {
+      border-color: rgba(154,115,40,.45);
+      color: #8a6323;
+    }
+    html.theme-light .btn-outline:hover {
+      background: rgba(154,115,40,.12);
+      border-color: #8a6323;
+      box-shadow: 0 6px 20px rgba(154,115,40,.2);
+    }
+    html.theme-light .error-msg {
+      background: rgba(220,38,38,.08);
+      border-color: rgba(220,38,38,.25);
+      color: #b91c1c;
     }
   </style>
 </head>
 <body>
+
+<!-- Tombol Ganti Mode Gelap / Terang -->
+<button type="button" class="btn-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
+  <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
+  </svg>
+  <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="12" r="4.2"/>
+    <path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>
+  </svg>
+</button>
 
 <div class="card">
 
@@ -483,6 +642,26 @@ $page_title = "Sign In – AKSA NOVA";
         e.preventDefault();
         togglePassword();
       }
+    });
+  })();
+
+  // Mode gelap / terang
+  (function () {
+    var btn  = document.getElementById('btnMode');
+    if (!btn) return;
+    var root = document.documentElement;
+    var STORAGE_KEY = 'aksanova_theme';
+
+    function updatePressed() {
+      btn.setAttribute('aria-pressed', root.classList.contains('theme-light') ? 'true' : 'false');
+    }
+    updatePressed();
+
+    btn.addEventListener('click', function () {
+      root.classList.toggle('theme-light');
+      var isLight = root.classList.contains('theme-light');
+      try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
+      updatePressed();
     });
   })();
 </script>

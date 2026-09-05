@@ -11,33 +11,36 @@
   var root = document.documentElement;
 
   // ── Tema / Mode ──
-  var mode     = s.mode     || 'light';      // light | dark
-  var ui       = s.ui       || 'default';    // default | minimal | modern | kuno | gradasi
-  var grad     = s.gradient || 'biru';       // biru | ungu | hijau | merah | emas | custom
-  var fontFam  = s.font     || 'Nunito';     // Nunito | Merriweather | Poppins | Playfair | Roboto Mono
+  // Periksa apakah user punya setting di localStorage, atau sinkron dengan tema index.php
+  var indexTheme  = localStorage.getItem('aksanova_theme'); // 'light' atau null/dark
+  var defaultMode = (indexTheme === 'light') ? 'light' : 'dark';
+  var mode     = s.mode     || defaultMode;      // light | dark
+  var ui       = s.ui       || 'default';        // default | minimal | modern | kuno | gradasi
+  var grad     = s.gradient || 'emas';           // default emas matching index.php
+  var fontFam  = s.font     || 'Outfit';         // Outfit | Nunito | Merriweather | Poppins | Playfair | Roboto Mono
   var fontSize = parseInt(s.fontSize || 14);
-  var fontW    = s.fontWeight || 'normal';   // light | normal | bold | extrabold
-  var radius   = s.radius   || '14';        // px number string
-  var spacing  = s.spacing  || 'normal';    // compact | normal | relaxed
+  var fontW    = s.fontWeight || 'normal';       // light | normal | bold | extrabold
+  var radius   = s.radius   || '14';            // px number string
+  var spacing  = s.spacing  || 'normal';        // compact | normal | relaxed
   var animation= s.animation!==undefined ? s.animation : true;
-  var sidebar  = s.sidebar  || 'full';      // full | icon
+  var sidebar  = s.sidebar  || 'full';          // full | icon
 
   // Palettenya
   var palettes = {
-    biru:   { accent:'#2b4fff', accent2:'#ffb800', accentRgb:'43,79,255' },
-    ungu:   { accent:'#7c3aed', accent2:'#f59e0b', accentRgb:'124,58,237' },
-    hijau:  { accent:'#059669', accent2:'#fbbf24', accentRgb:'5,150,105' },
-    merah:  { accent:'#dc2626', accent2:'#f59e0b', accentRgb:'220,38,38' },
-    emas:   { accent:'#b45309', accent2:'#2b4fff', accentRgb:'180,83,9' },
+    emas:       { accent:'#d8b878', accent2:'#f0d9a8', accentRgb:'216,184,120' },
+    biru:       { accent:'#2b4fff', accent2:'#ffb800', accentRgb:'43,79,255' },
+    ungu:       { accent:'#7c3aed', accent2:'#f59e0b', accentRgb:'124,58,237' },
+    hijau:      { accent:'#059669', accent2:'#fbbf24', accentRgb:'5,150,105' },
+    merah:      { accent:'#dc2626', accent2:'#f59e0b', accentRgb:'220,38,38' },
     merah_muda: { accent:'#db2777', accent2:'#7c3aed', accentRgb:'219,39,119' },
   };
-  var pal = palettes[grad] || palettes.biru;
+  var pal = palettes[grad] || palettes.emas;
 
   // ── Mode gelap/terang & UI ──
   var uiVars = {
     default: {
-      light: { bg:'#f4f5f7', sidebarBg:'#ffffff', card:'#ffffff', text:'#1a1a2e', muted:'#7a7a9a', border:'#e8e9f0', cardBorder:'#eef0fc', bookCard:'#f8f9ff' },
-      dark:  { bg:'#0f0f1a', sidebarBg:'#14142a', card:'#1a1a2e', text:'#e8e8f5', muted:'#8888aa', border:'#2a2a40', cardBorder:'#252540', bookCard:'#1e1e30' },
+      light: { bg:'#f6f2e8', sidebarBg:'#ffffff', card:'#ffffff', text:'#221d14', muted:'#7a7060', border:'rgba(150,110,45,.20)', cardBorder:'rgba(150,110,45,.15)', bookCard:'#fdfbf7' },
+      dark:  { bg:'#090c10', sidebarBg:'#10151b', card:'#121820', text:'#eef3f4', muted:'rgba(238,243,244,.65)', border:'rgba(216,184,120,.18)', cardBorder:'rgba(216,184,120,.12)', bookCard:'#161e27' },
     },
     minimal: {
       light: { bg:'#fafafa', sidebarBg:'#f5f5f5', card:'#ffffff', text:'#111111', muted:'#999999', border:'#e0e0e0', cardBorder:'#ebebeb', bookCard:'#f5f5f5' },
@@ -83,13 +86,15 @@
 
   // Font keluarga
   var fontMap = {
-    'Nunito':       "'Nunito', sans-serif",
-    'Merriweather': "'Merriweather', serif",
-    'Poppins':      "'Poppins', sans-serif",
-    'Playfair':     "'Playfair Display', serif",
-    'Roboto Mono':  "'Roboto Mono', monospace",
+    'Outfit':           "'Outfit', sans-serif",
+    'Nunito':           "'Nunito', sans-serif",
+    'Merriweather':     "'Merriweather', serif",
+    'Poppins':          "'Poppins', sans-serif",
+    'Playfair':         "'Playfair Display', serif",
+    'Playfair Display': "'Playfair Display', serif",
+    'Roboto Mono':      "'Roboto Mono', monospace",
   };
-  root.style.setProperty('--font-family', fontMap[fontFam] || fontMap['Nunito']);
+  root.style.setProperty('--font-family', fontMap[fontFam] || fontMap['Outfit']);
 
   // Font size base
   root.style.setProperty('--font-size-base', fontSize + 'px');
@@ -118,16 +123,23 @@
 <style>
   /* ── Variabel dasar yang selalu ada (fallback) ── */
   :root {
-    --font-family:      'Nunito', sans-serif;
+    --font-family:      'Outfit', sans-serif;
     --font-size-base:   14px;
     --font-weight-base: 400;
     --radius:           14px;
     --spacing:          1rem;
     --trans-speed:      .2s;
-    --accent-rgb:       43,79,255;
-    --border-color:     #e8e9f0;
-    --card-border:      #eef0fc;
-    --book-card:        #f8f9ff;
+    --accent:           #d8b878;
+    --accent2:          #f0d9a8;
+    --accent-rgb:       216,184,120;
+    --bg:               #090c10;
+    --sidebar-bg:       #10151b;
+    --card:             #121820;
+    --text:             #eef3f4;
+    --muted:            rgba(238,243,244,.65);
+    --border-color:     rgba(216,184,120,.18);
+    --card-border:      rgba(216,184,120,.12);
+    --book-card:        #161e27;
   }
   /* Paksa font & size ke body */
   body {
@@ -232,4 +244,121 @@
   body, .sidebar, .section-card, .stats-card, .admin-card, .book-card, .nav-item {
     transition: background var(--trans-speed) ease, color var(--trans-speed) ease !important;
   }
+
+  /* ── Stabilitas Tata Letak & Scrollbar (Cegah Loncat Antar Halaman) ── */
+  html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
+  }
+
+  /* ── Native Cross-Document View Transitions (Chromium 126+) ── */
+  @view-transition {
+    navigation: auto;
+  }
+  ::view-transition-group(app-sidebar) {
+    animation-duration: 0s;
+  }
+  .sidebar {
+    view-transition-name: app-sidebar;
+  }
+  .main {
+    view-transition-name: app-main;
+  }
+  ::view-transition-old(app-main) {
+    animation: 0.12s cubic-bezier(0.4, 0, 1, 1) both pageFadeOut;
+  }
+  ::view-transition-new(app-main) {
+    animation: 0.22s cubic-bezier(0.16, 1, 0.3, 1) both pageFadeIn;
+  }
+  @keyframes pageFadeOut {
+    from { opacity: 1; transform: translateY(0); }
+    to   { opacity: 0; transform: translateY(-4px); }
+  }
+  @keyframes pageFadeIn {
+    from { opacity: 0.15; transform: translateY(4px); }
+    to   { opacity: 1;    transform: translateY(0); }
+  }
+
+  /* ── Hilangkan flash/blink pada body, transisikan hanya konten (.main) ── */
+  body {
+    animation: none !important;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .main {
+      animation: pageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+  }
 </style>
+
+<script>
+/**
+ * ── Smooth Sidebar Navigation Handler ──
+ * Membuat perpindahan antar halaman via sidebar terasa mulus seperti SPA (Single Page App).
+ * Mencegah reload ulang jika sudah di halaman yang sama, memberikan feedback instan,
+ * dan menghaluskan transisi drawer di layar mobile.
+ */
+(function() {
+  function initSmoothSidebarNav() {
+    var sidebar = document.getElementById('sidebar');
+    if (!sidebar) return;
+    var links = sidebar.querySelectorAll('a[href]');
+    
+    // Ambil nama file halaman saat ini (default beranda.php)
+    var currentFile = (window.location.pathname.split('/').pop() || 'beranda.php').toLowerCase();
+    if (!currentFile || currentFile === '') currentFile = 'beranda.php';
+
+    links.forEach(function(link) {
+      link.addEventListener('click', function(e) {
+        var rawHref = link.getAttribute('href');
+        if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:') || link.target === '_blank') {
+          return;
+        }
+        // Jangan intercept jika user membuka di tab baru (Ctrl/Cmd click dsb)
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+          return;
+        }
+
+        var targetFile = rawHref.split('?')[0].split('#')[0].toLowerCase();
+
+        // Jika klik menu yang sedang aktif di halaman ini, cegah reload/loncat
+        if (targetFile === currentFile && !rawHref.includes('?')) {
+          e.preventDefault();
+          return;
+        }
+
+        // Feedback visual instan: pindahkan active class ke link yang diklik
+        links.forEach(function(l) { l.classList.remove('active'); });
+        link.classList.add('active');
+
+        var isMobile = window.innerWidth <= 768;
+        var overlay = document.querySelector('.sidebar-overlay') || document.getElementById('sidebarOverlay');
+        var main = document.querySelector('.main');
+
+        // Jika browser belum mendukung View Transitions native, berikan transisi keluar yang halus
+        if (main && !document.startViewTransition) {
+          main.style.transition = 'opacity 0.14s ease, transform 0.14s ease';
+          main.style.opacity = '0.4';
+          main.style.transform = 'translateY(-3px)';
+        }
+
+        // Di layar mobile: tutup drawer sidebar dengan anggun sebelum pindah halaman
+        if (isMobile && sidebar.classList.contains('open')) {
+          e.preventDefault();
+          sidebar.classList.remove('open');
+          if (overlay) overlay.classList.remove('open');
+          document.body.classList.remove('sidebar-open');
+          setTimeout(function() {
+            window.location.href = rawHref;
+          }, 90);
+        }
+      });
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initSmoothSidebarNav);
+  } else {
+    initSmoothSidebarNav();
+  }
+})();
+</script>

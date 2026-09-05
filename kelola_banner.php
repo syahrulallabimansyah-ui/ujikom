@@ -2,7 +2,7 @@
 // kelola_banner.php — Panel admin untuk mengatur banner carousel di beranda
 session_start();
 
-if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "admin") {
+if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
     header("Location: sign_in.php");
     exit;
 }
@@ -29,6 +29,7 @@ if (isset($_GET["profil_saved"])) {
 // ─────────────────────────────────────────────
 function uploadGambarBanner($file): string {
     if (!isset($file) || $file["error"] !== UPLOAD_ERR_OK) return "";
+    if (($file["size"] ?? 0) > 5 * 1024 * 1024) return "";
     $dir = "uploads/banner/";
     if (!is_dir($dir)) mkdir($dir, 0775, true);
     $ext     = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));

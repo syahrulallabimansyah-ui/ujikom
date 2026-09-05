@@ -59,7 +59,7 @@ $form_data = [
 // ─────────────────────────────────────────────
 //  Simpan perubahan data
 // ─────────────────────────────────────────────
-if ($blocked === "" && $_SERVER["REQUEST_METHOD"] === "POST" && ($_POST["action"] ?? "") === "update_data") {
+if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST["action"] ?? "") === "update_data") {
 
     $new_full_name = trim($_POST["full_name"] ?? "");
     $new_kelas     = trim($_POST["kelas"] ?? "");
@@ -205,8 +205,17 @@ if ($blocked === "" && $_SERVER["REQUEST_METHOD"] === "POST" && ($_POST["action"
     }
 }
 
-$page_title = "Update Data Diri – AKSA NOVA";
-$user_name  = $_SESSION["user_name"];
+$page_title = "Edit Profil Anggota – AKSA NOVA";
+$user_name  = $_SESSION["user_name"] ?? "Anggota";
+
+// ─── Musik latar (dari tabel pengaturan) ───
+$musik_res    = mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('musik_aktif','musik_file','musik_judul')");
+$musik_cfg    = [];
+while ($m = mysqli_fetch_assoc($musik_res)) { $musik_cfg[$m["kunci"]] = $m["nilai"]; }
+$musik_aktif  = ($musik_cfg["musik_aktif"] ?? "0") === "1";
+$musik_file   = $musik_cfg["musik_file"]  ?? "";
+$musik_judul  = $musik_cfg["musik_judul"] ?? "Musik Latar";
+$musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -214,316 +223,812 @@ $user_name  = $_SESSION["user_name"];
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
-  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet"/>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
 
   <?php require_once "settings_include.php"; ?>
+  <script>
+    if (localStorage.getItem('aksanova_theme') === 'light') {
+      document.documentElement.classList.add('theme-light');
+    }
+  </script>
 
   <style>
-    :root {
-      --bg:         #f4f5f7;
-      --sidebar-bg: #ffffff;
-      --accent:     #2b4fff;
-      --accent2:    #ffb800;
-      --text:       #1a1a2e;
-      --muted:      #7a7a9a;
-      --card:       #ffffff;
-      --radius:     14px;
-      --shadow-sm:  0 2px 12px rgba(0,0,0,.05);
-      --shadow-md:  0 4px 20px rgba(0,0,0,.10);
-      --trans:      .2s cubic-bezier(.22,1,.36,1);
-    }
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+    :root {
+      --bg:           #090c10;
+      --sidebar-bg:   #10151b;
+      --card:         #121820;
+      --accent:       #d8b878;
+      --accent2:      #f0d9a8;
+      --text:         #eef3f4;
+      --muted:        rgba(238,243,244,.65);
+      --border-color: rgba(216,184,120,.16);
+      --card-border:  rgba(216,184,120,.14);
+      --book-card:    #161e27;
+      --radius:       14px;
+      --sidebar-w:    170px;
+      --shadow-sm:    0 2px 12px rgba(0,0,0,.25);
+      --shadow-md:    0 4px 20px rgba(0,0,0,.45);
+      --trans:        .2s cubic-bezier(.22,1,.36,1);
+    }
+
+    html.theme-light {
+      --bg:           #f6f2e9;
+      --sidebar-bg:   #ffffff;
+      --card:         #ffffff;
+      --accent:       #9a7328;
+      --accent2:      #8a6323;
+      --text:         #1a1714;
+      --muted:        #6b645b;
+      --border-color: rgba(154,115,40,.2);
+      --card-border:  rgba(154,115,40,.15);
+      --book-card:    #fdfbf7;
+      --shadow-sm:    0 2px 12px rgba(60,45,20,.08);
+      --shadow-md:    0 6px 24px rgba(60,45,20,.14);
+    }
+
     body {
-      font-family:var(--font-family,'Nunito',sans-serif);
-      background:
-        radial-gradient(circle at 100% 0%, rgba(43,79,255,.05) 0%, transparent 45%),
-        radial-gradient(circle at 0% 100%, rgba(255,184,0,.06) 0%, transparent 40%),
-        var(--bg);
+      font-family:var(--font-family,'Outfit',sans-serif);
+      background:var(--bg);
       color:var(--text);
       min-height:100vh;
-      animation:bodyIn .5s ease both;
+      display:flex;
+      transition:background var(--trans), color var(--trans);
     }
-    @keyframes bodyIn { from{opacity:0} to{opacity:1} }
 
-    /* ── TOPBAR (pengganti sidebar — halaman ini berdiri sendiri, tidak lagi dalam layout dashboard) ── */
-    .topbar {
+    /* Scrollbar */
+    ::-webkit-scrollbar { width:6px; height:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:3px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--accent); }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width:var(--sidebar-w); height:100vh; height:100dvh; background:var(--sidebar-bg);
+      display:flex; flex-direction:column; padding:24px 0 20px;
+      border-right:1px solid var(--border-color);
+      position:fixed; top:0; left:0; bottom:0; z-index:170; transition:transform var(--trans);
+      overflow-y:auto; -webkit-overflow-scrolling:touch; scrollbar-width:thin;
+      box-shadow:2px 0 24px rgba(0,0,0,.35);
+    }
+    .logo-wrap { display:flex; flex-direction:column; align-items:center; padding:0 18px 24px; border-bottom:1px solid var(--border-color); }
+    .logo-icon { width:52px; height:52px; background:linear-gradient(135deg, rgba(216,184,120,.18) 0%, rgba(216,184,120,.05) 100%); border:1px solid rgba(216,184,120,.3); border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
+    .logo-icon svg { width:28px; height:28px; color:var(--accent); }
+    .logo-name { font-family:'Cormorant Garamond',serif; font-size:1.05rem; font-weight:700; color:var(--accent); letter-spacing:.1em; text-align:center; }
+    .logo-sub  { font-size:.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; text-align:center; margin-top:2px; }
+
+    .nav { flex:1; display:flex; flex-direction:column; gap:2px; padding:16px 10px; }
+    .nav-item { position:relative; display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px; font-size:.82rem; font-weight:600; color:var(--muted); cursor:pointer; text-decoration:none; transition:background var(--trans), color var(--trans); }
+    .nav-item:hover  { background:rgba(216,184,120,.10); color:var(--accent); }
+    .nav-item.active { background:rgba(216,184,120,.16); color:var(--accent); }
+    .nav-item.active::before { content:''; position:absolute; left:-10px; top:50%; transform:translateY(-50%); width:3px; height:60%; border-radius:0 4px 4px 0; background:var(--accent); }
+    .nav-item svg { width:17px; height:17px; flex-shrink:0; }
+
+    .nav-bottom { padding:10px 10px 0; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
+
+    .sidebar-toggle { display:none; position:fixed; top:14px; left:14px; z-index:200; width:42px; height:42px; border-radius:12px; border:1px solid var(--border-color, rgba(216,184,120,.2)); background:var(--card, #121820); box-shadow:0 4px 16px rgba(0,0,0,.3); cursor:pointer; align-items:center; justify-content:center; transition:transform .15s ease; }
+    .sidebar-toggle:active { transform:scale(.9); }
+    .sidebar-toggle svg { width:20px; height:20px; color:var(--accent); }
+    .sidebar-overlay { position:fixed; inset:0; background:rgba(9,12,16,.65); backdrop-filter:blur(3px); z-index:165; opacity:0; visibility:hidden; transition:opacity var(--trans), visibility var(--trans); }
+    .sidebar-overlay.open { opacity:1; visibility:visible; }
+
+    /* ── MOBILE TOPBAR (Default hidden di desktop; kontrol tema/musik tetap tampil sebagai HUD) ── */
+    .mobile-topbar { display: contents; }
+    .mobile-topbar-divider, .mobile-topbar-brand { display: none; }
+    .page-hud-controls { position: fixed; top: 16px; right: 20px; z-index: 150; display: flex; align-items: center; gap: 10px; }
+
+    .btn-topbar-mode {
+      appearance: none; cursor: pointer; width: 40px; height: 40px; border-radius: 50%;
+      border: 1.5px solid var(--border-color, rgba(216,184,120,.3)); background: var(--card, rgba(18,24,32,.85));
+      backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center;
+      color: var(--accent, #d8b878); transition: all var(--trans); box-shadow: 0 4px 16px rgba(0,0,0,.35); flex-shrink: 0;
+    }
+    .btn-topbar-mode:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(216,184,120,.35); }
+    .btn-topbar-mode svg { width: 18px; height: 18px; }
+    .btn-topbar-mode .icon-sun { display: none; }
+    html.theme-light .btn-topbar-mode .icon-moon { display: none; }
+    html.theme-light .btn-topbar-mode .icon-sun  { display: block; }
+
+    .btn-musik {
+      appearance: none; cursor: pointer; width: 40px; height: 40px; border-radius: 50%;
+      border: 1.5px solid var(--accent, #d8b878); background: rgba(18,24,32,.85);
+      backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: center;
+      color: var(--accent, #d8b878); transition: all var(--trans); box-shadow: 0 4px 16px rgba(0,0,0,.35); flex-shrink: 0;
+    }
+    .btn-musik:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(216,184,120,.35); }
+    .btn-musik svg { width: 18px; height: 18px; }
+    .btn-musik .icon-off { display: block; }
+    .btn-musik .icon-eq  { display: none; align-items: flex-end; gap: 2.5px; height: 16px; }
+    .btn-musik .icon-eq span { display: block; width: 3px; background: var(--accent, #d8b878); border-radius: 2px; animation: eqBar 1s ease-in-out infinite; }
+    .btn-musik .icon-eq span:nth-child(1) { height: 40%; animation-delay: -.6s; }
+    .btn-musik .icon-eq span:nth-child(2) { height: 100%; animation-delay: -.2s; }
+    .btn-musik .icon-eq span:nth-child(3) { height: 65%; animation-delay: -.9s; }
+    @keyframes eqBar { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+    .btn-musik.playing { background: rgba(216,184,120,.18); box-shadow: 0 0 16px rgba(216,184,120,.3); }
+    .btn-musik.playing .icon-off { display: none; }
+    .btn-musik.playing .icon-eq  { display: flex; }
+
+    /* ── MAIN CONTENT ── */
+    .main {
+      margin-left:var(--sidebar-w);
+      flex:1; padding:32px 36px 60px;
+      min-height:100vh;
+      max-width:1100px;
+    }
+
+    /* Page Header */
+    .page-head {
       display:flex; align-items:center; justify-content:space-between;
-      padding:14px 24px; background:var(--sidebar-bg);
-      border-bottom:1px solid var(--border-color,#e8e9f0);
-      box-shadow:0 2px 14px rgba(20,20,50,.04);
-      position:sticky; top:0; z-index:50;
+      margin-bottom:28px; flex-wrap:wrap; gap:14px;
     }
-    .topbar-brand { display:flex; align-items:center; gap:10px; text-decoration:none; }
-    .topbar-logo {
-      width:38px; height:38px; border-radius:10px; flex-shrink:0;
-      background:linear-gradient(135deg,#f0f0f8 0%,#fff 100%);
-      display:flex; align-items:center; justify-content:center;
-      box-shadow:0 3px 12px rgba(20,20,20,.14);
+    .btn-back {
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 16px; border-radius:50px;
+      border:1.5px solid var(--border-color);
+      background:rgba(255,255,255,.03);
+      font-size:.78rem; font-weight:700; color:var(--muted);
+      text-decoration:none; transition:all var(--trans);
     }
-    .topbar-logo svg { width:19px; height:19px; color:var(--accent); }
-    .topbar-name { font-family:'Cormorant Garamond',serif; font-size:.95rem; font-weight:700; color:var(--text); letter-spacing:.05em; }
-    .topbar-tag  { font-size:.55rem; color:var(--muted); letter-spacing:.1em; text-transform:uppercase; margin-top:1px; }
-    /* ── MAIN (halaman berdiri sendiri, tidak ada sidebar) ── */
-    .main { padding:32px 20px 50px; min-height:calc(100vh - 68px); }
+    .btn-back svg { width:15px; height:15px; }
+    .btn-back:hover { color:var(--accent); border-color:var(--accent); background:rgba(216,184,120,.08); }
 
-    .back-btn {
+    .head-info { flex:1; min-width:240px; }
+    .page-title {
+      font-family:'Cormorant Garamond',serif;
+      font-size:1.85rem; font-weight:700; color:var(--accent);
+      line-height:1.2; margin-bottom:4px;
+    }
+    .page-sub { font-size:.82rem; color:var(--muted); font-weight:400; }
+
+    /* Alerts */
+    .alert {
+      padding:12px 16px; border-radius:10px; font-size:.82rem; line-height:1.5;
+      margin-bottom:20px; display:flex; align-items:center; gap:10px;
+    }
+    .alert-error {
+      background:rgba(220,38,38,.12); border:1px solid rgba(220,38,38,.3);
+      color:#f87171;
+    }
+    .alert-info {
+      background:rgba(216,184,120,.08); border:1px solid rgba(216,184,120,.25);
+      color:var(--accent2);
+    }
+
+    /* Profile Edit Card */
+    .profile-card {
+      background:var(--card);
+      border:1px solid var(--border-color);
+      border-radius:18px;
+      padding:32px 34px;
+      box-shadow:var(--shadow-md);
+      position:relative;
+      overflow:hidden;
+    }
+    .profile-card::before {
+      content:''; position:absolute; top:0; left:0; right:0; height:3px;
+      background:linear-gradient(90deg, transparent, var(--accent) 50%, transparent);
+    }
+
+    /* Section Divider */
+    .form-section-title {
+      display:flex; align-items:center; gap:8px;
+      font-size:.76rem; font-weight:800; color:var(--accent);
+      letter-spacing:.08em; text-transform:uppercase;
+      margin:26px 0 16px; padding-bottom:8px;
+      border-bottom:1px solid var(--card-border);
+    }
+    .form-section-title:first-of-type { margin-top:0; }
+    .form-section-title svg { width:15px; height:15px; }
+
+    /* Foto Profile Uploader */
+    .foto-uploader-wrap {
+      display:flex; align-items:center; gap:20px;
+      padding:16px; background:var(--book-card);
+      border:1px solid var(--card-border); border-radius:14px;
+      margin-bottom:24px;
+    }
+    .foto-circle-wrap {
+      position:relative; width:86px; height:86px; border-radius:50%;
+      overflow:hidden; flex-shrink:0; cursor:pointer;
+      background:var(--card);
+      border:2px dashed var(--accent);
+      display:flex; align-items:center; justify-content:center;
+      transition:all var(--trans);
+    }
+    .foto-circle-wrap:hover {
+      box-shadow:0 0 0 4px rgba(216,184,120,.2);
+      transform:scale(1.02);
+    }
+    .foto-circle-wrap img {
+      width:100%; height:100%; object-fit:cover; display:none;
+    }
+    .foto-circle-wrap.has-photo img { display:block; }
+    .foto-circle-wrap.has-photo { border-style:solid; }
+    .foto-circle-wrap.has-photo .foto-placeholder-icon { display:none; }
+    .foto-placeholder-icon {
+      display:flex; flex-direction:column; align-items:center; gap:4px;
+      color:var(--muted); font-size:.6rem; text-align:center;
+    }
+    .foto-placeholder-icon svg { width:24px; height:24px; color:var(--accent); }
+    .foto-overlay-badge {
+      position:absolute; bottom:0; left:0; right:0; height:24px;
+      background:rgba(0,0,0,.65); display:flex; align-items:center; justify-content:center;
+      backdrop-filter:blur(2px);
+    }
+    .foto-overlay-badge svg { width:12px; height:12px; color:var(--accent); }
+
+    .foto-text-wrap { flex:1; min-width:0; }
+    .foto-title { font-size:.88rem; font-weight:700; color:var(--text); margin-bottom:4px; }
+    .foto-desc { font-size:.74rem; color:var(--muted); line-height:1.5; margin-bottom:10px; }
+    .btn-choose-foto {
       display:inline-flex; align-items:center; gap:6px;
-      font-size:.8rem; font-weight:700; color:var(--muted);
-      text-decoration:none; transition:color var(--trans);
-      background:#f0f2ff; padding:8px 14px 8px 10px; border-radius:50px;
+      padding:6px 14px; border-radius:50px;
+      border:1px solid var(--border-color); background:rgba(216,184,120,.1);
+      font-size:.72rem; font-weight:700; color:var(--accent); cursor:pointer;
+      transition:all var(--trans);
     }
-    .back-btn svg { width:16px; height:16px; }
-    .back-btn:hover { color:var(--accent); background:#e4e8ff; }
+    .btn-choose-foto:hover { background:rgba(216,184,120,.2); border-color:var(--accent); }
 
-    /* ── Divider antar-bagian form ── */
-    .form-divider {
-      font-size:.7rem; font-weight:800; color:var(--muted);
-      text-transform:uppercase; letter-spacing:.07em;
-      margin:22px 0 12px; padding-top:16px;
-      border-top:1px dashed #e2e3ef;
+    /* Form Fields */
+    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+    .field { margin-bottom:16px; }
+    .field label {
+      display:block; font-size:.76rem; font-weight:700;
+      color:var(--muted); margin-bottom:6px;
     }
-    .form-divider-hint { font-size:.72rem; font-weight:500; color:var(--muted); text-transform:none; letter-spacing:0; margin-top:2px; }
-
-    /* ── Kartu form Update Data Diri ── */
-    .settings-wrap { display:flex; justify-content:center; }
-    .settings-card {
-      width:100%; max-width:640px; background:var(--card);
-      border-radius:var(--radius); padding:28px 30px 32px;
-      box-shadow:var(--shadow-sm);
-      animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both;
-    }
-    @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
-
-    .settings-head { display:flex; align-items:flex-start; gap:16px; margin-bottom:22px; }
-    .settings-icon {
-      width:50px; height:50px; flex-shrink:0; border-radius:14px;
-      background:linear-gradient(135deg,#eef0ff,#e0e4ff);
-      display:flex; align-items:center; justify-content:center;
-    }
-    .settings-icon svg { width:24px; height:24px; color:var(--accent); }
-    .settings-title { font-family:'Cormorant Garamond',serif; font-size:1.55rem; font-weight:700; color:var(--text); line-height:1.2; }
-    .settings-sub { font-size:.8rem; color:var(--muted); line-height:1.6; margin-top:4px; }
-
-    .alert { font-size:.8rem; padding:11px 14px; border-radius:10px; margin-bottom:16px; line-height:1.55; }
-    .alert-error { background:#fff0f0; border:1px solid #f5c6cb; color:#c0392b; }
-    .alert-info  { background:#eef0ff; border:1px solid #d3d9ff; color:#2b3fbf; }
-
-    .row2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
-    .field { margin-bottom:15px; }
-    .field label { display:block; font-size:.74rem; font-weight:700; color:var(--muted); margin-bottom:6px; }
+    .field-input-wrap { position:relative; display:flex; align-items:center; width:100%; }
     .field input {
-      width:100%; padding:11px 14px; border:1.5px solid #e6e7f0; border-radius:10px;
-      background:#f8f9ff; font-family:var(--font-family,'Nunito',sans-serif);
-      font-size:.86rem; color:var(--text); outline:none;
-      transition:background var(--trans), border-color var(--trans), box-shadow var(--trans);
+      width:100%; padding:12px 16px;
+      border:1.5px solid var(--border-color);
+      border-radius:10px;
+      background:var(--book-card);
+      font-family:var(--font-family,'Outfit',sans-serif);
+      font-size:.88rem; color:var(--text);
+      outline:none; transition:all var(--trans);
     }
-    .field input:focus { background:#fff; border-color:var(--accent); box-shadow:0 0 0 3px rgba(43,79,255,.12); }
-    .field input:disabled { background:#eceef4; color:var(--muted); cursor:not-allowed; }
-    .hint { font-size:.68rem; color:var(--muted); margin-top:4px; line-height:1.5; }
+    .field input:focus {
+      border-color:var(--accent);
+      background:var(--card);
+      box-shadow:0 0 0 3px rgba(216,184,120,.18);
+    }
+    .field-hint { font-size:.7rem; color:var(--muted); margin-top:5px; line-height:1.4; }
 
-    /* Foto profil */
-    .foto-field { display:flex; align-items:center; gap:16px; margin-bottom:20px; }
-    .foto-preview-wrap {
-      position:relative; width:74px; height:74px; border-radius:50%; overflow:hidden;
-      background:#f8f9ff; border:1.5px dashed #c9cdf0; cursor:pointer; flex-shrink:0;
-      display:flex; align-items:center; justify-content:center;
-      transition:border-color var(--trans);
+    /* Readonly / Locked badges */
+    .readonly-grid {
+      display:grid; grid-template-columns:repeat(3, 1fr); gap:12px;
+      margin-bottom:20px;
     }
-    .foto-preview-wrap:hover { border-color:var(--accent); }
-    .foto-preview-wrap.has-photo { border-style:solid; border-color:var(--accent); }
-    .foto-preview-wrap img { width:100%; height:100%; object-fit:cover; display:none; }
-    .foto-placeholder { display:flex; flex-direction:column; align-items:center; gap:3px; color:var(--muted); }
-    .foto-placeholder svg { width:20px; height:20px; }
-    .foto-placeholder span { font-size:.55rem; text-align:center; line-height:1.3; padding:0 4px; }
-    .foto-info-text { font-size:.78rem; font-weight:700; color:var(--text); margin-bottom:4px; }
-    .foto-hint { font-size:.68rem; color:var(--muted); line-height:1.5; }
+    .readonly-item {
+      background:var(--book-card); border:1px solid var(--card-border);
+      border-radius:10px; padding:12px 14px; display:flex; flex-direction:column; gap:4px;
+    }
+    .readonly-label {
+      font-size:.68rem; font-weight:700; color:var(--muted);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    .readonly-label svg { width:12px; height:12px; opacity:.6; }
+    .readonly-value {
+      font-size:.88rem; font-weight:700; color:var(--text);
+      overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+    }
 
-    .form-actions { display:flex; align-items:center; gap:16px; margin-top:8px; flex-wrap:wrap; }
-    .btn-primary {
-      padding:12px 26px; border:none; border-radius:50px;
-      background:linear-gradient(120deg,#2b4fff,#4d6bff);
-      color:#fff; font-family:var(--font-family,'Nunito',sans-serif);
-      font-size:.85rem; font-weight:800; letter-spacing:.02em; cursor:pointer;
-      box-shadow:0 8px 22px rgba(43,79,255,.28);
-      transition:transform .15s, box-shadow var(--trans);
+    /* Password Eye Toggle */
+    .toggle-eye {
+      position:absolute; right:14px; width:18px; height:18px;
+      color:var(--muted); cursor:pointer; transition:color var(--trans);
     }
-    .btn-primary:hover { transform:translateY(-1px); box-shadow:0 10px 26px rgba(43,79,255,.36); }
-    .btn-primary:active { transform:scale(.97); }
-    .btn-secondary {
-      display:inline-flex; padding:11px 22px; border-radius:50px;
-      background:#eef0ff; color:var(--accent); font-size:.82rem; font-weight:800;
-      text-decoration:none; transition:background var(--trans);
-    }
-    .btn-secondary:hover { background:#dde1ff; }
-    .btn-text {
-      background:none; border:none; font-family:var(--font-family,'Nunito',sans-serif);
-      font-size:.8rem; font-weight:700; color:var(--muted); cursor:pointer; text-decoration:none;
-    }
-    .btn-text:hover { color:#e74c3c; }
+    .toggle-eye:hover { color:var(--accent); }
+    .toggle-eye svg { width:100%; height:100%; }
+    .toggle-eye .eye-off { display:none; }
+    .field-input-wrap.pw-visible .eye-on  { display:none; }
+    .field-input-wrap.pw-visible .eye-off { display:block; }
+    .field-input-wrap input[type="password"],
+    .field-input-wrap input[type="text"] { padding-right:42px; }
 
-    @media (max-width:700px) {
-      .topbar { padding:12px 16px; }
-      .topbar-tag { display:none; }
-      .back-btn span { display:none; }
-      .main { padding:24px 14px 30px; }
-      .row2 { grid-template-columns:1fr; }
-      .settings-card { padding:22px 18px 26px; }
+    /* Form Actions */
+    .form-actions {
+      display:flex; align-items:center; gap:14px;
+      margin-top:28px; padding-top:20px;
+      border-top:1px solid var(--card-border);
+      flex-wrap:wrap;
+    }
+    .btn-save-profile {
+      display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:13px 32px; border-radius:50px; border:none;
+      background:linear-gradient(135deg,#d8b878 0%,#f0d9a8 100%);
+      color:#090c10; font-family:var(--font-family,'Outfit',sans-serif);
+      font-size:.88rem; font-weight:800; cursor:pointer;
+      box-shadow:0 6px 20px rgba(216,184,120,.3);
+      transition:all var(--trans);
+    }
+    .btn-save-profile:hover { transform:translateY(-1px); box-shadow:0 8px 26px rgba(216,184,120,.45); }
+    .btn-save-profile:active { transform:scale(.98); }
+
+    .btn-cancel {
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:12px 24px; border-radius:50px;
+      border:1.5px solid var(--border-color); background:transparent;
+      color:var(--muted); font-size:.85rem; font-weight:700;
+      text-decoration:none; transition:all var(--trans);
+    }
+    .btn-cancel:hover { color:var(--text); border-color:var(--accent); background:rgba(216,184,120,.06); }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 992px) {
+      .main { padding:28px 24px 50px; }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar {
+        transform:translateX(-100%);
+        width:min(calc(var(--sidebar-w) + 60px), 260px);
+        padding-bottom:max(20px, env(safe-area-inset-bottom));
+      }
+      .sidebar.open { transform:translateX(0); }
+
+      .mobile-topbar {
+        display:flex; align-items:center; gap:12px;
+        position:fixed; top:0; left:0; right:0; height:60px;
+        padding:0 14px; padding-top:env(safe-area-inset-top,0);
+        background:var(--sidebar-bg);
+        border-bottom:1px solid var(--border-color);
+        box-shadow:0 2px 18px rgba(0,0,0,.35);
+        z-index:160;
+        transition:opacity var(--trans), visibility var(--trans);
+      }
+      body.sidebar-open .mobile-topbar { opacity:0; visibility:hidden; pointer-events:none; }
+      .mobile-topbar .sidebar-toggle { display:flex; position:static; box-shadow:none; flex-shrink:0; }
+      .mobile-topbar-divider {
+        display:block; width:1px; height:26px; flex-shrink:0;
+        background:linear-gradient(180deg, transparent, var(--border-color) 50%, transparent);
+      }
+      .mobile-topbar-brand { display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden; }
+      .mobile-topbar-brand svg { width:19px; height:19px; color:var(--accent); flex-shrink:0; }
+      .mobile-topbar-brand span {
+        font-family:'Cormorant Garamond',serif; font-weight:700; font-size:.92rem;
+        color:var(--accent); letter-spacing:.04em; white-space:nowrap;
+      }
+      .mobile-topbar .page-hud-controls { position:static; top:auto; right:auto; margin-left:auto; }
+
+      .main { margin-left:0; padding:78px 14px 36px; }
+      .profile-card { padding:22px 18px 26px; border-radius:14px; }
+      .row2 { grid-template-columns:1fr; gap:12px; margin-bottom:12px; }
+      .readonly-grid { grid-template-columns:1fr; gap:8px; }
+      .btn-save-profile { width:100%; }
+      .btn-cancel { width:100%; }
+    }
+
+    @media (max-width: 480px) {
+      .main { padding:74px 10px 30px; }
+      .page-title { font-size:1.55rem; }
+      .foto-uploader-wrap { flex-direction:column; text-align:center; gap:12px; }
+      .foto-circle-wrap { width:76px; height:76px; margin:0 auto; }
+      .btn-choose-foto { margin:0 auto; }
+    }
+
+    @media (max-width: 375px) {
+      .main { padding:72px 8px 24px; }
+      .profile-card { padding:18px 12px; }
     }
   </style>
 </head>
 <body>
 
-<div class="topbar">
-  <a href="beranda.php" class="topbar-brand">
-    <div class="topbar-logo">
+<!-- Mobile Topbar -->
+<header class="mobile-topbar" id="mobileTopbar">
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <span class="mobile-topbar-divider" aria-hidden="true"></span>
+  <div class="mobile-topbar-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+    <span>AKSA NOVA</span>
+  </div>
+
+  <div class="page-hud-controls" id="pageHudControls">
+    <button type="button" class="btn-topbar-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
+    </button>
+
+    <?php if ($musik_tampil): ?>
+    <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
+      <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <audio id="audioLatar" loop autoplay muted preload="auto">
+      <source src="<?= htmlspecialchars($musik_file) ?>">
+    </audio>
+    <?php endif; ?>
+  </div>
+</header>
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
+<!-- Sidebar Menu -->
+<aside class="sidebar" id="sidebar">
+  <div class="logo-wrap">
+    <div class="logo-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
         <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
         <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
       </svg>
     </div>
-    <div>
-      <div class="topbar-name">AKSA NOVA</div>
-      <div class="topbar-tag">Library Catalog App</div>
-    </div>
-  </a>
-  <a href="beranda.php" class="back-btn">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg>
-    <span>Kembali ke Beranda</span>
-  </a>
-</div>
+    <div class="logo-name">AKSA NOVA</div>
+    <div class="logo-sub">Library Catalog App</div>
+  </div>
 
+  <nav class="nav">
+    <a href="beranda.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Beranda
+    </a>
+    <a href="dashboard_user.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+      Dashboard
+    </a>
+    <a href="daftar_buku.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      Daftar Buku
+    </a>
+    <a href="buku_simpan.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+      Buku Simpan
+    </a>
+    <a href="edit_kartu.php" class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edit Profil
+    </a>
+  </nav>
+
+  <div class="nav-bottom">
+    <a href="#" class="nav-item" onclick="bukaSettings(); return false;" title="Pengaturan Tampilan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan
+    </a>
+    <a href="logout.php" class="nav-item" style="color:#e74c3c;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Keluar
+    </a>
+  </div>
+</aside>
+
+<!-- Main Area -->
 <main class="main">
 
-  <div class="settings-wrap">
-    <div class="settings-card">
+  <div class="page-head">
+    <div class="head-info">
+      <h1 class="page-title">Edit Profil Anggota</h1>
+      <p class="page-sub">Perbarui informasi akun, foto profil, dan kata sandi kamu</p>
+    </div>
+    <a href="dashboard_user.php" class="btn-back">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      <span>Dashboard</span>
+    </a>
+  </div>
 
-      <div class="settings-head">
-        <div class="settings-icon">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-          </svg>
-        </div>
-        <div>
-          <h1 class="settings-title">Update Data Diri</h1>
-          <p class="settings-sub">Halo, <?= htmlspecialchars($user_name) ?>. Perbarui nama, kelas, nomor HP, email, atau foto profil kartu anggota kamu di sini.</p>
-        </div>
+  <div class="profile-card">
+    <?php if ($blocked): ?>
+      <div class="alert alert-error">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span><?= htmlspecialchars($blocked) ?></span>
       </div>
+      <a href="dashboard_user.php" class="btn-cancel">Kembali ke Dashboard</a>
+    <?php else: ?>
 
-      <?php if ($blocked): ?>
-        <div class="alert alert-error"><?= htmlspecialchars($blocked) ?></div>
-        <a href="beranda.php" class="btn-secondary">Kembali ke Beranda</a>
-      <?php else: ?>
-
-        <?php if ($error): ?><div class="alert alert-error"><?= htmlspecialchars($error) ?></div><?php endif; ?>
-        <div class="alert alert-info">ℹ️ Username, NIK, dan nomor anggota tidak bisa diubah di sini. Kartu anggota kamu akan dicetak ulang otomatis dengan data terbaru.</div>
-
-        <?php
-          $current_foto = $user["foto"] ?? "";
-          $current_foto_exists = $current_foto !== "" && file_exists(__DIR__ . "/" . $current_foto);
-        ?>
-        <form method="POST" action="edit_kartu.php" enctype="multipart/form-data">
-          <input type="hidden" name="action" value="update_data">
-
-          <div class="foto-field">
-            <div class="foto-preview-wrap <?= $current_foto_exists ? 'has-photo' : '' ?>" id="fotoPreviewWrap" onclick="document.getElementById('fotoInput').click()">
-              <img id="fotoPreviewImg" src="<?= $current_foto_exists ? htmlspecialchars($current_foto) : '' ?>" alt="Foto profil" style="<?= $current_foto_exists ? 'display:block;' : '' ?>">
-              <div class="foto-placeholder" id="fotoPlaceholder" style="<?= $current_foto_exists ? 'display:none;' : '' ?>">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-                  <circle cx="12" cy="13" r="4"/>
-                </svg>
-                <span>Foto Profil</span>
-              </div>
-            </div>
-            <div>
-              <div class="foto-info-text">Foto Profil Kartu</div>
-              <p class="foto-hint">Ketuk untuk ambil foto baru dari kamera atau pilih dari galeri. Kosongkan jika tidak ingin mengganti foto.</p>
-            </div>
-            <input type="file" name="foto" id="fotoInput" accept="image/*" style="display:none">
-          </div>
-
-          <div class="field">
-            <label>Nama Lengkap</label>
-            <input type="text" name="full_name" value="<?= htmlspecialchars($form_data['full_name']) ?>" required>
-          </div>
-
-          <div class="row2">
-            <div class="field">
-              <label>Kelas</label>
-              <input type="text" name="kelas" value="<?= htmlspecialchars($form_data['kelas']) ?>" required>
-            </div>
-            <div class="field">
-              <label>NIK (tidak bisa diubah)</label>
-              <input type="text" value="<?= htmlspecialchars($user['nik'] ?? '') ?>" disabled>
-            </div>
-          </div>
-
-          <div class="row2">
-            <div class="field">
-              <label>Nomor HP</label>
-              <input type="text" name="no_hp" placeholder="08xxxxxxxxxx" value="<?= htmlspecialchars($form_data['no_hp']) ?>">
-            </div>
-            <div class="field">
-              <label>Email</label>
-              <input type="email" name="email" value="<?= htmlspecialchars($form_data['email']) ?>" required>
-            </div>
-          </div>
-          <p class="hint" style="margin:-8px 0 15px;">Ganti email juga berarti login berikutnya pakai email baru ini (atau tetap bisa pakai username).</p>
-
-          <div class="form-divider">
-            Ubah Kata Sandi
-            <div class="form-divider-hint">Opsional — kosongkan kedua kolom ini kalau tidak ingin mengganti kata sandi.</div>
-          </div>
-
-          <div class="row2">
-            <div class="field">
-              <label>Kata Sandi Baru</label>
-              <input type="password" name="new_password" placeholder="Minimal 6 karakter" autocomplete="new-password">
-            </div>
-            <div class="field">
-              <label>Konfirmasi Kata Sandi Baru</label>
-              <input type="password" name="new_password_confirm" placeholder="Ulangi kata sandi baru" autocomplete="new-password">
-            </div>
-          </div>
-
-          <div class="form-actions">
-            <button type="submit" class="btn-primary">Simpan &amp; Cetak Ulang Kartu</button>
-            <a href="beranda.php" class="btn-text">Batalkan</a>
-          </div>
-        </form>
-
+      <?php if ($error): ?>
+        <div class="alert alert-error">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span><?= htmlspecialchars($error) ?></span>
+        </div>
       <?php endif; ?>
 
-    </div>
+      <?php
+        $current_foto = $user["foto"] ?? "";
+        $current_foto_exists = $current_foto !== "" && file_exists(__DIR__ . "/" . $current_foto);
+      ?>
+
+      <form method="POST" action="edit_kartu.php" enctype="multipart/form-data" id="editForm">
+        <input type="hidden" name="action" value="update_data">
+
+        <!-- 1. Foto Profil -->
+        <div class="form-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Foto Profil Kartu
+        </div>
+
+        <div class="foto-uploader-wrap">
+          <div class="foto-circle-wrap <?= $current_foto_exists ? 'has-photo' : '' ?>" id="fotoPreviewWrap" onclick="document.getElementById('fotoInput').click()" title="Ketuk untuk ubah foto">
+            <img id="fotoPreviewImg" src="<?= $current_foto_exists ? htmlspecialchars($current_foto) . '?v=' . filemtime(__DIR__ . '/' . $current_foto) : '' ?>" alt="Foto profil">
+            <div class="foto-placeholder-icon" id="fotoPlaceholder">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span>Ubah Foto</span>
+            </div>
+            <div class="foto-overlay-badge" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            </div>
+          </div>
+          <div class="foto-text-wrap">
+            <div class="foto-title">Foto Kartu Anggota</div>
+            <p class="foto-desc">Format JPG, PNG, atau WEBP (maks. 5MB). Foto ini akan langsung diperbarui pada kartu anggota digital kamu.</p>
+            <button type="button" class="btn-choose-foto" onclick="document.getElementById('fotoInput').click()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+              Pilih / Ambil Foto
+            </button>
+            <input type="file" name="foto" id="fotoInput" accept="image/*" style="display:none">
+          </div>
+        </div>
+
+        <!-- 2. Data Anggota -->
+        <div class="form-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Informasi Anggota
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="fullNameInput">Nama Lengkap</label>
+            <input type="text" id="fullNameInput" name="full_name" value="<?= htmlspecialchars($form_data['full_name']) ?>" required>
+          </div>
+          <div class="field">
+            <label for="kelasInput">Kelas / Departemen</label>
+            <input type="text" id="kelasInput" name="kelas" value="<?= htmlspecialchars($form_data['kelas']) ?>" required>
+          </div>
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="noHpInput">Nomor WhatsApp / HP</label>
+            <input type="text" id="noHpInput" name="no_hp" placeholder="Contoh: 081234567890" value="<?= htmlspecialchars($form_data['no_hp']) ?>">
+          </div>
+          <div class="field">
+            <label for="emailInput">Alamat Email</label>
+            <input type="email" id="emailInput" name="email" value="<?= htmlspecialchars($form_data['email']) ?>" required>
+            <p class="field-hint">Email ini digunakan untuk verifikasi dan notifikasi kartu.</p>
+          </div>
+        </div>
+
+        <!-- 3. Identitas Permanen -->
+        <div class="form-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          Identitas Resmi (Terkunci)
+        </div>
+
+        <div class="readonly-grid">
+          <div class="readonly-item">
+            <div class="readonly-label">
+              <span>Nomor Anggota</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div class="readonly-value"><?= htmlspecialchars($user["no_anggota"] ?: "—") ?></div>
+          </div>
+          <div class="readonly-item">
+            <div class="readonly-label">
+              <span>Username Login</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div class="readonly-value">@<?= htmlspecialchars($user["username"]) ?></div>
+          </div>
+          <div class="readonly-item">
+            <div class="readonly-label">
+              <span>NIK Terdaftar</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </div>
+            <div class="readonly-value"><?= htmlspecialchars($user["nik"] ?: "—") ?></div>
+          </div>
+        </div>
+
+        <!-- 4. Ganti Kata Sandi -->
+        <div class="form-section-title">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-1.5 1.5L14 9M19 8l-7 7m4-7l-7 7m1 1l-2 2H4v-4l2-2 7-7"/></svg>
+          Ubah Kata Sandi (Opsional)
+        </div>
+
+        <div class="row2">
+          <div class="field">
+            <label for="newPwInput">Kata Sandi Baru</label>
+            <div class="field-input-wrap" id="wrapPw1">
+              <input type="password" id="newPwInput" name="new_password" placeholder="Minimal 8 karakter, huruf & angka" autocomplete="new-password">
+              <span class="toggle-eye" data-target="newPwInput" data-wrap="wrapPw1" role="button" tabindex="0" aria-label="Tampilkan kata sandi">
+                <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+              </span>
+            </div>
+          </div>
+          <div class="field">
+            <label for="confirmPwInput">Konfirmasi Kata Sandi Baru</label>
+            <div class="field-input-wrap" id="wrapPw2">
+              <input type="password" id="confirmPwInput" name="new_password_confirm" placeholder="Ulangi kata sandi baru" autocomplete="new-password">
+              <span class="toggle-eye" data-target="confirmPwInput" data-wrap="wrapPw2" role="button" tabindex="0" aria-label="Tampilkan kata sandi">
+                <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+        <p class="field-hint" style="margin-top:-6px; margin-bottom:12px;">Kosongkan kedua kolom di atas jika kamu tidak ingin mengganti kata sandi.</p>
+
+        <!-- Form Actions -->
+        <div class="form-actions">
+          <button type="submit" class="btn-save-profile">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
+            Simpan Perubahan
+          </button>
+          <a href="dashboard_user.php" class="btn-cancel">Batal</a>
+        </div>
+      </form>
+
+    <?php endif; ?>
   </div>
 
 </main>
 
-<?php require_once "pengaturan_panel.php"; ?>
-
 <script>
-  <?php if (!$blocked): ?>
-  var fotoInput       = document.getElementById('fotoInput');
-  var fotoPreviewWrap = document.getElementById('fotoPreviewWrap');
-  var fotoPreviewImg  = document.getElementById('fotoPreviewImg');
-  var fotoPlaceholder = document.getElementById('fotoPlaceholder');
+  // ─── Sidebar Mobile Toggle ───
+  (function () {
+    var toggle  = document.getElementById('sidebarToggle');
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.getElementById('sidebarOverlay');
+    if (!toggle || !sidebar) return;
 
-  fotoInput.addEventListener('change', function (e) {
-    var file = e.target.files[0];
-    if (!file) return;
-    var reader = new FileReader();
-    reader.onload = function (ev) {
-      fotoPreviewImg.src = ev.target.result;
-      fotoPreviewImg.style.display = 'block';
-      fotoPlaceholder.style.display = 'none';
-      fotoPreviewWrap.classList.add('has-photo');
-    };
-    reader.readAsDataURL(file);
+    function openSidebar() {
+      sidebar.classList.add('open');
+      document.body.classList.add('sidebar-open');
+      if (overlay) overlay.classList.add('open');
+    }
+    function closeSidebar() {
+      sidebar.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+      if (overlay) overlay.classList.remove('open');
+    }
+
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
+    });
+    if (overlay) overlay.addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
+    });
+  })();
+
+  // ─── Preview Foto Profil Baru ───
+  <?php if (!$blocked): ?>
+  (function () {
+    var fotoInput       = document.getElementById('fotoInput');
+    var fotoPreviewWrap = document.getElementById('fotoPreviewWrap');
+    var fotoPreviewImg  = document.getElementById('fotoPreviewImg');
+    var fotoPlaceholder = document.getElementById('fotoPlaceholder');
+    if (!fotoInput || !fotoPreviewImg) return;
+
+    fotoInput.addEventListener('change', function (e) {
+      var file = e.target.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        fotoPreviewImg.src = ev.target.result;
+        fotoPreviewImg.style.display = 'block';
+        if (fotoPlaceholder) fotoPlaceholder.style.display = 'none';
+        fotoPreviewWrap.classList.add('has-photo');
+      };
+      reader.readAsDataURL(file);
+    });
+  })();
+
+  // ─── Toggle Visibility Kata Sandi ───
+  document.querySelectorAll('.toggle-eye').forEach(function (toggle) {
+    var input = document.getElementById(toggle.dataset.target);
+    var wrap  = document.getElementById(toggle.dataset.wrap);
+    if (!input || !wrap) return;
+
+    function togglePassword() {
+      var isVisible = input.type === 'text';
+      input.type = isVisible ? 'password' : 'text';
+      wrap.classList.toggle('pw-visible', !isVisible);
+    }
+    toggle.addEventListener('click', togglePassword);
+    toggle.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); togglePassword(); }
+    });
   });
   <?php endif; ?>
+
+  // ─── Mode Gelap / Terang ───
+  (function () {
+    var btn = document.getElementById('btnMode');
+    if (!btn) return;
+    var root = document.documentElement;
+    var STORAGE_KEY = 'aksanova_theme';
+
+    function updatePressed() {
+      btn.setAttribute('aria-pressed', root.classList.contains('theme-light') ? 'true' : 'false');
+    }
+    updatePressed();
+
+    btn.addEventListener('click', function () {
+      root.classList.toggle('theme-light');
+      var isLight = root.classList.contains('theme-light');
+      try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
+      updatePressed();
+    });
+  })();
+
+  // ─── Musik Latar (Tersinkronisasi) ───
+  (function () {
+    var audio = document.getElementById('audioLatar');
+    var btn   = document.getElementById('btnMusik');
+    if (!audio || !btn) return;
+
+    var STORAGE_KEY = 'aksanova_musik_status';
+    var userPaused = false;
+    try { userPaused = localStorage.getItem(STORAGE_KEY) === 'paused'; } catch (e) {}
+    var autoplaySucceeded = false;
+
+    function setPlaying(isPlaying) {
+      btn.classList.toggle('playing', isPlaying);
+      btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+    }
+    function removeFallback() {
+      ['click','touchstart','keydown','scroll'].forEach(ev => document.removeEventListener(ev, fallback));
+    }
+    function play() {
+      audio.play().then(() => {
+        audio.muted = false;
+        autoplaySucceeded = true;
+        removeFallback();
+        setPlaying(true);
+        try { localStorage.setItem(STORAGE_KEY, 'playing'); } catch (e) {}
+      }).catch(() => setPlaying(false));
+    }
+    function pause() {
+      audio.pause();
+      setPlaying(false);
+      try { localStorage.setItem(STORAGE_KEY, 'paused'); } catch (e) {}
+    }
+    function fallback() {
+      if (userPaused || autoplaySucceeded) return;
+      audio.muted = false;
+      play();
+    }
+
+    if (!userPaused) {
+      audio.play().then(() => {
+        audio.muted = false;
+        autoplaySucceeded = true;
+        setPlaying(true);
+      }).catch(() => {
+        audio.muted = true;
+        audio.play().then(() => {
+          setPlaying(true);
+          ['click','touchstart','keydown','scroll'].forEach(ev => {
+            document.addEventListener(ev, fallback, { once: true, passive: true });
+          });
+        }).catch(() => setPlaying(false));
+      });
+    }
+
+    btn.addEventListener('click', () => {
+      if (audio.paused) {
+        userPaused = false;
+        play();
+      } else {
+        userPaused = true;
+        pause();
+      }
+    });
+
+    audio.addEventListener('play',  () => setPlaying(true));
+    audio.addEventListener('pause', () => setPlaying(false));
+  })();
 </script>
 
+<?php require_once "pengaturan_panel.php"; ?>
 </body>
 </html>

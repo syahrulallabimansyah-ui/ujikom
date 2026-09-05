@@ -16,30 +16,31 @@
 <!-- Panel Utama -->
 <aside id="settingsPanel" style="
   position:fixed; top:0; right:-420px; bottom:0; width:400px; max-width:95vw;
-  background:var(--card,#fff); z-index:900;
-  box-shadow:-8px 0 40px rgba(0,0,0,.18);
+  background:var(--card,#121820); z-index:900;
+  box-shadow:-8px 0 40px rgba(0,0,0,.5);
   display:flex; flex-direction:column;
   transition:right .35s cubic-bezier(.22,1,.36,1);
-  font-family:var(--font-family,'Nunito',sans-serif);
+  font-family:var(--font-family,'Outfit',sans-serif);
   overflow:hidden;
+  border-left:1px solid var(--border-color,rgba(216,184,120,.18));
 ">
 
   <!-- Header panel -->
-  <div style="padding:20px 22px 16px; border-bottom:1px solid var(--border-color,#e8e9f0); display:flex; align-items:center; gap:12px; flex-shrink:0;">
-    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--accent,#2b4fff),var(--accent2,#ffb800));display:flex;align-items:center;justify-content:center;">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+  <div style="padding:20px 22px 16px; border-bottom:1px solid var(--border-color,rgba(216,184,120,.18)); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--card,#121820);">
+    <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#d8b878,#f0d9a8);display:flex;align-items:center;justify-content:center;">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
     </div>
     <div style="flex:1;">
-      <div style="font-size:.95rem;font-weight:800;color:var(--text,#1a1a2e);">Pengaturan Tampilan</div>
-      <div style="font-size:.7rem;color:var(--muted,#7a7a9a);margin-top:1px;">Semua perubahan berlaku di seluruh halaman</div>
+      <div style="font-size:.95rem;font-weight:800;color:var(--text,#eef3f4);">Pengaturan Tampilan</div>
+      <div style="font-size:.7rem;color:var(--muted,rgba(238,243,244,.55));margin-top:1px;">Semua perubahan berlaku di seluruh halaman</div>
     </div>
-    <button onclick="tutupSettings()" style="width:32px;height:32px;border:none;background:rgba(0,0,0,.06);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;" title="Tutup">
+    <button onclick="tutupSettings()" style="width:32px;height:32px;border:none;background:rgba(216,184,120,.1);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted,#aaa);" title="Tutup">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
 
   <!-- Scroll body -->
-  <div style="flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:22px;">
+  <div style="flex:1;overflow-y:auto;padding:18px 22px;display:flex;flex-direction:column;gap:22px;background:var(--card,#121820);">
 
     <!-- ── Seksi 1: Mode Terang/Gelap ── -->
     <div class="sett-section">
@@ -126,11 +127,11 @@
         Warna Aksen
       </div>
       <div class="color-row">
+        <button class="color-dot" id="grad-emas"      onclick="setGrad('emas')"      style="background:#d8b878;" title="Emas"></button>
         <button class="color-dot" id="grad-biru"      onclick="setGrad('biru')"      style="background:#2b4fff;" title="Biru"></button>
         <button class="color-dot" id="grad-ungu"      onclick="setGrad('ungu')"      style="background:#7c3aed;" title="Ungu"></button>
         <button class="color-dot" id="grad-hijau"     onclick="setGrad('hijau')"     style="background:#059669;" title="Hijau"></button>
         <button class="color-dot" id="grad-merah"     onclick="setGrad('merah')"     style="background:#dc2626;" title="Merah"></button>
-        <button class="color-dot" id="grad-emas"      onclick="setGrad('emas')"      style="background:#b45309;" title="Emas/Coklat"></button>
         <button class="color-dot" id="grad-merah_muda" onclick="setGrad('merah_muda')" style="background:#db2777;" title="Merah Muda"></button>
       </div>
     </div>
@@ -142,6 +143,7 @@
         Font Teks
       </div>
       <div class="font-list">
+        <button class="font-btn" id="font-Outfit"       onclick="setFont('Outfit')"       style="font-family:'Outfit',sans-serif;">Outfit — Modern Clean Geometric</button>
         <button class="font-btn" id="font-Nunito"       onclick="setFont('Nunito')"       style="font-family:'Nunito',sans-serif;">Nunito — Modern Rounded</button>
         <button class="font-btn" id="font-Poppins"      onclick="setFont('Poppins')"      style="font-family:'Poppins',sans-serif;">Poppins — Clean Geometric</button>
         <button class="font-btn" id="font-Merriweather" onclick="setFont('Merriweather')" style="font-family:'Merriweather',serif;">Merriweather — Klasik Serif</button>
@@ -242,12 +244,12 @@
   </div><!-- /scroll body -->
 
   <!-- Footer panel -->
-  <div style="padding:14px 22px;border-top:1px solid var(--border-color,#e8e9f0);display:flex;gap:10px;flex-shrink:0;">
-    <button onclick="resetSettings()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color,#e8e9f0);background:transparent;color:var(--muted,#7a7a9a);font-family:var(--font-family,'Nunito',sans-serif);font-size:.78rem;font-weight:700;cursor:pointer;">
+  <div style="padding:14px 22px;border-top:1px solid var(--border-color,rgba(216,184,120,.18));display:flex;gap:10px;flex-shrink:0;background:var(--card,#121820);">
+    <button onclick="resetSettings()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:transparent;color:var(--muted,rgba(238,243,244,.6));font-family:var(--font-family,'Outfit',sans-serif);font-size:.78rem;font-weight:700;cursor:pointer;">
       ↺ Reset Default
     </button>
-    <button onclick="tutupSettings()" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,var(--accent,#2b4fff),var(--accent2,#ffb800));color:#fff;font-family:var(--font-family,'Nunito',sans-serif);font-size:.78rem;font-weight:800;cursor:pointer;">
-      Simpan & Tutup
+    <button onclick="tutupSettings()" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#d8b878,#f0d9a8);color:#1a1205;font-family:var(--font-family,'Outfit',sans-serif);font-size:.78rem;font-weight:800;cursor:pointer;">
+      Simpan &amp; Tutup
     </button>
   </div>
 
@@ -255,7 +257,13 @@
 
 <!-- ═══════ STYLE PANEL ═══════ -->
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Merriweather:wght@300;400;700&family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+
+/* Scrollbar settings panel */
+#settingsPanel ::-webkit-scrollbar { width: 4px; }
+#settingsPanel ::-webkit-scrollbar-track { background: transparent; }
+#settingsPanel ::-webkit-scrollbar-thumb { background: rgba(216,184,120,.3); border-radius: 4px; }
+#settingsPanel ::-webkit-scrollbar-thumb:hover { background: rgba(216,184,120,.6); }
 
 .sett-section {
   display:flex; flex-direction:column; gap:10px;
@@ -280,9 +288,9 @@
   cursor:pointer; transition:all .2s;
 }
 .mode-btn.aktif {
-  border-color:var(--accent,#2b4fff);
-  background:rgba(43,79,255,.08);
-  color:var(--accent,#2b4fff);
+  border-color:var(--accent,#d8b878);
+  background:rgba(216,184,120,.12);
+  color:var(--accent,#d8b878);
 }
 .ui-grid {
   display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;
@@ -290,48 +298,49 @@
 .ui-btn {
   display:flex; flex-direction:column; align-items:center; gap:6px;
   padding:8px 4px; border-radius:10px;
-  border:2px solid var(--border-color,#e8e9f0);
+  border:2px solid var(--border-color, rgba(216,184,120,.15));
   background:transparent; cursor:pointer; transition:all .2s;
 }
 .ui-btn.aktif {
-  border-color:var(--accent,#2b4fff);
-  box-shadow:0 0 0 3px rgba(var(--accent-rgb,43,79,255),.12);
+  border-color:var(--accent,#d8b878);
+  box-shadow:0 0 0 3px rgba(var(--accent-rgb,216,184,120),.2);
 }
 .ui-btn span {
-  font-family:var(--font-family,'Nunito',sans-serif);
+  font-family:var(--font-family,'Outfit',sans-serif);
   font-size:.62rem; font-weight:700;
-  color:var(--text,#1a1a2e);
+  color:var(--text,#eef3f4);
 }
 .ui-preview {
   width:100%; height:36px; border-radius:6px; overflow:hidden;
-  display:flex; border:1px solid rgba(0,0,0,.07);
+  display:flex; border:1px solid rgba(255,255,255,.08);
 }
 .color-row {
   display:flex; gap:10px; flex-wrap:wrap;
 }
 .color-dot {
   width:32px; height:32px; border-radius:50%; border:3px solid transparent;
-  cursor:pointer; transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,.18);
+  cursor:pointer; transition:all .2s; box-shadow:0 2px 8px rgba(0,0,0,.3);
 }
 .color-dot.aktif {
-  border-color:var(--text,#1a1a2e);
+  border-color:var(--accent,#d8b878);
   transform:scale(1.15);
+  box-shadow:0 0 10px rgba(216,184,120,.5);
 }
 .font-list {
   display:flex; flex-direction:column; gap:6px;
 }
 .font-btn {
   padding:9px 14px; border-radius:9px;
-  border:2px solid var(--border-color,#e8e9f0);
+  border:2px solid var(--border-color, rgba(216,184,120,.15));
   background:transparent; cursor:pointer;
   font-size:.82rem; font-weight:600;
-  color:var(--text,#1a1a2e);
+  color:var(--text,#eef3f4);
   text-align:left; transition:all .2s;
 }
 .font-btn.aktif {
-  border-color:var(--accent,#2b4fff);
-  background:rgba(43,79,255,.06);
-  color:var(--accent,#2b4fff);
+  border-color:var(--accent,#d8b878);
+  background:rgba(216,184,120,.12);
+  color:var(--accent,#d8b878);
 }
 .sett-chip-row {
   display:flex; gap:7px; flex-wrap:wrap;
@@ -339,31 +348,31 @@
 .chip-btn {
   display:flex; align-items:center; gap:5px;
   padding:7px 14px; border-radius:50px;
-  border:2px solid var(--border-color,#e8e9f0);
+  border:2px solid var(--border-color, rgba(216,184,120,.15));
   background:transparent; cursor:pointer;
-  font-family:var(--font-family,'Nunito',sans-serif);
+  font-family:var(--font-family,'Outfit',sans-serif);
   font-size:.76rem; font-weight:700;
-  color:var(--text,#1a1a2e); transition:all .2s;
+  color:var(--text,#eef3f4); transition:all .2s;
 }
 .chip-btn.aktif {
-  border-color:var(--accent,#2b4fff);
-  background:rgba(43,79,255,.08);
-  color:var(--accent,#2b4fff);
+  border-color:var(--accent,#d8b878);
+  background:rgba(216,184,120,.12);
+  color:var(--accent,#d8b878);
 }
 /* Toggle switch */
 .toggle-switch { position:relative; display:inline-block; width:44px; height:24px; cursor:pointer; }
 .toggle-switch input { opacity:0; width:0; height:0; }
 .toggle-track {
   position:absolute; inset:0;
-  background:#ccc; border-radius:24px;
+  background:rgba(255,255,255,.2); border-radius:24px;
   transition:background .25s;
 }
-.toggle-switch input:checked + .toggle-track { background:var(--accent,#2b4fff); }
+.toggle-switch input:checked + .toggle-track { background:var(--accent,#d8b878); }
 .toggle-thumb {
   position:absolute; top:3px; left:3px;
   width:18px; height:18px; border-radius:50%;
   background:#fff; transition:left .25s;
-  box-shadow:0 1px 4px rgba(0,0,0,.25);
+  box-shadow:0 1px 4px rgba(0,0,0,.35);
 }
 .toggle-switch input:checked + .toggle-track .toggle-thumb { left:23px; }
 </style>
@@ -407,18 +416,18 @@
   }
 
   var palettes = {
+    emas:       { accent:'#d8b878', accent2:'#f0d9a8', accentRgb:'216,184,120' },
     biru:       { accent:'#2b4fff', accent2:'#ffb800', accentRgb:'43,79,255' },
     ungu:       { accent:'#7c3aed', accent2:'#f59e0b', accentRgb:'124,58,237' },
     hijau:      { accent:'#059669', accent2:'#fbbf24', accentRgb:'5,150,105' },
     merah:      { accent:'#dc2626', accent2:'#f59e0b', accentRgb:'220,38,38' },
-    emas:       { accent:'#b45309', accent2:'#2b4fff', accentRgb:'180,83,9' },
     merah_muda: { accent:'#db2777', accent2:'#7c3aed', accentRgb:'219,39,119' },
   };
 
   var uiColors = {
     default: {
-      light: { bg:'#f4f5f7',sidebarBg:'#ffffff',card:'#ffffff',text:'#1a1a2e',muted:'#7a7a9a',border:'#e8e9f0',cardBorder:'#eef0fc',bookCard:'#f8f9ff' },
-      dark:  { bg:'#0f0f1a',sidebarBg:'#14142a',card:'#1a1a2e',text:'#e8e8f5',muted:'#8888aa',border:'#2a2a40',cardBorder:'#252540',bookCard:'#1e1e30' },
+      light: { bg:'#f6f2e8', sidebarBg:'#ffffff', card:'#ffffff', text:'#221d14', muted:'#7a7060', border:'rgba(150,110,45,.20)', cardBorder:'rgba(150,110,45,.15)', bookCard:'#fdfbf7' },
+      dark:  { bg:'#090c10', sidebarBg:'#10151b', card:'#121820', text:'#eef3f4', muted:'rgba(238,243,244,.65)', border:'rgba(216,184,120,.18)', cardBorder:'rgba(216,184,120,.12)', bookCard:'#161e27' },
     },
     minimal: {
       light: { bg:'#fafafa',sidebarBg:'#f5f5f5',card:'#ffffff',text:'#111111',muted:'#999999',border:'#e0e0e0',cardBorder:'#ebebeb',bookCard:'#f5f5f5' },
@@ -457,6 +466,7 @@
   }
 
   var fontMap = {
+    'Outfit':       "'Outfit', sans-serif",
     'Nunito':       "'Nunito', sans-serif",
     'Poppins':      "'Poppins', sans-serif",
     'Merriweather': "'Merriweather', serif",
@@ -469,8 +479,10 @@
   window.setMode = function(mode) {
     var s = saveSett({ mode: mode });
     var root = document.documentElement;
-    root.classList.remove('light','dark');
+    root.classList.remove('light','dark','theme-light');
     root.classList.add(mode);
+    if (mode === 'light') root.classList.add('theme-light');
+    try { localStorage.setItem('aksanova_theme', mode); } catch(e){}
     applyColors(s.ui || 'default', mode);
     refreshUI();
   };
@@ -481,13 +493,13 @@
     // Hapus kelas ui lama
     root.className = root.className.replace(/ui-\w+/g, '').trim();
     root.classList.add('ui-' + ui);
-    applyColors(ui, s.mode || 'light');
+    applyColors(ui, s.mode || (localStorage.getItem('aksanova_theme') === 'light' ? 'light' : 'dark'));
     refreshUI();
   };
 
   window.setGrad = function(grad) {
     saveSett({ gradient: grad });
-    var pal = palettes[grad] || palettes.biru;
+    var pal = palettes[grad] || palettes.emas;
     applyRoot('--accent', pal.accent);
     applyRoot('--accent2', pal.accent2);
     applyRoot('--accent-rgb', pal.accentRgb);
@@ -552,10 +564,10 @@
   // ── Refresh tampilan tombol panel ──
   function refreshUI() {
     var s = getSett();
-    var mode  = s.mode      || 'light';
+    var mode  = s.mode      || (localStorage.getItem('aksanova_theme') === 'light' ? 'light' : 'dark');
     var ui    = s.ui        || 'default';
-    var grad  = s.gradient  || 'biru';
-    var font  = s.font      || 'Nunito';
+    var grad  = s.gradient  || 'emas';
+    var font  = s.font      || 'Outfit';
     var fw    = s.fontWeight|| 'normal';
     var sp    = s.spacing   || 'normal';
     var sb    = s.sidebar   || 'full';
@@ -571,12 +583,12 @@
       if(el) el.classList.toggle('aktif', k === ui);
     });
     // Gradient
-    ['biru','ungu','hijau','merah','emas','merah_muda'].forEach(function(k){
+    ['emas','biru','ungu','hijau','merah','merah_muda'].forEach(function(k){
       var el = document.getElementById('grad-'+k);
       if(el) el.classList.toggle('aktif', k === grad);
     });
     // Font
-    ['Nunito','Poppins','Merriweather','Playfair Display','Roboto Mono'].forEach(function(k){
+    ['Outfit','Nunito','Poppins','Merriweather','Playfair Display','Roboto Mono'].forEach(function(k){
       var el = document.getElementById('font-'+k);
       if(el) el.classList.toggle('aktif', k === font);
     });

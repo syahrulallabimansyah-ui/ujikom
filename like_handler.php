@@ -10,7 +10,7 @@ if (!isset($_SESSION["user_id"])) {
 }
 
 // Admin tidak boleh like/favorite
-if ($_SESSION["role"] === "admin") {
+if (($_SESSION["role"] ?? "") === "admin") {
     echo json_encode(["ok" => false, "msg" => "Admin tidak perlu fitur ini"]);
     exit;
 }

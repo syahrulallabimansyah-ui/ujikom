@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Aug 27, 2026 at 12:40 AM
+-- Generation Time: Sep 03, 2026 at 12:44 AM
 -- Server version: 8.0.30
 -- PHP Version: 8.1.10
 
@@ -65,10 +65,8 @@ CREATE TABLE `banner` (
 --
 
 INSERT INTO `banner` (`id`, `judul`, `subjudul`, `gambar`, `link_url`, `urutan`, `aktif`, `created_at`, `updated_at`) VALUES
-(1, '', '', 'uploads/banner/banner_6a7d46716d677.jpg', '', 1, 1, '2026-08-13 04:22:09', '2026-08-13 04:34:43'),
-(2, '', '', 'uploads/banner/banner_6a7d49c7f171b.jpg', '', 2, 1, '2026-08-13 04:36:23', '2026-08-13 04:36:23'),
-(3, '', '', 'uploads/banner/banner_6a7d4d0bab250.png', '', 3, 1, '2026-08-13 04:36:32', '2026-08-13 04:50:23'),
-(4, '', '', 'uploads/banner/banner_6a7d4d43adf79.jpg', '', 4, 1, '2026-08-13 04:51:15', '2026-08-13 04:51:15');
+(1, '', '', 'uploads/banner/banner_6a7d46716d677.jpg', '', 1, 0, '2026-08-13 04:22:09', '2026-08-31 09:04:13'),
+(4, '', '', 'uploads/banner/banner_6a7d4d43adf79.jpg', '', 4, 1, '2026-08-13 04:51:15', '2026-08-31 09:34:42');
 
 -- --------------------------------------------------------
 
@@ -94,10 +92,11 @@ CREATE TABLE `buku` (
 --
 
 INSERT INTO `buku` (`id`, `judul`, `penulis`, `isbn`, `genre`, `sinopsis`, `stok`, `gambar`, `created_at`, `updated_at`) VALUES
-(40, 'haha', '', '', '', '', 1, 'uploads/gambar/buku_6a7bbe1611a12.jpg', '2026-08-10 00:59:56', '2026-08-20 03:25:51'),
-(41, 'baju ku', '', '', '', '', 0, 'uploads/gambar/buku_6a7eb941681d4.jpg', '2026-08-14 06:44:17', '2026-08-22 12:00:30'),
-(43, 'Harry Potter and the Philosopher\'s Stone', 'J. K. Rowling', '9780747532743', 'series:Harry_Potter', 'Mr. And Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much.', 1, 'uploads/gambar/buku_isbn_9780747532743_6a8eaea037de2.jpg', '2026-08-26 09:15:19', '2026-08-26 09:15:19'),
-(44, 'The Fragrant Flower Blooms With Dignity 1', '三香見サカ', '9798888771389', 'franchise:薫る花は凛と咲く', '', 1, 'uploads/gambar/buku_isbn_9798888771389_6a8eafb032002.jpg', '2026-08-26 09:19:49', '2026-08-26 09:19:49');
+(47, 'Kota yang bernama dan tak bernama', 'Ahmadun Y. Herfanda', '9789793062792', '', 'Short stories.', 1, 'uploads/gambar/buku_isbn_9789793062792_6a9550fa1f587.jpg', '2026-08-31 10:01:33', '2026-08-31 10:01:33'),
+(48, 'To Kill a Mockingbird', 'Harper Lee', '9780061120084', 'fiction', 'USA/CAN', 1, 'uploads/gambar/buku_isbn_9780061120084_6a955170e1ca8.jpg', '2026-08-31 10:03:33', '2026-08-31 10:03:33'),
+(49, 'The Hunger Games', 'Suzanne Collins', '9780439023528', 'severe poverty', '', 1, 'uploads/gambar/buku_isbn_9780439023528_6a95519f2df3e.jpg', '2026-08-31 10:04:31', '2026-08-31 10:04:31'),
+(50, 'Clean Code', 'Robert C. Martin', '9780132350884', 'Agile software development', 'You are reading this book for two reasons. First, you are a programmer. Second, you want to be a better programmer. Good. We need better programmers.', 1, 'uploads/gambar/buku_isbn_9780132350884_6a9551c410703.jpg', '2026-08-31 10:04:53', '2026-08-31 10:04:53'),
+(51, 'Harry Potter and the Philosopher\'s Stone', 'J. K. Rowling', '9780747532699', 'series:Harry_Potter', 'Mr. And Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much.', 1, 'uploads/gambar/buku_isbn_9780747532699_6a9551dccbb72.jpg', '2026-08-31 10:05:19', '2026-08-31 10:05:19');
 
 -- --------------------------------------------------------
 
@@ -111,16 +110,6 @@ CREATE TABLE `buku_favorites` (
   `user_id` int NOT NULL,
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `buku_favorites`
---
-
-INSERT INTO `buku_favorites` (`id`, `buku_id`, `user_id`, `created_at`) VALUES
-(19, 40, 17, '2026-08-13 02:10:51'),
-(21, 40, 14, '2026-08-14 06:42:34'),
-(23, 41, 14, '2026-08-20 03:22:35'),
-(24, 40, 19, '2026-08-22 13:23:42');
 
 -- --------------------------------------------------------
 
@@ -140,10 +129,7 @@ CREATE TABLE `buku_likes` (
 --
 
 INSERT INTO `buku_likes` (`id`, `buku_id`, `user_id`, `created_at`) VALUES
-(20, 40, 17, '2026-08-13 02:10:50'),
-(21, 40, 14, '2026-08-14 06:42:23'),
-(22, 41, 14, '2026-08-20 03:21:52'),
-(23, 40, 19, '2026-08-22 13:23:36');
+(24, 47, 21, '2026-09-01 04:11:52');
 
 -- --------------------------------------------------------
 
@@ -159,16 +145,6 @@ CREATE TABLE `buku_ratings` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `updated_at` datetime DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
---
--- Dumping data for table `buku_ratings`
---
-
-INSERT INTO `buku_ratings` (`id`, `user_id`, `buku_id`, `rating`, `created_at`, `updated_at`) VALUES
-(13, 17, 40, 4, '2026-08-13 09:10:48', '2026-08-13 09:10:48'),
-(14, 14, 40, 5, '2026-08-14 13:42:22', '2026-08-14 13:42:22'),
-(15, 1, 41, 1, '2026-08-20 09:58:58', '2026-08-20 09:59:00'),
-(16, 1, 44, 4, '2026-08-26 16:20:00', '2026-08-26 16:20:00');
 
 -- --------------------------------------------------------
 
@@ -191,18 +167,6 @@ CREATE TABLE `peminjaman` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
---
--- Dumping data for table `peminjaman`
---
-
-INSERT INTO `peminjaman` (`id`, `buku_id`, `user_id`, `nama_peminjam`, `waktu_pinjam`, `batas_kembali`, `waktu_kembali`, `terlambat_hari`, `denda`, `status_denda`, `status`, `created_at`) VALUES
-(22, 40, 10, 'harris', '2026-08-10 01:00:14', '2026-08-17 00:00:00', '2026-08-10 01:00:37', 0, 0, 'tidak_ada', 'dikembalikan', '2026-08-10 01:00:14'),
-(23, 40, 15, 'Arul Aruldoang', '2026-08-13 03:16:33', '2026-08-20 00:00:00', '2026-08-14 06:43:18', 0, 0, 'tidak_ada', 'dikembalikan', '2026-08-13 03:16:33'),
-(24, 41, 14, 'augusta', '2026-08-14 06:44:38', '2026-08-22 00:00:00', '2026-08-14 06:49:52', 0, 0, 'tidak_ada', 'dikembalikan', '2026-08-14 06:44:38'),
-(25, 40, 14, 'augusta', '2026-08-20 03:24:22', '2026-08-27 00:00:00', '2026-08-20 03:25:51', 0, 0, 'tidak_ada', 'dikembalikan', '2026-08-20 03:24:22'),
-(26, 41, 14, 'augusta', '2026-08-20 03:27:20', '2026-08-19 00:00:00', '2026-08-20 03:28:13', 1, 5000, 'lunas', 'dikembalikan', '2026-08-20 03:27:20'),
-(27, 41, 14, 'augusta', '2026-08-22 19:00:30', '2026-08-29 00:00:00', NULL, 0, 0, 'tidak_ada', 'dipinjam', '2026-08-22 12:00:30');
-
 -- --------------------------------------------------------
 
 --
@@ -224,7 +188,12 @@ CREATE TABLE `pengaturan` (
 INSERT INTO `pengaturan` (`id`, `kunci`, `nilai`, `keterangan`, `updated_at`) VALUES
 (1, 'denda_per_hari', '5000', 'Tarif denda per hari keterlambatan (Rupiah)', '2026-08-22 13:28:40'),
 (2, 'denda_aktif', '0', 'Aktifkan fitur denda: 1=ya, 0=tidak', '2026-08-22 13:28:40'),
-(3, 'denda_grace_period', '0', 'Toleransi hari sebelum denda mulai dihitung (0 = langsung denda di hari pertama)', '2026-08-22 13:28:40');
+(3, 'denda_grace_period', '0', 'Toleransi hari sebelum denda mulai dihitung (0 = langsung denda di hari pertama)', '2026-08-22 13:28:40'),
+(16, 'musik_file', 'uploads/musik/musik_6a954373ef75e.mp3', '', '2026-08-31 09:03:47'),
+(17, 'musik_judul', 'OST - New Eridu', '', '2026-08-30 07:11:46'),
+(18, 'musik_aktif', '1', '', '2026-08-30 11:10:55'),
+(19, 'banner_mode', 'dinamis', '', '2026-08-30 08:33:20'),
+(21, 'banner_background_id', '4', '', '2026-08-30 12:37:40');
 
 -- --------------------------------------------------------
 
@@ -281,7 +250,8 @@ INSERT INTO `users` (`id`, `full_name`, `nik`, `kelas`, `no_hp`, `no_anggota`, `
 (17, 'arull', '1234567890123458', '12rpl4', '083829165209', 'AN-2026-26600', 'arull1', 'haha@gmail.com', '$2y$10$QMV9Y3SnVte6Sk1thXG7Keh4jSLXq6Q0Ns8kA71g5fymNyTZAA6ZK', '', 'member', 'approved', 'active', '2026-08-13 02:05:48'),
 (18, 'Hendi', '123456789014', '12rpl4', '083829165208', 'AN-2026-71477', 'hendi', 'ahmadfikri@student.smkn1rongga.sch.id', '$2y$10$vSJZ3fvh5Lhzgi6JRKbxIuf00LJJqWw/ICqeih8AVu3ryomNDFHE2', '', 'member', 'approved', 'active', '2026-08-20 03:12:08'),
 (19, 'arull', '1234567890123455', '12rpl4', '083829165201', 'AN-2026-51899', 'arull2', 'hihi@gmail.com', '$2y$10$1COVdBsrVBPmM8U6L1V2Bus23xx1/T/Rq1k1dRq2ctfGTFKSXkIJq', '', 'member', 'approved', 'active', '2026-08-22 13:21:17'),
-(20, 'arull00', '1234567890123453', '12rpl7', '083829165205', 'AN-2026-43256', 'arull00', 'syahrulganteng@gmail.com', '$2y$10$FG8c7.JydudoXuX6/.LO9.fAtHGbctFFY75YcUztllfAVxy1dKc7i', 'uploads/anggota/anggota_88f2586a2760e1db.png', 'member', 'approved', 'active', '2026-08-22 14:46:30');
+(20, 'arull00', '1234567890123453', '12rpl7', '083829165205', 'AN-2026-43256', 'arull00', 'syahrulganteng@gmail.com', '$2y$10$FG8c7.JydudoXuX6/.LO9.fAtHGbctFFY75YcUztllfAVxy1dKc7i', 'uploads/anggota/anggota_88f2586a2760e1db.png', 'member', 'approved', 'active', '2026-08-22 14:46:30'),
+(21, 'Iuno', '1234567890123452', '12rpl4', '083829165204', 'AN-2026-11635', 'iuno', 'hoho@gmail.com', '$2y$10$TDtqzEqnWr57E9/lfcdK.uucPVG3V5lLdSlMsL1Lp62JJ03Lee/hi', 'uploads/anggota/anggota_71f5803f1a7c181e.jpg', 'member', 'approved', 'active', '2026-08-27 02:01:57');
 
 --
 -- Indexes for dumped tables
@@ -376,13 +346,13 @@ ALTER TABLE `admin_profile`
 -- AUTO_INCREMENT for table `banner`
 --
 ALTER TABLE `banner`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=5;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
 
 --
 -- AUTO_INCREMENT for table `buku`
 --
 ALTER TABLE `buku`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=45;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
 -- AUTO_INCREMENT for table `buku_favorites`
@@ -394,25 +364,25 @@ ALTER TABLE `buku_favorites`
 -- AUTO_INCREMENT for table `buku_likes`
 --
 ALTER TABLE `buku_likes`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=24;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
 
 --
 -- AUTO_INCREMENT for table `buku_ratings`
 --
 ALTER TABLE `buku_ratings`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
 -- AUTO_INCREMENT for table `peminjaman`
 --
 ALTER TABLE `peminjaman`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
 -- AUTO_INCREMENT for table `pengaturan`
 --
 ALTER TABLE `pengaturan`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=16;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
 
 --
 -- AUTO_INCREMENT for table `reminder_log`
@@ -424,7 +394,7 @@ ALTER TABLE `reminder_log`
 -- AUTO_INCREMENT for table `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=21;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
 
 --
 -- Constraints for dumped tables

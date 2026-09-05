@@ -2,14 +2,22 @@
 // update_profil_admin.php — Simpan nama & foto profil admin
 session_start();
 
-if (!isset($_SESSION["user_id"]) || $_SESSION["role"] !== "admin") {
+if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
     header("Location: sign_in.php");
     exit;
 }
 
 require_once "db.php";
 
+$allowed_redirects = [
+    "halaman_admin.php", "dashboard.php", "daftar_anggota.php",
+    "pinjam_buku.php", "telah_dipinjam.php", "pengaturan_denda.php",
+    "kelola_banner.php", "pengaturan_musik.php"
+];
 $redirect = $_POST["redirect"] ?? "halaman_admin.php";
+if (!in_array($redirect, $allowed_redirects, true)) {
+    $redirect = "halaman_admin.php";
+}
 
 // ── Ambil nama baru ──
 $display_name = trim(mysqli_real_escape_string($conn, $_POST["display_name"] ?? ""));
@@ -22,7 +30,10 @@ if (isset($_FILES["foto_admin"]) && $_FILES["foto_admin"]["error"] === UPLOAD_ER
     if (!is_dir($dir)) mkdir($dir, 0775, true);
     $ext     = strtolower(pathinfo($_FILES["foto_admin"]["name"], PATHINFO_EXTENSION));
     $allowed = ["jpg","jpeg","png","webp","gif"];
-    if (in_array($ext, $allowed) && $_FILES["foto_admin"]["size"] <= 5 * 1024 * 1024) {
+    $mime    = function_exists("mime_content_type") ? mime_content_type($_FILES["foto_admin"]["tmp_name"]) : "";
+    $allowed_mimes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+
+    if (in_array($ext, $allowed) && ($mime === "" || in_array($mime, $allowed_mimes, true)) && $_FILES["foto_admin"]["size"] <= 5 * 1024 * 1024) {
         // Hapus foto lama
         $r = mysqli_query($conn, "SELECT foto FROM admin_profile LIMIT 1");
         if ($r && $row = mysqli_fetch_assoc($r)) {
