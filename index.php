@@ -94,6 +94,23 @@ if ($mgt) {
 }
 // Musik hanya tampil jika admin mengaktifkannya DAN filenya benar-benar ada
 $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_file));
+
+/* ───────────────────────── Pengaturan lokasi perpustakaan ─────────────────────────
+   Nilai default di bawah bisa ditimpa admin lewat tabel `pengaturan`
+   (kunci: lokasi_alamat, lokasi_jam, lokasi_telepon) tanpa perlu ubah kode ini. */
+$lokasi_alamat  = "Jl. Pendidikan No. 1, Majalengka, Jawa Barat";
+$lokasi_jam     = "Senin – Jumat, 07.00 – 15.00 WIB";
+$lokasi_telepon = "(0233) 000-0000";
+$lgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('lokasi_alamat','lokasi_jam','lokasi_telepon')");
+if ($lgt) {
+    while ($l = mysqli_fetch_assoc($lgt)) {
+        if ($l["kunci"] === "lokasi_alamat"  && $l["nilai"] !== "") $lokasi_alamat  = $l["nilai"];
+        if ($l["kunci"] === "lokasi_jam"     && $l["nilai"] !== "") $lokasi_jam     = $l["nilai"];
+        if ($l["kunci"] === "lokasi_telepon" && $l["nilai"] !== "") $lokasi_telepon = $l["nilai"];
+    }
+}
+$lokasi_maps_embed = "https://www.google.com/maps?q=" . urlencode($lokasi_alamat) . "&output=embed";
+$lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlencode($lokasi_alamat);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -1293,6 +1310,78 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   html.theme-light .about-card:hover { border-color: rgba(169,120,47,.4); }
   html.theme-light .about-icon { background: rgba(169,120,47,.1); border-color: rgba(169,120,47,.32); }
 
+  /* ══════════════════ SLIDE 5 — LOKASI PERPUSTAKAAN ══════════════════ */
+  .slide-location {
+    position: relative;
+    background: radial-gradient(circle at 22% 78%, #131b21 0%, var(--bg) 65%);
+    padding: 56px 20px 72px;
+    overflow: hidden;
+  }
+  .slide-location .frame {
+    width: 100%;
+    max-width: 1080px;
+    padding: 34px clamp(20px, 4vw, 46px);
+  }
+  .location-grid {
+    display: grid;
+    grid-template-columns: 1.05fr 1fr;
+    gap: 36px;
+    align-items: stretch;
+  }
+  .location-info h2 {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: clamp(1.6rem, 2.6vw, 2.05rem);
+    margin-bottom: 6px;
+  }
+  .location-info .lead {
+    font-size: .85rem;
+    color: var(--text-dim);
+    font-weight: 300;
+    margin-bottom: 22px;
+    max-width: 46ch;
+  }
+  .location-list { list-style: none; display: flex; flex-direction: column; gap: 16px; margin-bottom: 26px; }
+  .location-list li { display: flex; gap: 14px; align-items: flex-start; }
+  .location-icon {
+    flex: 0 0 auto;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 11px;
+    background: rgba(216,184,120,.12);
+    border: 1px solid rgba(216,184,120,.3);
+    color: var(--gold);
+  }
+  .location-icon svg { width: 18px; height: 18px; }
+  .location-list h4 { font-size: .85rem; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .location-list p { font-size: .82rem; font-weight: 300; color: var(--text-dim); line-height: 1.5; }
+  .location-map {
+    position: relative;
+    min-height: 280px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    filter: saturate(.4) brightness(.85) contrast(1.05);
+    transition: filter .3s ease;
+  }
+  .location-map:hover { filter: saturate(.85) brightness(.96) contrast(1); }
+  .location-map iframe { position: absolute; inset: 0; width: 100%; height: 100%; }
+  html.theme-light .slide-location { background: radial-gradient(circle at 22% 78%, #f5efdf 0%, var(--bg) 65%); }
+  html.theme-light .location-map { filter: saturate(.75) brightness(1.02); border-color: rgba(0,0,0,.09); }
+  html.theme-light .location-map:hover { filter: none; }
+
+  @media (max-width: 900px) {
+    .location-grid { grid-template-columns: 1fr; }
+    .location-map { min-height: 240px; }
+  }
+  @media (max-width: 680px) {
+    .slide-location { padding-left: 14px; padding-right: 14px; padding-top: 76px; padding-bottom: 96px; }
+  }
+  body.ticker-hidden .slide-location { padding-bottom: 40px; }
+
   /* ══════════════════ FOOTER (slide 5) ══════════════════ */
   /* ══════════════════ SLIDE 5 — FOOTER ══════════════════ */
   .slide-footer {
@@ -1907,7 +1996,8 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   <button class="dot" data-target="slide-2" aria-label="Buku Terbaru"><span></span></button>
   <button class="dot" data-target="slide-3" aria-label="Tata Tertib"><span></span></button>
   <button class="dot" data-target="slide-4" aria-label="Tentang Katalog"><span></span></button>
-  <button class="dot" data-target="slide-5" aria-label="Footer"><span></span></button>
+  <button class="dot" data-target="slide-5" aria-label="Lokasi Perpustakaan"><span></span></button>
+  <button class="dot" data-target="slide-6" aria-label="Footer"><span></span></button>
 </nav>
 
 <main class="slides">
@@ -2127,7 +2217,63 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     </div>
   </section>
 
-  <section id="slide-5" class="slide slide-footer">
+  <!-- ═══════════ SLIDE 5 — LOKASI PERPUSTAKAAN ═══════════ -->
+  <section id="slide-5" class="slide slide-location">
+    <div class="frame reveal">
+      <span class="corner corner-tl"></span><span class="corner corner-tr"></span>
+      <span class="corner corner-bl"></span><span class="corner corner-br"></span>
+      <span class="frame-label" data-id="Lokasi Kami" data-en="Our Location">Lokasi Kami</span>
+
+      <div class="location-grid">
+        <div class="location-info reveal-stagger">
+          <p class="eyebrow reveal-item" data-id="Kunjungi Kami" data-en="Visit Us">Kunjungi Kami</p>
+          <h2 class="reveal-item" data-id="Lokasi Perpustakaan" data-en="Library Location">Lokasi Perpustakaan</h2>
+          <p class="lead reveal-item" data-id="Datang langsung ke perpustakaan kami untuk meminjam buku dan menikmati ruang baca yang nyaman." data-en="Visit our library in person to borrow books and enjoy a comfortable reading space.">Datang langsung ke perpustakaan kami untuk meminjam buku dan menikmati ruang baca yang nyaman.</p>
+
+          <ul class="location-list reveal-item">
+            <li>
+              <span class="location-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+              </span>
+              <div>
+                <h4 data-id="Alamat" data-en="Address">Alamat</h4>
+                <p><?= htmlspecialchars($lokasi_alamat) ?></p>
+              </div>
+            </li>
+            <li>
+              <span class="location-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+              </span>
+              <div>
+                <h4 data-id="Jam Operasional" data-en="Operating Hours">Jam Operasional</h4>
+                <p><?= htmlspecialchars($lokasi_jam) ?></p>
+              </div>
+            </li>
+            <li>
+              <span class="location-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7a2 2 0 0 1 1.72 2.03Z"/></svg>
+              </span>
+              <div>
+                <h4 data-id="Kontak" data-en="Contact">Kontak</h4>
+                <p><?= htmlspecialchars($lokasi_telepon) ?></p>
+              </div>
+            </li>
+          </ul>
+
+          <a href="<?= htmlspecialchars($lokasi_maps_link) ?>" target="_blank" rel="noopener" class="cta-solid reveal-item">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg>
+            <span data-id="Buka di Google Maps" data-en="Open in Google Maps">Buka di Google Maps</span>
+          </a>
+        </div>
+
+        <div class="location-map reveal-item">
+          <iframe src="<?= htmlspecialchars($lokasi_maps_embed) ?>" width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Peta Lokasi Perpustakaan"></iframe>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="slide-6" class="slide slide-footer">
 
   <div class="footer-glow" aria-hidden="true"><span></span><span></span></div>
 
@@ -2177,6 +2323,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
           <li><a href="#slide-2" data-id="Buku Terbaru" data-en="Latest Books">Buku Terbaru</a></li>
           <li><a href="#slide-3" data-id="Tata Tertib" data-en="Library Rules">Tata Tertib</a></li>
           <li><a href="#slide-4" data-id="Tentang Katalog" data-en="About the Catalog">Tentang Katalog</a></li>
+          <li><a href="#slide-5" data-id="Lokasi Perpustakaan" data-en="Library Location">Lokasi Perpustakaan</a></li>
         </ul>
       </div>
 
