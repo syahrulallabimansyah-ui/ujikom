@@ -17,10 +17,18 @@ $errors = [];
 $old = [
     "full_name" => "",
     "kelas"     => "",
-    "nik"       => "",
     "no_hp"     => "",
     "email"     => "",
 ];
+
+// Ambil daftar kelas dari tabel kelas untuk opsi dropdown
+$daftar_kelas = [];
+$res_k = mysqli_query($conn, "SELECT nama_kelas FROM kelas ORDER BY nama_kelas ASC");
+if ($res_k) {
+    while ($row_k = mysqli_fetch_assoc($res_k)) {
+        $daftar_kelas[] = $row_k["nama_kelas"];
+    }
+}
 
 // Folder tempat menyimpan foto profil anggota
 $foto_dir = __DIR__ . "/uploads/anggota";
@@ -30,9 +38,8 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
 
     $old["full_name"] = trim($_POST["full_name"] ?? "");
     $old["kelas"]     = trim($_POST["kelas"] ?? "");
-    $old["nik"]       = trim($_POST["nik"] ?? "");
     $old["no_hp"]     = trim($_POST["no_hp"] ?? "");
-    $old["email"]     = trim($_POST["email"] ?? "");
+    $old["email"]     = strtolower(trim($_POST["email"] ?? ""));
     $password         = $_POST["password"] ?? "";
     $password_confirm = $_POST["password_confirm"] ?? "";
 
@@ -41,13 +48,12 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
         $errors[] = "Nama lengkap wajib diisi.";
     }
     if ($old["kelas"] === "") {
-        $errors[] = "Kelas wajib diisi.";
-    }
-    if ($old["nik"] === "" || !preg_match('/^\d{6,20}$/', $old["nik"])) {
-        $errors[] = "NIK wajib diisi dan hanya boleh berupa angka (6–20 digit).";
+        $errors[] = "Pilihan kelas wajib dipilih.";
     }
     if ($old["email"] === "" || !filter_var($old["email"], FILTER_VALIDATE_EMAIL)) {
         $errors[] = "Alamat email tidak valid.";
+    } elseif (!str_ends_with(strtolower($old["email"]), "@student.smkn1rongga.sch.id")) {
+        $errors[] = "Email wajib menggunakan akun siswa resmi (@student.smkn1rongga.sch.id).";
     }
     if ($old["no_hp"] !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $old["no_hp"])) {
         $errors[] = "Nomor HP tidak valid.";
@@ -84,14 +90,14 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
         $errors[] = $foto_error;
     }
 
-    // Cek email & NIK belum terdaftar
+    // Cek email belum terdaftar
     if (empty($errors)) {
-        $stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ? OR nik = ?");
-        mysqli_stmt_bind_param($stmt, "ss", $old["email"], $old["nik"]);
+        $stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ?");
+        mysqli_stmt_bind_param($stmt, "s", $old["email"]);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_store_result($stmt);
         if (mysqli_stmt_num_rows($stmt) > 0) {
-            $errors[] = "Email atau NIK sudah terdaftar sebagai anggota.";
+            $errors[] = "Email tersebut sudah terdaftar sebagai anggota.";
         }
         mysqli_stmt_close($stmt);
     }
@@ -147,14 +153,15 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
             $no_anggota = "AN-" . date("Y") . "-" . str_pad((string)random_int(1, 99999), 5, "0", STR_PAD_LEFT);
         }
 
-        // ── Simpan ke database ──
+        // ── Simpan ke database (langsung approved, tanpa perlu approval admin) ──
+        $empty_nik = "";
         $stmt = mysqli_prepare($conn,
             "INSERT INTO users (full_name, nik, kelas, no_hp, no_anggota, username, email, password, foto, role, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', 'pending')"
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', 'approved')"
         );
         mysqli_stmt_bind_param(
             $stmt, "sssssssss",
-            $old["full_name"], $old["nik"], $old["kelas"], $old["no_hp"],
+            $old["full_name"], $empty_nik, $old["kelas"], $old["no_hp"],
             $no_anggota, $username, $old["email"], $hashed, $foto_relative_path
         );
 
@@ -167,7 +174,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
             $_SESSION["kartu_data"] = [
                 "id"         => $new_id,
                 "full_name"  => $old["full_name"],
-                "nik"        => $old["nik"],
+                "nik"        => "",
                 "kelas"      => $old["kelas"],
                 "no_hp"      => $old["no_hp"],
                 "email"      => $old["email"],
@@ -175,7 +182,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
                 "username"   => $username,
                 "password"   => $password,
                 "foto"       => $foto_relative_path,
-                "status"     => "pending",
+                "status"     => "approved",
                 "reissued"   => false,
             ];
 
@@ -318,7 +325,8 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       font-weight: 500;
     }
 
-    .field input {
+    .field input,
+    .field select {
       width: 100%;
       padding: 12px 16px;
       border: 1.5px solid rgba(216,184,120,.15);
@@ -331,8 +339,25 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       transition: background var(--trans), border-color var(--trans), box-shadow var(--trans);
     }
 
-    .field input:focus {
-      background: rgba(216,184,120,.08);
+    .field select {
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d8b878' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 40px;
+    }
+
+    .field select option {
+      background: #121820;
+      color: #eef3f4;
+      padding: 8px;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      background-color: rgba(216,184,120,.08);
       border-color: #d8b878;
       box-shadow: 0 0 0 3px rgba(216,184,120,.2);
     }
@@ -729,15 +754,24 @@ $page_title = "Daftar Anggota – AKSA NOVA";
     html.theme-light .field label {
       color: #3b352b;
     }
-    html.theme-light .field input {
+    html.theme-light .field input,
+    html.theme-light .field select {
       background: #fdfbf7;
       border-color: rgba(154,115,40,.22);
+      color: #1a1714;
+    }
+    html.theme-light .field select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a7328' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    }
+    html.theme-light .field select option {
+      background: #ffffff;
       color: #1a1714;
     }
     html.theme-light .field input::placeholder {
       color: #9c9489;
     }
-    html.theme-light .field input:focus {
+    html.theme-light .field input:focus,
+    html.theme-light .field select:focus {
       background: #ffffff;
       border-color: #9a7328;
       box-shadow: 0 0 0 3px rgba(154,115,40,.18);
@@ -887,28 +921,32 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
       <div class="row2">
         <div class="field">
-          <label>Kelas</label>
-          <input type="text" name="kelas" placeholder="Contoh: XII IPA 1"
-                 value="<?= htmlspecialchars($old['kelas']) ?>" required>
+          <label>Pilihan Kelas</label>
+          <select name="kelas" required>
+            <option value="" disabled <?= empty($old['kelas']) ? 'selected' : '' ?>>-- Pilih Kelas --</option>
+            <?php foreach ($daftar_kelas as $k): ?>
+              <option value="<?= htmlspecialchars($k) ?>" <?= $old['kelas'] === $k ? 'selected' : '' ?>>
+                <?= htmlspecialchars($k) ?>
+              </option>
+            <?php endforeach; ?>
+          </select>
         </div>
         <div class="field">
-          <label>NIK</label>
-          <input type="text" name="nik" placeholder="16 digit NIK" inputmode="numeric"
-                 value="<?= htmlspecialchars($old['nik']) ?>" required>
-        </div>
-      </div>
-
-      <div class="row2">
-        <div class="field">
-          <label>Nomor HP</label>
+          <label>Nomor HP <span style="font-size:.72rem;font-weight:400;color:var(--dim,#9c9489);">(Opsional)</span></label>
           <input type="text" name="no_hp" placeholder="08xxxxxxxxxx"
                  value="<?= htmlspecialchars($old['no_hp']) ?>">
         </div>
-        <div class="field">
-          <label>Email</label>
-          <input type="email" name="email" placeholder="nama@email.com"
-                 value="<?= htmlspecialchars($old['email']) ?>" required>
-        </div>
+      </div>
+
+      <div class="field">
+        <label>Email Siswa (@student.smkn1rongga.sch.id)</label>
+        <input type="email" name="email" placeholder="nama@student.smkn1rongga.sch.id"
+               pattern="[a-zA-Z0-9._%+\-]+@student\.smkn1rongga\.sch\.id$"
+               title="Email harus menggunakan domain @student.smkn1rongga.sch.id"
+               value="<?= htmlspecialchars($old['email']) ?>" required>
+        <p class="hint" style="color:var(--accent,#d8b878); margin-top:5px; font-size:.72rem;">
+          Wajib menggunakan akun email resmi sekolah berakhiran <b>@student.smkn1rongga.sch.id</b>
+        </p>
       </div>
 
       <div class="row2">

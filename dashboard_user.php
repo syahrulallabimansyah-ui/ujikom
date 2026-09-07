@@ -102,6 +102,18 @@ $r_hist = mysqli_query($conn,
 if ($r_hist) {
     while ($row = mysqli_fetch_assoc($r_hist)) $riwayat_kembali[] = $row;
 }
+// ─── Riwayat Pengajuan Peminjaman ───
+$riwayat_pengajuan = [];
+$r_peng = mysqli_query($conn,
+    "SELECT p.*, b.judul, b.penulis, b.gambar
+     FROM pengajuan_peminjaman p
+     LEFT JOIN buku b ON b.id = p.buku_id
+     WHERE p.user_id = $user_id
+     ORDER BY p.id DESC LIMIT 5"
+);
+if ($r_peng) {
+    while ($row = mysqli_fetch_assoc($r_peng)) $riwayat_pengajuan[] = $row;
+}
 
 // ─── Buku yang disimpan ───
 $saved_books = [];
@@ -153,7 +165,7 @@ ob_start();
       --muted:        rgba(238,243,244,.65);
       --card:         #121820;
       --radius:       14px;
-      --sidebar-w:    170px;
+      --sidebar-w:    204px;
       --shadow-sm:    0 2px 12px rgba(0,0,0,.25);
       --shadow-md:    0 4px 20px rgba(0,0,0,.45);
       --card-border:  rgba(216,184,120,.14);
@@ -628,16 +640,6 @@ ob_start();
   </div>
 
   <div class="page-hud-controls" id="pageHudControls">
-    <button type="button" class="btn-topbar-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
-      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
-      </svg>
-      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4.2"/>
-        <path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>
-      </svg>
-    </button>
-
     <?php if ($musik_tampil): ?>
     <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
       <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -677,6 +679,10 @@ ob_start();
     <a href="daftar_buku.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Daftar Buku
+    </a>
+    <a href="pengajuan_peminjaman.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Ajukan Pinjam
     </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -834,6 +840,59 @@ ob_start();
                   </span>
                 <?php endif; ?>
               </div>
+            </div>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+
+      <!-- Pengajuan Peminjaman Buku Saya -->
+      <div class="section-card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+            Status Pengajuan Peminjaman Saya
+          </div>
+          <a href="pengajuan_peminjaman.php" style="font-size:.75rem;color:var(--accent);font-weight:700;text-decoration:none;">+ Ajukan Baru</a>
+        </div>
+
+        <?php if (empty($riwayat_pengajuan)): ?>
+          <div style="text-align:center;padding:18px 0;color:var(--muted);font-size:.75rem;">
+            Kamu belum memiliki pengajuan peminjaman buku.<br>
+            <a href="daftar_buku.php" style="color:var(--accent);font-weight:700;display:inline-block;margin-top:6px;text-decoration:none;">Jelajahi Katalog Buku &rarr;</a>
+          </div>
+        <?php else: ?>
+          <div>
+            <?php foreach ($riwayat_pengajuan as $pg):
+              $tgl_aju = date("d M Y, H:i", strtotime($pg["created_at"]));
+              $st = $pg["status"];
+              $st_badge = '';
+              if ($st === 'menunggu') {
+                  $st_badge = '<span style="background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);padding:3px 8px;border-radius:6px;font-size:.68rem;font-weight:700;">Menunggu</span>';
+              } elseif ($st === 'disetujui') {
+                  $st_badge = '<span style="background:rgba(5,150,105,.15);color:#4ade80;border:1px solid rgba(5,150,105,.3);padding:3px 8px;border-radius:6px;font-size:.68rem;font-weight:700;">Disetujui</span>';
+              } else {
+                  $st_badge = '<span style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);padding:3px 8px;border-radius:6px;font-size:.68rem;font-weight:700;">Ditolak</span>';
+              }
+            ?>
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--card-border);gap:10px;">
+              <div style="min-width:0;flex:1;">
+                <div style="font-weight:700;font-size:.8rem;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                  <?= htmlspecialchars($pg["judul"] ?? "Buku Perpustakaan") ?>
+                </div>
+                <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">
+                  <?= $tgl_aju ?> · <?= (int)$pg['total_buku'] ?> Buku · Ambil: <strong><?= $pg['waktu_pengambilan'] === 'sekarang' ? 'Sekarang' : 'Nanti' ?></strong>
+                  <?php if ($pg['waktu_pengambilan'] === 'nanti' && !empty($pg['catatan_pengambilan'])): ?>
+                    <span style="color:var(--accent);font-size:.68rem;display:inline-block;margin-left:4px;">(<?= htmlspecialchars($pg['catatan_pengambilan']) ?>)</span>
+                  <?php endif; ?>
+                </div>
+                <?php if ($st === 'ditolak' && !empty($pg['alasan_penolakan'])): ?>
+                  <div style="font-size:.68rem;color:#f87171;margin-top:2px;font-style:italic;">
+                    Alasan: <?= htmlspecialchars($pg['alasan_penolakan']) ?>
+                  </div>
+                <?php endif; ?>
+              </div>
+              <div><?= $st_badge ?></div>
             </div>
             <?php endforeach; ?>
           </div>
@@ -1031,6 +1090,14 @@ ob_start();
             <div class="detail-title">${b.judul}</div>
             <div class="detail-author">✍️ ${b.penulis || 'Penulis tidak diketahui'} · Kategori: ${b.genre || 'Umum'}</div>
             <div class="detail-desc">${b.sinopsis ? b.sinopsis.replace(/\\n/g, '<br>') : 'Sinopsis belum tersedia.'}</div>
+            ${b.stok > 0
+              ? `<a href="pengajuan_peminjaman.php?buku_id=${b.id}" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;background:var(--accent);color:#090c10;font-weight:700;text-decoration:none;font-size:.82rem;margin-top:14px;box-shadow:0 4px 16px rgba(216,184,120,.3);">
+                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+                   Ajukan Peminjaman Buku Ini
+                 </a>`
+              : `<button disabled style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);color:var(--muted);font-weight:700;font-size:.82rem;margin-top:14px;border:none;cursor:not-allowed;">
+                   Stok Buku Habis
+                 </button>`}
           </div>
         `;
       })
@@ -1047,101 +1114,10 @@ ob_start();
     if (e.key === 'Escape') tutupDetailBuku();
   });
 
-  // Mode Gelap / Terang
-  (function () {
-    const btn  = document.getElementById('btnMode');
-    if (!btn) return;
-    const root = document.documentElement;
 
-    function updatePressed() {
-      const isLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
-      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
-    }
-    updatePressed();
 
-    btn.addEventListener('click', () => {
-      const isCurrentlyLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
-      const targetMode = isCurrentlyLight ? 'dark' : 'light';
-      if (typeof window.setMode === 'function') {
-        window.setMode(targetMode);
-      } else {
-        root.classList.toggle('theme-light', targetMode === 'light');
-        root.classList.toggle('light', targetMode === 'light');
-        root.classList.toggle('dark', targetMode === 'dark');
-        try { localStorage.setItem('aksanova_theme', targetMode); } catch (e) {}
-      }
-      updatePressed();
-    });
-  })();
-
-  // Musik Latar
-  (function () {
-    const btn   = document.getElementById('btnMusik');
-    const audio = document.getElementById('audioLatar');
-    if (!btn || !audio) return;
-
-    audio.volume = 0.55;
-    let userPaused = false;
-    let autoplaySucceeded = false;
-
-    function setPlaying(isPlaying) {
-      btn.classList.toggle('playing', isPlaying);
-      btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
-    }
-
-    function removeFallback() {
-      ['click','touchstart','keydown','scroll'].forEach(ev => document.removeEventListener(ev, fallback));
-    }
-
-    function play() {
-      audio.play().then(() => {
-        audio.muted = false;
-        autoplaySucceeded = true;
-        removeFallback();
-        setPlaying(true);
-      }).catch(() => setPlaying(false));
-    }
-
-    function pause() {
-      audio.pause();
-      setPlaying(false);
-    }
-
-    function fallback() {
-      if (userPaused || autoplaySucceeded) return;
-      audio.muted = false;
-      play();
-    }
-
-    audio.play().then(() => {
-      audio.muted = false;
-      autoplaySucceeded = true;
-      setPlaying(true);
-    }).catch(() => {
-      audio.muted = true;
-      audio.play().then(() => {
-        setPlaying(true);
-        ['click','touchstart','keydown','scroll'].forEach(ev => {
-          document.addEventListener(ev, fallback, { once: true, passive: true });
-        });
-      }).catch(() => setPlaying(false));
-    });
-
-    btn.addEventListener('click', () => {
-      if (audio.paused) {
-        userPaused = false;
-        audio.muted = false;
-        play();
-      } else {
-        userPaused = true;
-        pause();
-      }
-    });
-
-    audio.addEventListener('play',  () => setPlaying(true));
-    audio.addEventListener('pause', () => setPlaying(false));
-    audio.addEventListener('ended', () => setPlaying(false));
-  })();
+  // ─── Musik Latar (Dikelola terpusat oleh AksaAudio di settings_include.php) ───
+  if (window.AksaAudio) window.AksaAudio.init();
 </script>
 <?php require_once "pengaturan_panel.php"; ?>
 </body>

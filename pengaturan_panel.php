@@ -152,64 +152,7 @@
       </div>
     </div>
 
-    <!-- ── Seksi 5: Ukuran Teks ── -->
-    <div class="sett-section">
-      <div class="sett-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3"/><path d="M9 20h6"/><path d="M12 4v16"/></svg>
-        Ukuran Teks — <span id="fontSizeLabel" style="color:var(--accent,#2b4fff);font-weight:800;">14px</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:.65rem;color:var(--muted,#7a7a9a);font-weight:700;">A</span>
-        <input type="range" id="fontSizeRange" min="11" max="20" step="1" value="14"
-               style="flex:1;height:4px;accent-color:var(--accent,#2b4fff);cursor:pointer;"
-               oninput="setFontSize(this.value)">
-        <span style="font-size:.85rem;color:var(--muted,#7a7a9a);font-weight:800;">A</span>
-      </div>
-    </div>
-
-    <!-- ── Seksi 6: Ketebalan Teks ── -->
-    <div class="sett-section">
-      <div class="sett-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>
-        Ketebalan Teks
-      </div>
-      <div class="sett-chip-row">
-        <button class="chip-btn" id="fw-light"    onclick="setFontWeight('light')">Light</button>
-        <button class="chip-btn" id="fw-normal"   onclick="setFontWeight('normal')">Normal</button>
-        <button class="chip-btn" id="fw-bold"     onclick="setFontWeight('bold')">Bold</button>
-        <button class="chip-btn" id="fw-extrabold" onclick="setFontWeight('extrabold')">Extra Bold</button>
-      </div>
-    </div>
-
-    <!-- ── Seksi 7: Border Radius ── -->
-    <div class="sett-section">
-      <div class="sett-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="5"/></svg>
-        Sudut Elemen — <span id="radiusLabel" style="color:var(--accent,#2b4fff);font-weight:800;">14px</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <div style="width:12px;height:12px;border:2px solid var(--muted,#7a7a9a);border-radius:1px;flex-shrink:0;"></div>
-        <input type="range" id="radiusRange" min="0" max="28" step="2" value="14"
-               style="flex:1;height:4px;accent-color:var(--accent,#2b4fff);cursor:pointer;"
-               oninput="setRadius(this.value)">
-        <div style="width:12px;height:12px;border:2px solid var(--muted,#7a7a9a);border-radius:50%;flex-shrink:0;"></div>
-      </div>
-    </div>
-
-    <!-- ── Seksi 8: Spasi ── -->
-    <div class="sett-section">
-      <div class="sett-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-        Kepadatan Spasi
-      </div>
-      <div class="sett-chip-row">
-        <button class="chip-btn" id="sp-compact"  onclick="setSpacing('compact')">Padat</button>
-        <button class="chip-btn" id="sp-normal"   onclick="setSpacing('normal')">Normal</button>
-        <button class="chip-btn" id="sp-relaxed"  onclick="setSpacing('relaxed')">Lapang</button>
-      </div>
-    </div>
-
-    <!-- ── Seksi 9: Animasi ── -->
+    <!-- ── Seksi 5: Animasi ── -->
     <div class="sett-section">
       <div style="display:flex;align-items:center;justify-content:space-between;">
         <div class="sett-label" style="margin:0;">
@@ -220,24 +163,6 @@
           <input type="checkbox" id="animToggle" checked onchange="setAnimation(this.checked)">
           <span class="toggle-track"><span class="toggle-thumb"></span></span>
         </label>
-      </div>
-    </div>
-
-    <!-- ── Seksi 10: Sidebar ── -->
-    <div class="sett-section">
-      <div class="sett-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-        Mode Sidebar
-      </div>
-      <div class="sett-chip-row">
-        <button class="chip-btn" id="sb-full" onclick="setSidebar('full')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
-          Penuh
-        </button>
-        <button class="chip-btn" id="sb-icon" onclick="setSidebar('icon')">
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="12" height="18" rx="2"/></svg>
-          Ikon Saja
-        </button>
       </div>
     </div>
 
@@ -513,47 +438,9 @@
     refreshUI();
   };
 
-  window.setFontSize = function(size) {
-    saveSett({ fontSize: parseInt(size) });
-    applyRoot('--font-size-base', size + 'px');
-    document.body.style.fontSize = size + 'px';
-    document.getElementById('fontSizeLabel').textContent = size + 'px';
-    document.getElementById('fontSizeRange').value = size;
-  };
-
-  window.setFontWeight = function(w) {
-    saveSett({ fontWeight: w });
-    applyRoot('--font-weight-base', weightMap[w] || '400');
-    document.body.style.fontWeight = weightMap[w] || '400';
-    refreshUI();
-  };
-
-  window.setRadius = function(r) {
-    saveSett({ radius: r });
-    applyRoot('--radius', r + 'px');
-    document.getElementById('radiusLabel').textContent = r + 'px';
-    document.getElementById('radiusRange').value = r;
-  };
-
-  window.setSpacing = function(sp) {
-    saveSett({ spacing: sp });
-    var spMap = { compact:'0.6rem', normal:'1rem', relaxed:'1.5rem' };
-    applyRoot('--spacing', spMap[sp] || '1rem');
-    refreshUI();
-  };
-
   window.setAnimation = function(on) {
     saveSett({ animation: on });
     applyRoot('--trans-speed', on ? '.2s' : '0s');
-  };
-
-  window.setSidebar = function(mode) {
-    saveSett({ sidebar: mode });
-    applyRoot('--sidebar-w', mode === 'icon' ? '64px' : '170px');
-    var root = document.documentElement;
-    root.className = root.className.replace(/sidebar-\w+/g,'').trim();
-    root.classList.add('sidebar-' + mode);
-    refreshUI();
   };
 
   window.resetSettings = function() {
@@ -568,12 +455,7 @@
     var ui    = s.ui        || 'default';
     var grad  = s.gradient  || 'emas';
     var font  = s.font      || 'Outfit';
-    var fw    = s.fontWeight|| 'normal';
-    var sp    = s.spacing   || 'normal';
-    var sb    = s.sidebar   || 'full';
     var anim  = s.animation !== undefined ? s.animation : true;
-    var fs    = parseInt(s.fontSize || 14);
-    var rad   = parseInt(s.radius   || 14);
 
     // Mode
     setActiveBtn(['modeLight','modeDark'], mode === 'dark' ? 'modeDark' : 'modeLight');
@@ -592,29 +474,9 @@
       var el = document.getElementById('font-'+k);
       if(el) el.classList.toggle('aktif', k === font);
     });
-    // Font weight
-    ['light','normal','bold','extrabold'].forEach(function(k){
-      var el = document.getElementById('fw-'+k);
-      if(el) el.classList.toggle('aktif', k === fw);
-    });
-    // Spacing
-    ['compact','normal','relaxed'].forEach(function(k){
-      var el = document.getElementById('sp-'+k);
-      if(el) el.classList.toggle('aktif', k === sp);
-    });
-    // Sidebar
-    ['full','icon'].forEach(function(k){
-      var el = document.getElementById('sb-'+k);
-      if(el) el.classList.toggle('aktif', k === sb);
-    });
     // Anim toggle
     var animEl = document.getElementById('animToggle');
     if(animEl) animEl.checked = !!anim;
-    // Sliders
-    var fsEl = document.getElementById('fontSizeRange');
-    if(fsEl) { fsEl.value = fs; document.getElementById('fontSizeLabel').textContent = fs+'px'; }
-    var radEl = document.getElementById('radiusRange');
-    if(radEl) { radEl.value = rad; document.getElementById('radiusLabel').textContent = rad+'px'; }
   }
 
   function setActiveBtn(ids, activeId) {

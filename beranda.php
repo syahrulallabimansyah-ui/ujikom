@@ -164,7 +164,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       --muted:      rgba(238,243,244,.65);
       --card:       #121820;
       --radius:     14px;
-      --sidebar-w:  170px;
+      --sidebar-w:  204px;
       --shadow-sm:  0 2px 12px rgba(0,0,0,.25);
       --shadow-md:  0 4px 20px rgba(0,0,0,.45);
       --card-border:rgba(216,184,120,.14);
@@ -1247,6 +1247,24 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     .detail-btn-save:hover { border-color: var(--accent); color: var(--accent); background: rgba(216,184,120,.1); }
     .detail-btn-save.aktif { background: rgba(216,184,120,.18); border-color: var(--accent); color: var(--accent); }
     .detail-btn-save.aktif svg { fill: currentColor; }
+    .detail-btn-pinjam {
+      width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 11px 16px; border-radius: 10px; border: none;
+      background: linear-gradient(135deg, #d8b878 0%, #b89758 100%);
+      color: #090c10; font-family: var(--font-family,'Outfit',sans-serif);
+      font-size: .85rem; font-weight: 800; cursor: pointer;
+      box-shadow: 0 4px 16px rgba(216,184,120,.25);
+      transition: all .2s cubic-bezier(.22,1,.36,1);
+    }
+    .detail-btn-pinjam svg { width: 17px; height: 17px; flex-shrink: 0; }
+    .detail-btn-pinjam:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 22px rgba(216,184,120,.45);
+    }
+    .detail-btn-pinjam:disabled, .detail-btn-pinjam.disabled {
+      opacity: .45; cursor: not-allowed; background: rgba(255,255,255,.08); color: var(--muted);
+      box-shadow: none; transform: none;
+    }
     .detail-sinopsis {
       font-size: .8rem; line-height: 1.65; color: var(--text);
       background: rgba(255,255,255,.03); border-radius: 8px;
@@ -1469,17 +1487,6 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   </div>
 
   <div class="beranda-hud-controls">
-    <!-- Tombol Mode Gelap / Terang -->
-    <button type="button" class="btn-hud-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
-      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
-      </svg>
-      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4.2"/>
-        <path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>
-      </svg>
-    </button>
-
     <?php if ($musik_tampil): ?>
     <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
       <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -1524,6 +1531,10 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       Daftar Buku
     </a>
     <?php if (!$is_admin && !$is_guest): ?>
+    <a href="pengajuan_peminjaman.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Ajukan Pinjam
+    </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
       Buku Simpan
@@ -1964,16 +1975,29 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     const tglUpdate = b.updated_at && b.updated_at !== b.created_at ? new Date(b.updated_at).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'}) : null;
     const coverHTML = b.gambar ? `<img src="${escHTML(b.gambar)}" alt="${escHTML(b.judul)}">` : `<div class="detail-cover-placeholder"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>`;
 
+    const btnPinjamHTML = b.stok > 0
+      ? `<button class="detail-btn-pinjam" onclick="ajukanPinjamBuku(${b.id})">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+           Ajukan Peminjaman
+         </button>`
+      : `<button class="detail-btn-pinjam disabled" disabled title="Stok buku habis">
+           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+           Stok Buku Habis
+         </button>`;
+
     const userActionBtns = IS_ADMIN ? '' : `
-      <div class="detail-footer-btns">
-        <button id="modalLikeBtn_${b.id}" class="detail-btn-like ${b.user_like ? 'aktif' : ''}" onclick="toggleLikeModal(this, ${b.id})">
-          <svg viewBox="0 0 24 24" fill="${b.user_like ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          <span id="modalLikeLabel_${b.id}">${b.user_like ? 'Disukai' : 'Suka'}</span>
-        </button>
-        <button id="modalSaveBtn_${b.id}" class="detail-btn-save ${b.user_favorit ? 'aktif' : ''}" onclick="toggleSimpanModal(this, ${b.id})">
-          <svg viewBox="0 0 24 24" fill="${b.user_favorit ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-          <span id="modalSaveLabel_${b.id}">${b.user_favorit ? 'Tersimpan' : 'Simpan'}</span>
-        </button>
+      <div style="margin-top:16px;">
+        ${btnPinjamHTML}
+        <div class="detail-footer-btns" style="margin-top:8px;">
+          <button id="modalLikeBtn_${b.id}" class="detail-btn-like ${b.user_like ? 'aktif' : ''}" onclick="toggleLikeModal(this, ${b.id})">
+            <svg viewBox="0 0 24 24" fill="${b.user_like ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+            <span id="modalLikeLabel_${b.id}">${b.user_like ? 'Disukai' : 'Suka'}</span>
+          </button>
+          <button id="modalSaveBtn_${b.id}" class="detail-btn-save ${b.user_favorit ? 'aktif' : ''}" onclick="toggleSimpanModal(this, ${b.id})">
+            <svg viewBox="0 0 24 24" fill="${b.user_favorit ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+            <span id="modalSaveLabel_${b.id}">${b.user_favorit ? 'Tersimpan' : 'Simpan'}</span>
+          </button>
+        </div>
       </div>`;
 
     content.innerHTML = `
@@ -2039,6 +2063,18 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         const label = document.getElementById(`modalSaveLabel_${bukuId}`);
         if (label) label.textContent = data.aktif ? 'Tersimpan' : 'Simpan';
       });
+  }
+
+  function ajukanPinjamBuku(bukuId) {
+    if (IS_GUEST) {
+      if (typeof butuhLogin === 'function') {
+        butuhLogin();
+      } else {
+        window.location.href = 'sign_in.php?redirect=' + encodeURIComponent('pengajuan_peminjaman.php?buku_id=' + bukuId);
+      }
+      return;
+    }
+    window.location.href = 'pengajuan_peminjaman.php?buku_id=' + bukuId;
   }
 
   // ─── Hero Carousel Script (Zero Page Overflow) ───
@@ -2107,95 +2143,10 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     });
   }
 
-  // ─── Musik Latar ───
-  (function () {
-    const btn   = document.getElementById('btnMusik');
-    const audio = document.getElementById('audioLatar');
-    if (!btn || !audio) return;
+  // ─── Musik Latar (Dikelola terpusat oleh AksaAudio di settings_include.php) ───
+  if (window.AksaAudio) window.AksaAudio.init();
 
-    audio.volume = 0.55;
-    let userPaused = false;
-    let autoplaySucceeded = false;
 
-    function setPlaying(isPlaying) {
-      btn.classList.toggle('playing', isPlaying);
-      btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
-    }
-
-    function removeFallback() {
-      ['click','touchstart','keydown','scroll'].forEach(ev => document.removeEventListener(ev, fallback));
-    }
-
-    function play() {
-      audio.play().then(() => {
-        audio.muted = false;
-        autoplaySucceeded = true;
-        removeFallback();
-        setPlaying(true);
-      }).catch(() => setPlaying(false));
-    }
-
-    function pause() {
-      audio.pause();
-      setPlaying(false);
-    }
-
-    btn.addEventListener('click', () => {
-      if (audio.paused) {
-        userPaused = false;
-        play();
-      } else {
-        userPaused = true;
-        pause();
-      }
-    });
-
-    play();
-
-    function fallback() {
-      if (!autoplaySucceeded && !userPaused && (audio.paused || audio.muted)) {
-        audio.muted = false;
-        play();
-      }
-      removeFallback();
-    }
-    ['click','touchstart','keydown','scroll'].forEach(ev => document.addEventListener(ev, fallback, { once: true, passive: true }));
-
-    document.addEventListener('visibilitychange', () => {
-      if (document.hidden) {
-        if (!audio.paused) audio.pause();
-      } else if (!userPaused) {
-        play();
-      }
-    });
-  })();
-
-  // ─── Mode Gelap / Terang (Sinkron dengan Pengaturan Panel & LocalStorage) ───
-  (function () {
-    const btn  = document.getElementById('btnMode');
-    if (!btn) return;
-    const root = document.documentElement;
-
-    function updatePressed() {
-      const isLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
-      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
-    }
-    updatePressed();
-
-    btn.addEventListener('click', () => {
-      const isCurrentlyLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
-      const targetMode = isCurrentlyLight ? 'dark' : 'light';
-      if (typeof window.setMode === 'function') {
-        window.setMode(targetMode);
-      } else {
-        root.classList.toggle('theme-light', targetMode === 'light');
-        root.classList.toggle('light', targetMode === 'light');
-        root.classList.toggle('dark', targetMode === 'dark');
-        try { localStorage.setItem('aksanova_theme', targetMode); } catch (e) {}
-      }
-      updatePressed();
-    });
-  })();
 </script>
 
 <?php require_once "pengaturan_panel.php"; ?>

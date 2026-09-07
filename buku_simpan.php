@@ -93,7 +93,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       --muted:      rgba(238,243,244,.65);
       --card:       #121820;
       --radius:     14px;
-      --sidebar-w:  170px;
+      --sidebar-w:  204px;
       --shadow-sm:  0 2px 12px rgba(0,0,0,.25);
       --shadow-md:  0 4px 20px rgba(0,0,0,.45);
       --card-border:rgba(216,184,120,.14);
@@ -417,7 +417,24 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       .main { padding:72px 8px 22px; }
       .books-grid { grid-template-columns:repeat(2, 1fr); gap:10px; }
       .bk-title { font-size:.75rem; }
-      .page-title { font-size:1.05rem; }
+    .detail-btn-pinjam {
+      width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;
+      padding:11px 16px; border-radius:10px; border:none;
+      background:linear-gradient(135deg, #d8b878 0%, #b89758 100%);
+      color:#090c10; font-family:var(--font-family,'Outfit',sans-serif);
+      font-size:.85rem; font-weight:800; cursor:pointer;
+      box-shadow:0 4px 16px rgba(216,184,120,.25);
+      transition:all .2s cubic-bezier(.22,1,.36,1);
+      margin-top:14px;
+    }
+    .detail-btn-pinjam svg { width:17px; height:17px; flex-shrink:0; }
+    .detail-btn-pinjam:hover:not(:disabled) {
+      transform:translateY(-2px);
+      box-shadow:0 6px 22px rgba(216,184,120,.45);
+    }
+    .detail-btn-pinjam:disabled, .detail-btn-pinjam.disabled {
+      opacity:.45; cursor:not-allowed; background:rgba(255,255,255,.08); color:var(--muted);
+      box-shadow:none; transform:none;
     }
   </style>
   <?php require_once "settings_include.php"; ?>
@@ -442,17 +459,6 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   </div>
 
   <div class="page-hud-controls" id="pageHudControls">
-    <!-- Tombol Ganti Mode Gelap / Terang -->
-    <button type="button" class="btn-topbar-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
-      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/>
-      </svg>
-      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="4.2"/>
-        <path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/>
-      </svg>
-    </button>
-
     <?php if ($musik_tampil): ?>
     <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
       <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -492,6 +498,10 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     <a href="daftar_buku.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Daftar Buku
+    </a>
+    <a href="pengajuan_peminjaman.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Ajukan Pinjam
     </a>
     <a href="buku_simpan.php" class="nav-item active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -812,104 +822,26 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         ${b.sinopsis
           ? `<div class="detail-sinopsis">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>`
           : `<div class="detail-sinopsis"><span class="detail-sinopsis-empty">Sinopsis belum tersedia untuk buku ini.</span></div>`}
+        ${b.stok > 0
+          ? `<button class="detail-btn-pinjam" onclick="ajukanPinjamBuku(${b.id})">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+               Ajukan Peminjaman
+             </button>`
+          : `<button class="detail-btn-pinjam disabled" disabled title="Stok buku habis">
+               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+               Stok Buku Habis
+             </button>`}
       </div>`;
   }
 
-  // ─── Mode Gelap / Terang ───
-  (function () {
-    const btn  = document.getElementById('btnMode');
-    if (!btn) return;
-    const root = document.documentElement;
+  function ajukanPinjamBuku(bukuId) {
+    window.location.href = 'pengajuan_peminjaman.php?buku_id=' + bukuId;
+  }
 
-    function updatePressed() {
-      const isLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
-      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
-    }
-    updatePressed();
 
-    btn.addEventListener('click', () => {
-      const isCurrentlyLight = root.classList.contains('theme-light') || root.classList.contains('light') || (localStorage.getItem('aksanova_theme') === 'light');
-      const targetMode = isCurrentlyLight ? 'dark' : 'light';
-      if (typeof window.setMode === 'function') {
-        window.setMode(targetMode);
-      } else {
-        root.classList.toggle('theme-light', targetMode === 'light');
-        root.classList.toggle('light', targetMode === 'light');
-        root.classList.toggle('dark', targetMode === 'dark');
-        try { localStorage.setItem('aksanova_theme', targetMode); } catch (e) {}
-      }
-      updatePressed();
-    });
-  })();
 
-  // ─── Musik Latar ───
-  (function () {
-    const btn   = document.getElementById('btnMusik');
-    const audio = document.getElementById('audioLatar');
-    if (!btn || !audio) return;
-
-    audio.volume = 0.55;
-    let userPaused = false;
-    let autoplaySucceeded = false;
-
-    function setPlaying(isPlaying) {
-      btn.classList.toggle('playing', isPlaying);
-      btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
-    }
-
-    function removeFallback() {
-      ['click','touchstart','keydown','scroll'].forEach(ev => document.removeEventListener(ev, fallback));
-    }
-
-    function play() {
-      audio.play().then(() => {
-        audio.muted = false;
-        autoplaySucceeded = true;
-        removeFallback();
-        setPlaying(true);
-      }).catch(() => setPlaying(false));
-    }
-
-    function pause() {
-      audio.pause();
-      setPlaying(false);
-    }
-
-    function fallback() {
-      if (userPaused || autoplaySucceeded) return;
-      audio.muted = false;
-      play();
-    }
-
-    audio.play().then(() => {
-      audio.muted = false;
-      autoplaySucceeded = true;
-      setPlaying(true);
-    }).catch(() => {
-      audio.muted = true;
-      audio.play().then(() => {
-        setPlaying(true);
-        ['click','touchstart','keydown','scroll'].forEach(ev => {
-          document.addEventListener(ev, fallback, { once: true, passive: true });
-        });
-      }).catch(() => setPlaying(false));
-    });
-
-    btn.addEventListener('click', () => {
-      if (audio.paused) {
-        userPaused = false;
-        audio.muted = false;
-        play();
-      } else {
-        userPaused = true;
-        pause();
-      }
-    });
-
-    audio.addEventListener('play',  () => setPlaying(true));
-    audio.addEventListener('pause', () => setPlaying(false));
-    audio.addEventListener('ended', () => setPlaying(false));
-  })();
+  // ─── Musik Latar (Dikelola terpusat oleh AksaAudio di settings_include.php) ───
+  if (window.AksaAudio) window.AksaAudio.init();
 </script>
 <?php require_once "pengaturan_panel.php"; ?>
 </body>

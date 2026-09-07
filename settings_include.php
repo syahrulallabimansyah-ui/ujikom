@@ -18,12 +18,7 @@
   var ui       = s.ui       || 'default';        // default | minimal | modern | kuno | gradasi
   var grad     = s.gradient || 'emas';           // default emas matching index.php
   var fontFam  = s.font     || 'Outfit';         // Outfit | Nunito | Merriweather | Poppins | Playfair | Roboto Mono
-  var fontSize = parseInt(s.fontSize || 14);
-  var fontW    = s.fontWeight || 'normal';       // light | normal | bold | extrabold
-  var radius   = s.radius   || '14';            // px number string
-  var spacing  = s.spacing  || 'normal';        // compact | normal | relaxed
   var animation= s.animation!==undefined ? s.animation : true;
-  var sidebar  = s.sidebar  || 'full';          // full | icon
 
   // Palettenya
   var palettes = {
@@ -96,28 +91,11 @@
   };
   root.style.setProperty('--font-family', fontMap[fontFam] || fontMap['Outfit']);
 
-  // Font size base
-  root.style.setProperty('--font-size-base', fontSize + 'px');
-
-  // Font weight
-  var weightMap = { light:'300', normal:'400', bold:'600', extrabold:'800' };
-  root.style.setProperty('--font-weight-base', weightMap[fontW] || '400');
-
-  // Border radius
-  root.style.setProperty('--radius', radius + 'px');
-
-  // Spacing
-  var spMap = { compact:'0.6rem', normal:'1rem', relaxed:'1.5rem' };
-  root.style.setProperty('--spacing', spMap[spacing] || '1rem');
-
   // Animation
   root.style.setProperty('--trans-speed', animation ? '.2s' : '0s');
 
-  // Sidebar lebar
-  root.style.setProperty('--sidebar-w', sidebar === 'icon' ? '64px' : '170px');
-
   // Class pada html
-  root.className = [mode, 'ui-' + uiKey, 'sidebar-' + sidebar].join(' ');
+  root.className = [mode, 'ui-' + uiKey].join(' ');
 })();
 </script>
 <style>
@@ -292,10 +270,180 @@
 
 <script>
 /**
+ * ── AksaAudio: Pengelola Musik Latar Persisten & Berkelanjutan ──
+ * Memastikan musik tidak terputus/mengulang dari 00:00 saat berpindah halaman
+ * (Beranda, Dashboard, Daftar Buku, Buku Simpan, Edit Profil).
+ * Posisi detik pemutaran dan status play/pause disimpan di localStorage,
+ * dan langsung dilanjutkan dari posisi terakhir di halaman tujuan.
+ */
+window.AksaAudio = (function() {
+  var TIME_KEY   = 'aksanova_audio_time';
+  var STATUS_KEY = 'aksanova_audio_status';
+  var SRC_KEY    = 'aksanova_audio_src';
+  var inited     = false;
+
+  function getAudio() { return document.getElementById('audioLatar'); }
+  function getBtn()   { return document.getElementById('btnMusik'); }
+
+  function saveState() {
+    var audio = getAudio();
+    if (!audio) return;
+    try {
+      if (!isNaN(audio.currentTime) && audio.currentTime > 0) {
+        localStorage.setItem(TIME_KEY, audio.currentTime.toString());
+      }
+      localStorage.setItem(STATUS_KEY, audio.paused ? 'paused' : 'playing');
+    } catch(e) {}
+  }
+
+  function setBtnUI(isPlaying) {
+    var btn = getBtn();
+    if (!btn) return;
+    btn.classList.toggle('playing', isPlaying);
+    btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
+  }
+
+  function init() {
+    var audio = getAudio();
+    var btn   = getBtn();
+    if (!audio) return;
+
+    audio.volume = 0.55;
+
+    // Cek sumber audio saat ini
+    var srcTag = audio.querySelector('source');
+    var currentSrc = srcTag ? srcTag.getAttribute('src') : (audio.src || '');
+    var savedSrc = '';
+    try { savedSrc = localStorage.getItem(SRC_KEY) || ''; } catch(e) {}
+
+    var savedTime = 0;
+    try { savedTime = parseFloat(localStorage.getItem(TIME_KEY) || '0'); } catch(e) {}
+
+    var userPaused = false;
+    try { userPaused = (localStorage.getItem(STATUS_KEY) === 'paused'); } catch(e) {}
+
+    // Jika lagu berubah dari admin, mulai dari awal. Jika lagu sama, lanjutkan waktu terakhir.
+    if (currentSrc && currentSrc !== savedSrc) {
+      savedTime = 0;
+      try {
+        localStorage.setItem(SRC_KEY, currentSrc);
+        localStorage.setItem(TIME_KEY, '0');
+      } catch(e) {}
+    }
+
+    // Terapkan posisi detik pemutaran terakhir sedini mungkin
+    function applySavedTime() {
+      if (savedTime > 0 && isFinite(savedTime)) {
+        try {
+          if (Math.abs(audio.currentTime - savedTime) > 0.3) {
+            audio.currentTime = savedTime;
+          }
+        } catch(e) {}
+      }
+    }
+
+    applySavedTime();
+    audio.addEventListener('loadedmetadata', applySavedTime);
+    audio.addEventListener('canplay', function() {
+      if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 0.5) {
+        applySavedTime();
+      }
+    });
+
+    // Sinkronisasi posisi detik pemutaran secara berkala
+    audio.addEventListener('timeupdate', function() {
+      if (!audio.paused && audio.currentTime > 0) {
+        try {
+          localStorage.setItem(TIME_KEY, audio.currentTime.toString());
+        } catch(e) {}
+      }
+    });
+
+    audio.addEventListener('play',  function() { setBtnUI(true); });
+    audio.addEventListener('pause', function() { setBtnUI(false); });
+    audio.addEventListener('ended', function() {
+      try { localStorage.setItem(TIME_KEY, '0'); } catch(e) {}
+    });
+
+    // Simpan posisi sebelum halaman ditutup/berpindah
+    window.addEventListener('beforeunload', saveState);
+    window.addEventListener('pagehide', saveState);
+
+    // Tangani interaksi klik tombol musik
+    if (btn && !btn._aksaBound) {
+      btn._aksaBound = true;
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (audio.paused) {
+          userPaused = false;
+          try { localStorage.setItem(STATUS_KEY, 'playing'); } catch(e) {}
+          playAudio();
+        } else {
+          userPaused = true;
+          audio.pause();
+          try {
+            localStorage.setItem(STATUS_KEY, 'paused');
+            saveState();
+          } catch(e) {}
+          setBtnUI(false);
+        }
+      });
+    }
+
+    function playAudio() {
+      applySavedTime();
+      var p = audio.play();
+      if (p !== undefined) {
+        p.then(function() {
+          audio.muted = false;
+          setBtnUI(true);
+        }).catch(function() {
+          // Autoplay fallback: jika browser butuh interaksi user pertama
+          audio.muted = true;
+          audio.play().then(function() {
+            setBtnUI(true);
+          }).catch(function() {
+            setBtnUI(false);
+          });
+          var userGesture = function() {
+            audio.muted = false;
+            if (audio.paused && !userPaused) {
+              audio.play();
+            }
+            ['click','touchstart','keydown','scroll'].forEach(function(ev) {
+              document.removeEventListener(ev, userGesture);
+            });
+          };
+          ['click','touchstart','keydown','scroll'].forEach(function(ev) {
+            document.addEventListener(ev, userGesture, { once: true, passive: true });
+          });
+        });
+      }
+    }
+
+    // Jalankan pemutaran jika tidak dipause oleh user
+    if (!userPaused) {
+      playAudio();
+    } else {
+      setBtnUI(false);
+    }
+
+    inited = true;
+  }
+
+  return {
+    init: init,
+    saveState: saveState,
+    getAudio: getAudio,
+    getBtn: getBtn
+  };
+})();
+
+/**
  * ── Smooth Sidebar Navigation Handler ──
- * Membuat perpindahan antar halaman via sidebar terasa mulus seperti SPA (Single Page App).
+ * Membuat perpindahan antar halaman via sidebar terasa mulus.
  * Mencegah reload ulang jika sudah di halaman yang sama, memberikan feedback instan,
- * dan menghaluskan transisi drawer di layar mobile.
+ * menyimpan posisi audio sebelum berpindah, dan menghaluskan transisi drawer di mobile.
  */
 (function() {
   function initSmoothSidebarNav() {
@@ -303,7 +451,6 @@
     if (!sidebar) return;
     var links = sidebar.querySelectorAll('a[href]');
     
-    // Ambil nama file halaman saat ini (default beranda.php)
     var currentFile = (window.location.pathname.split('/').pop() || 'beranda.php').toLowerCase();
     if (!currentFile || currentFile === '') currentFile = 'beranda.php';
 
@@ -313,9 +460,13 @@
         if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('javascript:') || link.target === '_blank') {
           return;
         }
-        // Jangan intercept jika user membuka di tab baru (Ctrl/Cmd click dsb)
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
           return;
+        }
+
+        // Simpan posisi lagu tepat detik ini sebelum halaman berpindah
+        if (window.AksaAudio && window.AksaAudio.saveState) {
+          window.AksaAudio.saveState();
         }
 
         var targetFile = rawHref.split('?')[0].split('#')[0].toLowerCase();
@@ -326,7 +477,7 @@
           return;
         }
 
-        // Feedback visual instan: pindahkan active class ke link yang diklik
+        // Feedback visual instan
         links.forEach(function(l) { l.classList.remove('active'); });
         link.classList.add('active');
 
@@ -334,14 +485,12 @@
         var overlay = document.querySelector('.sidebar-overlay') || document.getElementById('sidebarOverlay');
         var main = document.querySelector('.main');
 
-        // Jika browser belum mendukung View Transitions native, berikan transisi keluar yang halus
         if (main && !document.startViewTransition) {
           main.style.transition = 'opacity 0.14s ease, transform 0.14s ease';
           main.style.opacity = '0.4';
           main.style.transform = 'translateY(-3px)';
         }
 
-        // Di layar mobile: tutup drawer sidebar dengan anggun sebelum pindah halaman
         if (isMobile && sidebar.classList.contains('open')) {
           e.preventDefault();
           sidebar.classList.remove('open');
@@ -355,10 +504,17 @@
     });
   }
 
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initSmoothSidebarNav);
-  } else {
+  function startModules() {
+    if (window.AksaAudio && window.AksaAudio.init) {
+      window.AksaAudio.init();
+    }
     initSmoothSidebarNav();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startModules);
+  } else {
+    startModules();
   }
 })();
 </script>

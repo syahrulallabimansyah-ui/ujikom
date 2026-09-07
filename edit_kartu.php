@@ -49,6 +49,15 @@ if ($user["status"] === "pending") {
     $blocked = "Kartu kamu sedang dibekukan (proses Lupa Kartu belum selesai). Selesaikan itu dulu sebelum mengedit data.";
 }
 
+// Ambil daftar kelas dari tabel kelas untuk pilihan dropdown
+$daftar_kelas = [];
+$res_k = mysqli_query($conn, "SELECT nama_kelas FROM kelas ORDER BY nama_kelas ASC");
+if ($res_k) {
+    while ($row_k = mysqli_fetch_assoc($res_k)) {
+        $daftar_kelas[] = $row_k["nama_kelas"];
+    }
+}
+
 $form_data = [
     "full_name" => $user["full_name"],
     "kelas"     => $user["kelas"],
@@ -64,7 +73,7 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
     $new_full_name = trim($_POST["full_name"] ?? "");
     $new_kelas     = trim($_POST["kelas"] ?? "");
     $new_no_hp     = trim($_POST["no_hp"] ?? "");
-    $new_email     = trim($_POST["email"] ?? "");
+    $new_email     = strtolower(trim($_POST["email"] ?? ""));
     $new_password  = trim($_POST["new_password"] ?? "");
     $new_password2 = trim($_POST["new_password_confirm"] ?? "");
     $foto_path     = $user["foto"] ?? "";
@@ -84,9 +93,11 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
     if ($new_full_name === "") {
         $error = "Nama lengkap wajib diisi.";
     } elseif ($new_kelas === "") {
-        $error = "Kelas wajib diisi.";
+        $error = "Pilihan kelas wajib dipilih.";
     } elseif ($new_email === "" || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
         $error = "Alamat email tidak valid.";
+    } elseif (!str_ends_with(strtolower($new_email), "@student.smkn1rongga.sch.id")) {
+        $error = "Email wajib menggunakan akun siswa resmi (@student.smkn1rongga.sch.id).";
     } elseif ($new_no_hp !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $new_no_hp)) {
         $error = "Nomor HP tidak valid.";
     } elseif ($want_change_password && strlen($new_password) < 8) {
@@ -247,7 +258,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       --card-border:  rgba(216,184,120,.14);
       --book-card:    #161e27;
       --radius:       14px;
-      --sidebar-w:    170px;
+      --sidebar-w:    204px;
       --shadow-sm:    0 2px 12px rgba(0,0,0,.25);
       --shadow-md:    0 4px 20px rgba(0,0,0,.45);
       --trans:        .2s cubic-bezier(.22,1,.36,1);
@@ -478,7 +489,8 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       color:var(--muted); margin-bottom:6px;
     }
     .field-input-wrap { position:relative; display:flex; align-items:center; width:100%; }
-    .field input {
+    .field input,
+    .field select {
       width:100%; padding:12px 16px;
       border:1.5px solid var(--border-color);
       border-radius:10px;
@@ -487,7 +499,21 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       font-size:.88rem; color:var(--text);
       outline:none; transition:all var(--trans);
     }
-    .field input:focus {
+    .field select {
+      cursor: pointer;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d8b878' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 40px;
+    }
+    .field select option {
+      background: var(--card, #121820);
+      color: var(--text, #eef3f4);
+    }
+    .field input:focus,
+    .field select:focus {
       border-color:var(--accent);
       background:var(--card);
       box-shadow:0 0 0 3px rgba(216,184,120,.18);
@@ -634,11 +660,6 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
   </div>
 
   <div class="page-hud-controls" id="pageHudControls">
-    <button type="button" class="btn-topbar-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
-      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79Z"/></svg>
-      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.4M12 19.1v2.4M4.9 4.9l1.7 1.7M17.4 17.4l1.7 1.7M2.5 12h2.4M19.1 12h2.4M4.9 19.1l1.7-1.7M17.4 6.6l1.7-1.7"/></svg>
-    </button>
-
     <?php if ($musik_tampil): ?>
     <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
       <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
@@ -677,6 +698,10 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
     <a href="daftar_buku.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
       Daftar Buku
+    </a>
+    <a href="pengajuan_peminjaman.php" class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Ajukan Pinjam
     </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
@@ -778,8 +803,18 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
             <input type="text" id="fullNameInput" name="full_name" value="<?= htmlspecialchars($form_data['full_name']) ?>" required>
           </div>
           <div class="field">
-            <label for="kelasInput">Kelas / Departemen</label>
-            <input type="text" id="kelasInput" name="kelas" value="<?= htmlspecialchars($form_data['kelas']) ?>" required>
+            <label for="kelasInput">Pilihan Kelas</label>
+            <select id="kelasInput" name="kelas" required>
+              <option value="" disabled <?= empty($form_data['kelas']) ? 'selected' : '' ?>>-- Pilih Kelas --</option>
+              <?php foreach ($daftar_kelas as $k): ?>
+                <option value="<?= htmlspecialchars($k) ?>" <?= $form_data['kelas'] === $k ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($k) ?>
+                </option>
+              <?php endforeach; ?>
+              <?php if (!empty($form_data['kelas']) && !in_array($form_data['kelas'], $daftar_kelas, true)): ?>
+                <option value="<?= htmlspecialchars($form_data['kelas']) ?>" selected><?= htmlspecialchars($form_data['kelas']) ?></option>
+              <?php endif; ?>
+            </select>
           </div>
         </div>
 
@@ -789,9 +824,11 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
             <input type="text" id="noHpInput" name="no_hp" placeholder="Contoh: 081234567890" value="<?= htmlspecialchars($form_data['no_hp']) ?>">
           </div>
           <div class="field">
-            <label for="emailInput">Alamat Email</label>
-            <input type="email" id="emailInput" name="email" value="<?= htmlspecialchars($form_data['email']) ?>" required>
-            <p class="field-hint">Email ini digunakan untuk verifikasi dan notifikasi kartu.</p>
+            <label for="emailInput">Alamat Email Siswa</label>
+            <input type="email" id="emailInput" name="email" value="<?= htmlspecialchars($form_data['email']) ?>"
+                   pattern="[a-zA-Z0-9._%+\-]+@student\.smkn1rongga\.sch\.id$"
+                   title="Email harus menggunakan domain @student.smkn1rongga.sch.id" required>
+            <p class="field-hint" style="color:var(--accent,#d8b878);">Wajib menggunakan akun resmi berakhiran @student.smkn1rongga.sch.id</p>
           </div>
         </div>
 
@@ -940,93 +977,10 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
   });
   <?php endif; ?>
 
-  // ─── Mode Gelap / Terang ───
-  (function () {
-    var btn = document.getElementById('btnMode');
-    if (!btn) return;
-    var root = document.documentElement;
-    var STORAGE_KEY = 'aksanova_theme';
 
-    function updatePressed() {
-      btn.setAttribute('aria-pressed', root.classList.contains('theme-light') ? 'true' : 'false');
-    }
-    updatePressed();
 
-    btn.addEventListener('click', function () {
-      root.classList.toggle('theme-light');
-      var isLight = root.classList.contains('theme-light');
-      try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
-      updatePressed();
-    });
-  })();
-
-  // ─── Musik Latar (Tersinkronisasi) ───
-  (function () {
-    var audio = document.getElementById('audioLatar');
-    var btn   = document.getElementById('btnMusik');
-    if (!audio || !btn) return;
-
-    var STORAGE_KEY = 'aksanova_musik_status';
-    var userPaused = false;
-    try { userPaused = localStorage.getItem(STORAGE_KEY) === 'paused'; } catch (e) {}
-    var autoplaySucceeded = false;
-
-    function setPlaying(isPlaying) {
-      btn.classList.toggle('playing', isPlaying);
-      btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
-    }
-    function removeFallback() {
-      ['click','touchstart','keydown','scroll'].forEach(ev => document.removeEventListener(ev, fallback));
-    }
-    function play() {
-      audio.play().then(() => {
-        audio.muted = false;
-        autoplaySucceeded = true;
-        removeFallback();
-        setPlaying(true);
-        try { localStorage.setItem(STORAGE_KEY, 'playing'); } catch (e) {}
-      }).catch(() => setPlaying(false));
-    }
-    function pause() {
-      audio.pause();
-      setPlaying(false);
-      try { localStorage.setItem(STORAGE_KEY, 'paused'); } catch (e) {}
-    }
-    function fallback() {
-      if (userPaused || autoplaySucceeded) return;
-      audio.muted = false;
-      play();
-    }
-
-    if (!userPaused) {
-      audio.play().then(() => {
-        audio.muted = false;
-        autoplaySucceeded = true;
-        setPlaying(true);
-      }).catch(() => {
-        audio.muted = true;
-        audio.play().then(() => {
-          setPlaying(true);
-          ['click','touchstart','keydown','scroll'].forEach(ev => {
-            document.addEventListener(ev, fallback, { once: true, passive: true });
-          });
-        }).catch(() => setPlaying(false));
-      });
-    }
-
-    btn.addEventListener('click', () => {
-      if (audio.paused) {
-        userPaused = false;
-        play();
-      } else {
-        userPaused = true;
-        pause();
-      }
-    });
-
-    audio.addEventListener('play',  () => setPlaying(true));
-    audio.addEventListener('pause', () => setPlaying(false));
-  })();
+  // ─── Musik Latar (Dikelola terpusat oleh AksaAudio di settings_include.php) ───
+  if (window.AksaAudio) window.AksaAudio.init();
 </script>
 
 <?php require_once "pengaturan_panel.php"; ?>
