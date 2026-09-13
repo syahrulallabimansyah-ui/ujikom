@@ -600,7 +600,7 @@ ob_start();
     .detail-btn-like, .detail-btn-save {
       flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
       padding:9px 14px; border-radius:8px; border:1.5px solid #e4e5f0;
-      background:#fff; font-family:'Nunito',sans-serif;
+      background:rgba(255,255,255,.04); font-family:'Nunito',sans-serif;
       font-size:.8rem; font-weight:700; color:var(--muted);
       cursor:pointer; transition:all var(--trans);
     }
@@ -927,21 +927,7 @@ ob_start();
 </div>
 
 <script>
-  const toggle  = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  if (toggle && sidebar && overlay) {
-    toggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('open');
-      document.body.classList.toggle('sidebar-open', sidebar.classList.contains('open'));
-    });
-    overlay.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-    });
-  }
+  // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
   const IS_ADMIN = <?= json_encode($is_admin) ?>;
   const IS_GUEST = <?= json_encode($is_guest) ?>;
@@ -1047,9 +1033,11 @@ ob_start();
 
         <div class="detail-rating-row" id="ratingRow_${b.id}">
           ${renderStarsDisplay(b.rating_avg, b.rating_total)}
+          ${IS_ADMIN ? '' : `
           <div style="border-left:1px solid var(--border-color,rgba(216,184,120,.2));height:16px;"></div>
           <span style="font-size:.72rem;font-weight:700;color:var(--muted);">Nilai kamu:</span>
           ${renderStarsInput(b.id, b.user_rating)}
+          `}
         </div>
 
         <div class="detail-meta-row">
@@ -1276,6 +1264,7 @@ ob_start();
 
   function submitRating(bukuId, rating) {
     if (IS_GUEST) return butuhLogin();
+    if (IS_ADMIN) return; // Admin tidak bisa memberi rating
     const fd = new FormData();
     fd.append('buku_id', bukuId);
     fd.append('rating', rating);

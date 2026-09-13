@@ -1,8 +1,37 @@
 <?php
 // kartu_anggota.php — Menampilkan kartu anggota hasil pendaftaran (sekali tampil)
+// Bisa juga dibuka oleh admin untuk melihat kartu anggota tertentu lewat ?id=... dari daftar_anggota.php
 session_start();
 
-if (!isset($_SESSION["kartu_data"])) {
+$admin_view = false;
+
+if (isset($_GET["id"]) && isset($_SESSION["user_id"]) && ($_SESSION["role"] ?? "") === "admin") {
+    // ── Mode admin: lihat kartu milik anggota lain, tanpa menyentuh sesi kartu milik anggota ──
+    require_once "db.php";
+    $vid = (int)$_GET["id"];
+    $rq = mysqli_query($conn, "SELECT full_name, nik, kelas, no_hp, email, no_anggota, username, foto, status FROM users WHERE id = $vid AND role = 'member'");
+    if ($rq && ($u = mysqli_fetch_assoc($rq))) {
+        $admin_view = true;
+        $d = [
+            "full_name"         => $u["full_name"],
+            "nik"               => $u["nik"],
+            "kelas"             => $u["kelas"],
+            "no_hp"             => $u["no_hp"],
+            "email"             => $u["email"],
+            "no_anggota"        => $u["no_anggota"],
+            "username"          => $u["username"],
+            "foto"              => $u["foto"] ?? "",
+            "status"            => $u["status"] ?? "pending",
+            "reissued"          => false,
+            "data_updated_only" => true,
+            "password_changed"  => false,
+            "password"          => "",
+        ];
+    } else {
+        header("Location: daftar_anggota.php");
+        exit;
+    }
+} elseif (!isset($_SESSION["kartu_data"])) {
     if (isset($_SESSION["user_id"])) {
         require_once "db.php";
         $uid = (int)$_SESSION["user_id"];
@@ -32,7 +61,9 @@ if (!isset($_SESSION["kartu_data"])) {
     }
 }
 
-$d = $_SESSION["kartu_data"];
+if (!$admin_view) {
+    $d = $_SESSION["kartu_data"];
+}
 $d["status"]   = $d["status"]   ?? "pending";
 $d["reissued"] = $d["reissued"] ?? false;
 $d["data_updated_only"] = $d["data_updated_only"] ?? false;
@@ -385,7 +416,10 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   </svg>
 </button>
 
-  <?php if ($d["reissued"]): ?>
+  <?php if ($admin_view): ?>
+    <h1 class="page-title">Kartu Anggota: <?= htmlspecialchars($d["full_name"]) ?></h1>
+    <p class="page-sub">Tampilan kartu anggota ini dilihat sebagai admin. Kata sandi anggota tidak dapat ditampilkan di sini (hanya bisa direset lewat menu Daftar Anggota).</p>
+  <?php elseif ($d["reissued"]): ?>
     <h1 class="page-title">Kartu Anggota Baru Kamu Sudah Jadi 🎉</h1>
     <p class="page-sub">Kartu lama kamu sudah tidak berlaku lagi. Unduh kartu baru ini dan simpan baik-baik. Username &amp; password di dalamnya dipakai untuk login dan meminjam buku.</p>
   <?php elseif ($d["data_updated_only"]): ?>
@@ -396,7 +430,17 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     <p class="page-sub">Unduh kartu ini dan simpan baik-baik. Username &amp; password di dalamnya dipakai untuk login dan meminjam buku.</p>
   <?php endif; ?>
 
-  <?php if ($d["data_updated_only"] && $d["password_changed"]): ?>
+  <?php if ($admin_view): ?>
+    <?php if ($d["status"] === "pending"): ?>
+    <div class="warning" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;">
+      ⏳ Status anggota ini masih <b>menunggu persetujuan</b>.
+    </div>
+    <?php elseif ($d["status"] === "rejected"): ?>
+    <div class="warning" style="background:#fce4ec;border-color:#f5b8c8;color:#c0392b;">
+      ⛔ Akun anggota ini berstatus <b>nonaktif</b>.
+    </div>
+    <?php endif; ?>
+  <?php elseif ($d["data_updated_only"] && $d["password_changed"]): ?>
   <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
     ✅ Data &amp; kata sandi berhasil diperbarui. Kata sandi baru kamu ditampilkan <b>satu kali</b> di kartu ini — catat baik-baik sebelum meninggalkan halaman.
   </div>
@@ -410,14 +454,16 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   </div>
   <?php endif; ?>
 
-  <?php if ($d["status"] === "pending"): ?>
-  <div class="warning" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;">
-    ⏳ Akun kamu berstatus <b>menunggu persetujuan admin</b>. Kamu belum bisa login sampai admin perpustakaan menyetujui pendaftaran ini. Simpan kartu ini dulu, coba login setelah disetujui.
-  </div>
-  <?php elseif ($d["reissued"]): ?>
-  <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
-    ✅ Kartu &amp; password baru kamu sudah aktif. Gunakan kartu ini untuk login mulai sekarang, kartu lama sudah dibekukan permanen.
-  </div>
+  <?php if (!$admin_view): ?>
+    <?php if ($d["status"] === "pending"): ?>
+    <div class="warning" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;">
+      ⏳ Akun kamu berstatus <b>menunggu persetujuan admin</b>. Kamu belum bisa login sampai admin perpustakaan menyetujui pendaftaran ini. Simpan kartu ini dulu, coba login setelah disetujui.
+    </div>
+    <?php elseif ($d["reissued"]): ?>
+    <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
+      ✅ Kartu &amp; password baru kamu sudah aktif. Gunakan kartu ini untuk login mulai sekarang, kartu lama sudah dibekukan permanen.
+    </div>
+    <?php endif; ?>
   <?php endif; ?>
 
   <div id="kartu">
@@ -482,7 +528,9 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 
   <div class="actions">
     <button class="btn btn-download" id="btnDownload">⬇ Unduh Kartu (PNG)</button>
-    <?php if (isset($_SESSION["user_id"])): ?>
+    <?php if ($admin_view): ?>
+    <a href="daftar_anggota.php" class="btn btn-continue" id="btnContinue">Selesai, Kembali ke Daftar Anggota &rarr;</a>
+    <?php elseif (isset($_SESSION["user_id"])): ?>
     <a href="dashboard_user.php" class="btn btn-continue" id="btnContinue">Selesai, Kembali ke Dashboard &rarr;</a>
     <?php elseif ($d["data_updated_only"]): ?>
     <a href="beranda.php" class="btn btn-continue" id="btnContinue">Selesai, Kembali ke Beranda &rarr;</a>
@@ -490,7 +538,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     <a href="sign_in.php" class="btn btn-continue" id="btnContinue">Selesai, Masuk ke Akun &rarr;</a>
     <?php endif; ?>
 
-    <?php if (isset($_SESSION["user_id"]) || $d["data_updated_only"]): ?>
+    <?php if (!$admin_view && (isset($_SESSION["user_id"]) || $d["data_updated_only"])): ?>
     <a href="sign_in.php" class="btn btn-back">&larr; Kembali ke Halaman Login</a>
     <?php endif; ?>
   </div>

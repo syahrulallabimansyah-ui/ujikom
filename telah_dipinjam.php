@@ -11,6 +11,13 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 }
 
 require_once 'db.php';
+// ─── Hitung badge sidebar (pending anggota & pengajuan buku) ───
+$cnt_p_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM users WHERE role='member' AND status='pending'");
+$pending_count = $cnt_p_q ? (int)(mysqli_fetch_assoc($cnt_p_q)['c'] ?? 0) : 0;
+$cnt_a_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='menunggu'");
+$cnt_aju_badge = $cnt_a_q ? (int)(mysqli_fetch_assoc($cnt_a_q)['c'] ?? 0) : 0;
+$sidebar_badges_loaded = true;
+
 
 assert($conn instanceof mysqli);
 mysqli_set_charset($conn, 'utf8mb4');
@@ -300,39 +307,82 @@ ob_start();
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet"/>
+  <?php require_once 'settings_include.php'; ?>
   <style>
     :root {
-      --sidebar-bg:  #4a4a5a;
-      --sidebar-dark:#2e2e3a;
-      --btn-primary: #3a3a4a;
-      --btn-pinjam:  #2563eb;
-      --btn-kembali: #059669;
-      --text:        #1a1a2e;
-      --muted:       #7a7a9a;
-      --bg:          #f0f0f0;
-      --card:        #ffffff;
+      --sidebar-bg:  #10151b;
+      --accent:      #d8b878;
+      --btn-primary: linear-gradient(135deg,#d8b878,#c8a060);
+      --text:        #eef3f4;
+      --muted:       rgba(238,243,244,.65);
+      --bg:          #090c10;
+      --card:        #121820;
+      --border-color:rgba(216,184,120,.18);
+      --card-border: rgba(216,184,120,.12);
+      --radius:      10px;
       --sidebar-w:   204px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
-      --shadow:      0 2px 12px rgba(0,0,0,.07);
+      --shadow:      0 2px 12px rgba(0,0,0,.3);
+      --btn-kembali: #059669;
+      --btn-pinjam:  #2563eb;
+      --book-card:   #161e27;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: 'Nunito', sans-serif; background: var(--bg); display: flex; min-height: 100vh; animation: bodyIn .4s ease both; }
     @keyframes bodyIn { from { opacity:0; } to { opacity:1; } }
 
-    .sidebar { width: var(--sidebar-w); background: linear-gradient(180deg, #5a5a6e 0%, #2e2e3a 100%); display: flex; flex-direction: column; align-items: center; padding: 36px 20px 28px; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; transition: transform var(--trans); }
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg, #10151b);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 16px;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      transition: transform var(--trans);
+      overflow: hidden;
+    }
+    .sidebar-header { flex-shrink: 0; display:flex; flex-direction:column; align-items:center; width:100%; }
+    .sidebar-nav {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.35) transparent;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 5px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); border-radius: 10px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; }
     .sidebar-overlay.open { display:block; }
-    .sidebar-toggle { display:none; position:fixed; top:14px; left:14px; z-index:200; width:40px; height:40px; border-radius:10px; border:none; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.15); cursor:pointer; align-items:center; justify-content:center; }
-    .sidebar-toggle svg { width:20px; height:20px; }
+    .sidebar-toggle {
+      display:none; position:fixed; top:14px; left:14px; z-index:200;
+      width:42px; height:42px; border-radius:10px; cursor:pointer;
+      align-items:center; justify-content:center;
+      background:#161e27; border:1.5px solid var(--accent,#d8b878);
+      box-shadow:0 4px 16px rgba(0,0,0,.45); color:var(--accent,#d8b878);
+      transition:all .2s;
+    }
+    .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
+    .sidebar-toggle:active { transform:scale(0.92); }
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
-    .avatar-circle { width:96px; height:96px; border-radius:50%; background:#c0c0c8; overflow:hidden; border:3px solid rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; transition:border-color var(--trans); }
+    .avatar-circle { width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%; background:#c0c0c8; overflow:hidden; border:3px solid rgba(255,255,255,.25); display:flex; align-items:center; justify-content:center; transition:border-color var(--trans); }
     .avatar-wrap:hover .avatar-circle { border-color:rgba(255,255,255,.55); }
     .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
     .avatar-circle .default-icon { width:52px; height:52px; color:#888; }
     .avatar-overlay { position:absolute; inset:0; border-radius:50%; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity .2s; }
     .avatar-wrap:hover .avatar-overlay { opacity:1; }
     .avatar-overlay svg { width:24px; height:24px; color:#fff; }
-    .modal-close { border:none; background:#f0f0f5; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text); }
+    .modal-close { border:none; background:var(--book-card,#161e27); width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:#eef3f4; }
     .modal-close svg { width:16px; height:16px; }
     .img-preview-wrap { position:relative; border:2px dashed #d8d8e4; overflow:hidden; cursor:pointer; }
     .img-preview-wrap img { width:100%; height:100%; object-fit:cover; }
@@ -340,23 +390,46 @@ ob_start();
     .upload-placeholder svg { width:26px; height:26px; }
     .form-group { margin-bottom:14px; }
     .form-label { display:block; font-size:.78rem; font-weight:700; color:var(--text); margin-bottom:6px; }
-    .form-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0e0ea; font-family:'Nunito',sans-serif; font-size:.85rem; }
-    .form-input:focus { outline:none; border-color:var(--btn-kembali); }
-    .btn-save { flex:1; padding:11px; border-radius:8px; border:none; background:var(--btn-kembali); color:#fff; font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background var(--trans); }
+    .form-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color,rgba(216,184,120,.2)); font-family:'Nunito',sans-serif; font-size:.85rem; background:rgba(255,255,255,.05); color:var(--text,#eef3f4); }
+    .form-input:focus { outline:none; border-color:var(--btn-kembali,#059669); }
+    .btn-save { flex:1; padding:11px; border-radius:8px; border:none; background:var(--btn-kembali,#059669); color:#fff; font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background var(--trans); }
     .btn-save:hover { background:#047857; }
-    .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
-    .total-badge { background:rgba(255,255,255,.18); color:#fff; font-size:.72rem; font-weight:700; padding:4px 12px; border-radius:50px; margin-bottom:8px; text-align:center; }
-    .total-badge.danger { background:rgba(239,68,68,.35); }
-    .sidebar-btn { width:100%; display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; border:none; background:rgba(255,255,255,.12); color:#fff; font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700; cursor:pointer; margin-bottom:8px; transition:background var(--trans); text-align:left; text-decoration:none; }
-    .sidebar-btn:hover { background:rgba(255,255,255,.22); }
-    .sidebar-btn.active { background:rgba(255,255,255,.3); }
-    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
+    .admin-name-label { color:#eef3f4; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+    .total-badge {
+      background: rgba(216,184,120,.16); color:var(--accent,#d8b878);
+      border: 1px solid rgba(216,184,120,.3);
+      font-size:.72rem; font-weight:700;
+      padding:4px 12px; border-radius:50px;
+      margin-bottom:20px; text-align:center;
+    }
 
-    .main { margin-left:var(--sidebar-w); flex:1; padding:26px 24px; }
+    .sidebar-btn {
+      width:100%; display:flex; align-items:center; gap:11px;
+      padding:10px 14px; border-radius:9px;
+      border:1px solid rgba(216,184,120,.16);
+      background:rgba(255,255,255,.05); color:#eef3f4;
+      font-family:inherit; font-size:.83rem; font-weight:700;
+      cursor:pointer; margin-bottom:7px;
+      transition:all var(--trans);
+      text-align:left; text-decoration:none;
+      flex-shrink:0; box-sizing:border-box;
+    }
+    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn.active {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820; font-weight:800;
+      box-shadow:0 4px 14px rgba(216,184,120,.35);
+    }
+    .sidebar-btn.active svg { color:#121820; stroke:#121820; stroke-width:2.2px; }
+
+    .main { view-transition-name:app-main; margin-left:var(--sidebar-w); flex:1; padding:26px 24px; }
     .alert { padding:12px 18px; border-radius:8px; font-size:.82rem; font-weight:700; margin-bottom:16px; animation:fadeUp .4s both; }
-    .alert-success { background:#e8f5e9; color:#1a8a4a; border:1px solid #c8e6c9; }
+    .alert-success { background:#d1fae5; color:#065f46; border:1px solid #10b981; }
     .alert-warning { background:#fff9e6; color:#92400e; border:1px solid #fcd34d; }
-    .alert-error   { background:#fce4ec; color:#c0392b; border:1px solid #f8bbd0; }
+    .alert-error   { background:#fee2e2; color:#b91c1c; border:1px solid #ef4444; }
 
     /* Denda banner */
     .denda-banner {
@@ -370,7 +443,7 @@ ob_start();
     }
     .denda-banner a { color:#b45309; text-decoration:underline; margin-left:auto; white-space:nowrap; font-size:.75rem; }
 
-    .topbar { display:flex; align-items:center; background:#fff; border-radius:50px; padding:0 18px; height:46px; gap:10px; margin-bottom:18px; box-shadow:var(--shadow); animation:fadeUp .5s .05s both; }
+    .topbar { display:flex; align-items:center; background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:50px; padding:0 18px; height:46px; gap:10px; margin-bottom:18px; box-shadow:var(--shadow); animation:fadeUp .5s .05s both; }
     .topbar svg { width:18px; height:18px; color:#aaa; flex-shrink:0; }
     .topbar input { flex:1; border:none; outline:none; font-family:'Nunito',sans-serif; font-size:.85rem; color:var(--text); background:transparent; }
     .topbar input::placeholder { color:#bbb; }
@@ -380,11 +453,11 @@ ob_start();
     .btn-search:hover { background:#222; }
 
     .tab-bar { display:flex; gap:8px; margin-bottom:20px; animation:fadeUp .5s .07s both; flex-wrap:wrap; }
-    .tab-btn { padding:7px 16px; border-radius:20px; border:1.5px solid #e0e0ee; font-family:'Nunito',sans-serif; font-size:.78rem; font-weight:700; cursor:pointer; color:var(--muted); background:#fff; transition:all var(--trans); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
-    .tab-btn:hover { border-color:var(--btn-primary); color:var(--btn-primary); }
+    .tab-btn { padding:7px 16px; border-radius:20px; border:1.5px solid #e0e0ee; font-family:'Nunito',sans-serif; font-size:.78rem; font-weight:700; cursor:pointer; color:var(--muted); background:var(--card,#121820); transition:all var(--trans); text-decoration:none; display:inline-flex; align-items:center; gap:6px; }
+    .tab-btn:hover { border-color:var(--accent,#d8b878); color:var(--accent,#d8b878); }
     .tab-btn.active { background:var(--btn-primary); color:#fff; border-color:var(--btn-primary); }
     .tab-count { background:rgba(255,255,255,.25); color:inherit; font-size:.65rem; padding:1px 6px; border-radius:10px; }
-    .tab-btn:not(.active) .tab-count { background:#f0f0f8; }
+    .tab-btn:not(.active) .tab-count { background:#f0f0f8; color:#4b5563; }
 
     .content-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; animation:fadeUp .5s .1s both; }
     .content-title { font-family:'Cormorant Garamond',serif; font-size:1.6rem; font-weight:700; color:var(--text); }
@@ -401,15 +474,15 @@ ob_start();
     .pem-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
     .pem-thumb svg { width:22px; height:22px; color:#bbb; }
     .pem-info { flex:1; min-width:0; }
-    .pem-judul { font-size:.82rem; font-weight:800; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
-    .pem-penulis { font-size:.68rem; color:var(--muted); font-weight:600; margin-bottom:8px; }
-    .pem-peminjam { font-size:.75rem; font-weight:700; color:var(--text); display:flex; align-items:center; gap:5px; background:#f5f5fb; border-radius:6px; padding:5px 8px; margin-bottom:4px; }
-    .pem-peminjam svg { width:13px; height:13px; color:var(--muted); flex-shrink:0; }
+    .pem-judul { font-size:.82rem; font-weight:800; color:#1a1a2e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:2px; }
+    .pem-penulis { font-size:.68rem; color:#6b7280; font-weight:600; margin-bottom:8px; }
+    .pem-peminjam { font-size:.75rem; font-weight:700; color:#1a1a2e; display:flex; align-items:center; gap:5px; background:#f5f5fb; border-radius:6px; padding:5px 8px; margin-bottom:4px; }
+    .pem-peminjam svg { width:13px; height:13px; color:#6b7280; flex-shrink:0; }
 
     .pem-meta { padding:10px 14px; display:flex; flex-direction:column; gap:4px; }
-    .pem-meta-row { display:flex; align-items:center; gap:6px; font-size:.7rem; color:var(--muted); font-weight:600; }
+    .pem-meta-row { display:flex; align-items:center; gap:6px; font-size:.7rem; color:#6b7280; font-weight:600; }
     .pem-meta-row svg { width:12px; height:12px; flex-shrink:0; }
-    .pem-meta-val { color:var(--text); font-weight:700; }
+    .pem-meta-val { color:#1a1a2e; font-weight:700; }
 
     /* Denda info box */
     .denda-box { margin:0 14px 10px; background:#fff9e6; border:1.5px solid #fcd34d; border-radius:8px; padding:9px 12px; }
@@ -436,12 +509,12 @@ ob_start();
     .sisa-terlambat{ background:#fef2f2; color:#dc2626; }
 
     .pem-footer { padding:0 14px 14px; }
-    .btn-kembalikan { display:block; width:100%; padding:8px 0; border-radius:7px; border:none; background:var(--btn-kembali); color:#fff; font-family:'Nunito',sans-serif; font-size:.72rem; font-weight:700; cursor:pointer; text-align:center; transition:opacity var(--trans), transform .12s; letter-spacing:.02em; }
+    .btn-kembalikan { display:block; width:100%; padding:8px 0; border-radius:7px; border:none; background:var(--btn-kembali,#059669); color:#fff; font-family:'Nunito',sans-serif; font-size:.72rem; font-weight:700; cursor:pointer; text-align:center; transition:opacity var(--trans), transform .12s; letter-spacing:.02em; }
     .btn-kembalikan:hover  { opacity:.87; }
     .btn-kembalikan:active { transform:scale(.96); }
     .btn-kembalikan.has-denda { background:#dc2626; }
     .returned-label { display:block; width:100%; padding:8px 0; text-align:center; font-size:.72rem; font-weight:700; color:#065f46; background:#d1fae5; border-radius:7px; letter-spacing:.02em; margin-bottom:6px; }
-    .btn-hapus-riwayat { display:block; width:100%; padding:7px 0; border-radius:7px; border:1.5px solid #fca5a5; background:#fff; color:#dc2626; font-family:'Nunito',sans-serif; font-size:.68rem; font-weight:700; cursor:pointer; text-align:center; transition:all var(--trans); }
+    .btn-hapus-riwayat { display:block; width:100%; padding:7px 0; border-radius:7px; border:1.5px solid rgba(220,38,38,.4); background:rgba(220,38,38,.08); color:#dc2626; font-family:'Nunito',sans-serif; font-size:.68rem; font-weight:700; cursor:pointer; text-align:center; transition:all var(--trans); }
     .btn-hapus-riwayat:hover { background:#fef2f2; }
 
     /* Tombol kirim pengingat WA */
@@ -468,11 +541,11 @@ ob_start();
     }
     .wa-status-sent { color:#059669; }
     .btn-tandai-wa {
-      background:none; border:none; color:var(--muted);
+      background:none; border:none; color:#6b7280;
       font-family:'Nunito',sans-serif; font-size:.66rem; font-weight:700;
       cursor:pointer; text-decoration:underline; padding:0;
     }
-    .btn-tandai-wa:hover { color:var(--btn-pinjam); }
+    .btn-tandai-wa:hover { color:#2563eb; }
 
     /* Chip status denda */
     .denda-status-chip { display:inline-flex; align-items:center; gap:3px; font-size:.62rem; font-weight:800; padding:2px 7px; border-radius:12px; margin-left:4px; }
@@ -486,7 +559,7 @@ ob_start();
     /* MODAL */
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:500; align-items:center; justify-content:center; }
     .modal-overlay.open { display:flex; }
-    .modal { background:#fff; border-radius:14px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.25); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; padding:28px 28px 24px; margin:16px; }
+    .modal { background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:14px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.25); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; padding:28px 28px 24px; margin:16px; }
     @keyframes modalIn { from { opacity:0; transform:scale(.94) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
     .modal-title { font-family:'Cormorant Garamond',serif; font-size:1.25rem; font-weight:700; color:var(--text); margin-bottom:8px; }
     .modal-desc  { font-size:.82rem; color:var(--muted); font-weight:600; margin-bottom:14px; line-height:1.5; }
@@ -499,12 +572,12 @@ ob_start();
     .modal-denda-val.no-denda { color:#16a34a; }
     .modal-denda-sub { font-size:.68rem; color:#b45309; margin-top:2px; }
     .modal-footer { display:flex; gap:10px; }
-    .btn-confirm { flex:1; padding:11px; border-radius:8px; border:none; background:var(--btn-kembali); color:#fff; font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background var(--trans); }
+    .btn-confirm { flex:1; padding:11px; border-radius:8px; border:none; background:var(--btn-kembali,#059669); color:#fff; font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background var(--trans); }
     .btn-confirm:hover { background:#047857; }
     .btn-confirm.denda { background:#dc2626; }
     .btn-confirm.denda:hover { background:#b91c1c; }
-    .btn-cancel-modal { padding:11px 18px; border-radius:8px; border:1.5px solid #e4e5f0; background:#fff; font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; color:var(--muted); cursor:pointer; transition:all var(--trans); }
-    .btn-cancel-modal:hover { border-color:#777; color:#333; }
+    .btn-cancel-modal { padding:11px 18px; border-radius:8px; border:1.5px solid var(--border-color,rgba(216,184,120,.18)); background:var(--book-card,#161e27); font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; color:rgba(238,243,244,.65); cursor:pointer; transition:all var(--trans); }
+    .btn-cancel-modal:hover { border-color:var(--accent,#d8b878); color:var(--accent,#d8b878); }
 
     @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
     .pem-card:nth-child(1)  { animation-delay:.06s; }
@@ -544,10 +617,11 @@ ob_start();
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <aside class="sidebar" id="sidebar">
-  <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
+  <div class="sidebar-header">
+    <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
     <div class="avatar-circle">
       <?php if ($admin_foto && file_exists($admin_foto)): ?>
-        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
+        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
       <?php else: ?>
         <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -563,8 +637,9 @@ ob_start();
   </div>
 
   <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
-
-  <a class="sidebar-btn" href="dashboard.php">
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-btn" href="dashboard.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
     Dashboard
   </a>
@@ -578,7 +653,7 @@ ob_start();
   </a>
   <a class="sidebar-btn" href="daftar_anggota.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Daftar Anggota
+    Daftar Anggota<?php if (!empty($pending_count) && $pending_count > 0): ?><span style="margin-left:auto;background:#e74c3c;color:#fff;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $pending_count ?></span><?php endif; ?>
   </a>
 
   <a class="sidebar-btn" href="pinjam_buku.php">
@@ -609,10 +684,16 @@ ob_start();
       </svg>
       Pengaturan Musik
     </a>
-  <a class="sidebar-btn" href="beranda.php">
+  
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan
+    </button>
+    <a class="sidebar-btn" href="beranda.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     Kembali
   </a>
+  </nav>
 </aside>
 
 <main class="main">
@@ -904,61 +985,39 @@ ob_start();
   </div>
 </div>
 
-<!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
-<div class="modal-overlay" id="profilModalOverlay">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-header" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-      <div class="modal-title" style="margin-bottom:0;">Edit Profil</div>
-      <button class="modal-close" onclick="closeProfilModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
-      <input type="hidden" name="redirect" value="telah_dipinjam.php"/>
 
-      <!-- Preview foto -->
-      <div class="img-preview-wrap" style="aspect-ratio:1/1;max-width:160px;margin:0 auto 18px;border-radius:50%;" onclick="document.getElementById('inputFotoAdmin').click()">
-        <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>" alt="Foto" style="display:block;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder" style="display:none;">
-        <?php else: ?>
-          <img id="profilPreviewImg" src="" alt="Foto" style="display:none;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder">
-        <?php endif; ?>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <span style="font-size:.7rem;">Upload Foto</span>
-          </div>
-      </div>
-      <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
-
-      <div class="form-group">
-        <label class="form-label">Nama Tampilan</label>
-        <input class="form-input" type="text" name="display_name"
-               value="<?= htmlspecialchars($admin_name) ?>"
-               placeholder="Nama yang ditampilkan" required/>
-      </div>
-
-      <div class="modal-footer">
-        <button type="submit" class="btn-save">Simpan</button>
-        <button type="button" class="btn-cancel-modal" onclick="closeProfilModal()">Batal</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <script>
-const toggle  = document.getElementById('sidebarToggle');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('sidebarOverlay');
-toggle?.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
-overlay?.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+// Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
 // ─── Modal Edit Profil ───
 function openProfilModal() {
   document.getElementById('profilModalOverlay').classList.add('open');
+}
+
+// ─── Toggle password visibility & strength di modal profil ───
+function togglePwAdmin(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.style.color = input.type === 'text' ? 'var(--accent,#d8b878)' : 'var(--muted,#888)';
+}
+function cekKekuatanSandi(val) {
+  const bar=document.getElementById('pwStrengthBar'), label=document.getElementById('pwStrengthLabel');
+  if(!bar||!label) return;
+  let s=0;
+  if(val.length>=8) s++; if(/[A-Z]/.test(val)) s++; if(/[0-9]/.test(val)) s++; if(/[^A-Za-z0-9]/.test(val)) s++;
+  const c=['#ef4444','#f97316','#eab308','#22c55e'],l=['Terlalu lemah','Lemah','Sedang','Kuat'];
+  bar.style.width=val.length?s/4*100+'%':'0'; bar.style.background=val.length?(c[s-1]||'#ef4444'):'transparent';
+  label.textContent=val.length?(l[s-1]||'Terlalu lemah'):''; label.style.color=val.length?(c[s-1]||'#ef4444'):'';
+  cekKonfirmasi();
+}
+function cekKonfirmasi() {
+  const pw1=document.getElementById('pwNew'),pw2=document.getElementById('pwConfirm'),lb=document.getElementById('pwMatchLabel');
+  if(!pw1||!pw2||!lb) return;
+  if(!pw2.value){lb.textContent='';return;}
+  lb.textContent=pw1.value===pw2.value?'✅ Kata sandi cocok':'❌ Tidak cocok';
+  lb.style.color=pw1.value===pw2.value?'#22c55e':'#ef4444';
 }
 function closeProfilModal() {
   document.getElementById('profilModalOverlay').classList.remove('open');
@@ -1107,6 +1166,8 @@ function tandaiWa(pemId, status) {
   });
 })();
 </script>
+<?php require_once 'modal_profil_admin.php';
+require_once 'pengaturan_panel.php'; ?>
 </body>
 </html>
 <?php ob_end_flush(); ?>

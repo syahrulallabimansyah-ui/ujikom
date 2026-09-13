@@ -233,8 +233,11 @@
   @view-transition {
     navigation: auto;
   }
-  ::view-transition-group(app-sidebar) {
-    animation-duration: 0s;
+  ::view-transition-group(app-sidebar),
+  ::view-transition-old(app-sidebar),
+  ::view-transition-new(app-sidebar) {
+    animation: none !important;
+    animation-duration: 0s !important;
   }
   .sidebar {
     view-transition-name: app-sidebar;
@@ -264,6 +267,912 @@
   @media (prefers-reduced-motion: no-preference) {
     .main {
       animation: pageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+    }
+  }
+
+  /* ══════════════════════════════════════════════════════════════
+     KONSISTENSI WARNA SIDEBAR, TEXT, BUTTON & MENU BURGER (GLOBAL)
+     ══════════════════════════════════════════════════════════════ */
+
+  /* ── 1. Tombol Menu Burger (.sidebar-toggle) ── */
+  .sidebar-toggle {
+    width: 42px !important;
+    height: 42px !important;
+    border-radius: 10px !important;
+    cursor: pointer !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: border-color .2s ease, box-shadow .2s ease !important;
+    background: #161e27 !important;
+    border: 1.5px solid var(--accent, #d8b878) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .45) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+  .sidebar-toggle svg {
+    width: 22px !important;
+    height: 22px !important;
+    stroke: var(--accent, #d8b878) !important;
+    color: var(--accent, #d8b878) !important;
+    stroke-width: 2.3px !important;
+    display: block !important;
+    transition: stroke .2s ease, transform .2s ease !important;
+  }
+  .sidebar-toggle:hover {
+    background: rgba(216, 184, 120, 0.18) !important;
+    border-color: var(--accent2, #f0d9a8) !important;
+    transform: scale(1.05) !important;
+  }
+  .sidebar-toggle:hover svg {
+    stroke: var(--accent2, #f0d9a8) !important;
+    color: var(--accent2, #f0d9a8) !important;
+  }
+  .sidebar-toggle:active {
+    transform: scale(0.92) !important;
+  }
+
+  /* Menu Burger pada Mode Terang (Light Mode) */
+  html:not(.dark) .sidebar-toggle,
+  html.light .sidebar-toggle {
+    background: #ffffff !important;
+    border: 1.5px solid #b8860b !important;
+    box-shadow: 0 4px 14px rgba(184, 134, 11, 0.18) !important;
+    color: #8a6100 !important;
+  }
+  html:not(.dark) .sidebar-toggle svg,
+  html.light .sidebar-toggle svg {
+    stroke: #8a6100 !important;
+    color: #8a6100 !important;
+    stroke-width: 2.5px !important;
+  }
+  html:not(.dark) .sidebar-toggle:hover,
+  html.light .sidebar-toggle:hover {
+    background: #fcf8ee !important;
+    border-color: #694a00 !important;
+  }
+  html:not(.dark) .sidebar-toggle:hover svg,
+  html.light .sidebar-toggle:hover svg {
+    stroke: #694a00 !important;
+    color: #694a00 !important;
+  }
+
+  /* ── 2. Tombol Navigasi Sidebar Admin (.sidebar-btn) ── */
+  .sidebar .sidebar-btn {
+    width: 100% !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 11px !important;
+    padding: 10px 14px !important;
+    border-radius: 9px !important;
+    border: 1px solid rgba(216, 184, 120, 0.16) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: var(--text, #eef3f4) !important;
+    font-size: .83rem !important;
+    font-weight: 700 !important;
+    cursor: pointer !important;
+    margin-bottom: 7px !important;
+    transition: border-color .2s ease, box-shadow .2s ease !important;
+    text-align: left !important;
+    text-decoration: none !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+  }
+  .sidebar .sidebar-btn svg {
+    width: 17px !important;
+    height: 17px !important;
+    flex-shrink: 0 !important;
+    color: var(--accent, #d8b878) !important;
+    stroke: var(--accent, #d8b878) !important;
+    stroke-width: 2px !important;
+    transition: stroke .2s ease, transform .2s ease !important;
+  }
+  .sidebar .sidebar-btn:hover {
+    background: rgba(216, 184, 120, 0.16) !important;
+    border-color: var(--accent, #d8b878) !important;
+    color: #ffffff !important;
+    transform: translateX(3px) !important;
+  }
+  .sidebar .sidebar-btn:hover svg {
+    stroke: #ffffff !important;
+    color: #ffffff !important;
+    transform: scale(1.1) !important;
+  }
+  .sidebar .sidebar-btn.active {
+    background: linear-gradient(135deg, #d8b878, #c8a060) !important;
+    border-color: #d8b878 !important;
+    color: #121820 !important;
+    font-weight: 800 !important;
+    box-shadow: 0 4px 14px rgba(216, 184, 120, 0.35) !important;
+  }
+  .sidebar .sidebar-btn.active svg {
+    color: #121820 !important;
+    stroke: #121820 !important;
+    stroke-width: 2.2px !important;
+  }
+
+  /* .sidebar-btn pada Mode Terang (Light Mode) */
+  html:not(.dark) .sidebar .sidebar-btn,
+  html.light .sidebar .sidebar-btn {
+    background: rgba(0, 0, 0, 0.04) !important;
+    border: 1px solid rgba(150, 110, 45, 0.22) !important;
+    color: #221d14 !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn svg,
+  html.light .sidebar .sidebar-btn svg {
+    color: #8a6100 !important;
+    stroke: #8a6100 !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn:hover,
+  html.light .sidebar .sidebar-btn:hover {
+    background: rgba(216, 184, 120, 0.2) !important;
+    border-color: #8a6100 !important;
+    color: #000000 !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn:hover svg,
+  html.light .sidebar .sidebar-btn:hover svg {
+    color: #5c4100 !important;
+    stroke: #5c4100 !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn.active,
+  html.light .sidebar .sidebar-btn.active {
+    background: linear-gradient(135deg, #d8b878, #c8a060) !important;
+    border-color: #c8a060 !important;
+    color: #121820 !important;
+    box-shadow: 0 3px 12px rgba(184, 134, 11, 0.28) !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn.active svg,
+  html.light .sidebar .sidebar-btn.active svg {
+    color: #121820 !important;
+    stroke: #121820 !important;
+  }
+
+  /* Tombol Pengaturan di Sidebar Admin (.btn-settings-nav) */
+  .sidebar .sidebar-btn.btn-settings-nav {
+    background: rgba(216, 184, 120, 0.12) !important;
+    border: 1px solid rgba(216, 184, 120, 0.3) !important;
+    color: var(--accent2, #f0d9a8) !important;
+  }
+  .sidebar .sidebar-btn.btn-settings-nav svg {
+    color: var(--accent, #d8b878) !important;
+    stroke: var(--accent, #d8b878) !important;
+  }
+  .sidebar .sidebar-btn.btn-settings-nav:hover {
+    background: rgba(216, 184, 120, 0.22) !important;
+    border-color: var(--accent, #d8b878) !important;
+    color: #ffffff !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn.btn-settings-nav,
+  html.light .sidebar .sidebar-btn.btn-settings-nav {
+    background: rgba(184, 134, 11, 0.12) !important;
+    border: 1px solid rgba(184, 134, 11, 0.3) !important;
+    color: #8a6100 !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn.btn-settings-nav svg,
+  html.light .sidebar .sidebar-btn.btn-settings-nav svg {
+    color: #8a6100 !important;
+    stroke: #8a6100 !important;
+  }
+  html:not(.dark) .sidebar .sidebar-btn.btn-settings-nav:hover,
+  html.light .sidebar .sidebar-btn.btn-settings-nav:hover {
+    background: rgba(184, 134, 11, 0.22) !important;
+    border-color: #694a00 !important;
+    color: #000000 !important;
+  }
+
+  /* ── 3. Tombol Navigasi Sidebar Anggota/User (.nav-item) ── */
+  .sidebar .nav-item {
+    color: var(--text, #eef3f4) !important;
+    font-weight: 600 !important;
+    transition: all .2s ease !important;
+  }
+  .sidebar .nav-item svg {
+    color: var(--accent, #d8b878) !important;
+    stroke: var(--accent, #d8b878) !important;
+    stroke-width: 2px !important;
+    transition: transform .2s ease, stroke .2s ease !important;
+  }
+  .sidebar .nav-item:hover {
+    background: rgba(216, 184, 120, 0.15) !important;
+    color: var(--accent, #d8b878) !important;
+    transform: translateX(3px) !important;
+  }
+  .sidebar .nav-item:hover svg {
+    transform: scale(1.1) !important;
+  }
+  .sidebar .nav-item.active {
+    background: rgba(216, 184, 120, 0.22) !important;
+    color: var(--accent2, #f0d9a8) !important;
+    font-weight: 800 !important;
+  }
+  .sidebar .nav-item.active svg {
+    color: var(--accent2, #f0d9a8) !important;
+    stroke: var(--accent2, #f0d9a8) !important;
+  }
+
+  /* .nav-item pada Mode Terang (Light Mode) */
+  html:not(.dark) .sidebar .nav-item,
+  html.light .sidebar .nav-item {
+    color: #221d14 !important;
+  }
+  html:not(.dark) .sidebar .nav-item svg,
+  html.light .sidebar .nav-item svg {
+    color: #8a6100 !important;
+    stroke: #8a6100 !important;
+  }
+  html:not(.dark) .sidebar .nav-item:hover,
+  html.light .sidebar .nav-item:hover {
+    background: rgba(216, 184, 120, 0.18) !important;
+    color: #694a00 !important;
+  }
+  html:not(.dark) .sidebar .nav-item:hover svg,
+  html.light .sidebar .nav-item:hover svg {
+    color: #5c4100 !important;
+    stroke: #5c4100 !important;
+  }
+  html:not(.dark) .sidebar .nav-item.active,
+  html.light .sidebar .nav-item.active {
+    background: rgba(216, 184, 120, 0.26) !important;
+    color: #5c4100 !important;
+    font-weight: 800 !important;
+  }
+  html:not(.dark) .sidebar .nav-item.active svg,
+  html.light .sidebar .nav-item.active svg {
+    color: #5c4100 !important;
+    stroke: #5c4100 !important;
+  }
+
+  /* ── 4. Label Nama & Badge Sidebar ── */
+  .sidebar .admin-name-label {
+    color: var(--text, #eef3f4) !important;
+    font-size: .95rem !important;
+    font-weight: 700 !important;
+    margin-bottom: 8px !important;
+    text-align: center !important;
+  }
+  html:not(.dark) .sidebar .admin-name-label,
+  html.light .sidebar .admin-name-label {
+    color: #1a1a2e !important;
+    font-weight: 800 !important;
+  }
+  .sidebar .total-badge {
+    background: rgba(216, 184, 120, 0.16) !important;
+    border: 1px solid rgba(216, 184, 120, 0.3) !important;
+    color: var(--accent, #d8b878) !important;
+    font-weight: 700 !important;
+  }
+  html:not(.dark) .sidebar .total-badge,
+  html.light .sidebar .total-badge {
+    background: rgba(184, 134, 11, 0.12) !important;
+    border-color: rgba(184, 134, 11, 0.25) !important;
+    color: #8a6100 !important;
+  }
+  .sidebar .logo-name {
+    color: var(--accent, #d8b878) !important;
+  }
+  html:not(.dark) .sidebar .logo-name,
+  html.light .sidebar .logo-name {
+    color: #8a6100 !important;
+  }
+  .sidebar .logo-sub {
+    color: var(--muted, rgba(238, 243, 244, 0.65)) !important;
+  }
+  html:not(.dark) .sidebar .logo-sub,
+  html.light .sidebar .logo-sub {
+    color: #7a7060 !important;
+  }
+
+
+  /* ── 5. Avatar Profil Admin di Sidebar (Ukuran Pas & Terkunci) ── */
+  .sidebar .sidebar-header {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin-bottom: 12px !important;
+  }
+  .sidebar .avatar-wrap {
+    position: relative !important;
+    width: 80px !important;
+    height: 80px !important;
+    max-width: 80px !important;
+    max-height: 80px !important;
+    margin: 0 auto 10px auto !important;
+    cursor: pointer !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+  }
+  .sidebar .avatar-circle {
+    width: 80px !important;
+    height: 80px !important;
+    max-width: 80px !important;
+    max-height: 80px !important;
+    border-radius: 50% !important;
+    background: #161e27 !important;
+    overflow: hidden !important;
+    border: 2.5px solid rgba(216, 184, 120, 0.35) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: border-color .2s ease, box-shadow .2s ease !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .45) !important;
+    position: relative !important;
+  }
+  .sidebar .avatar-wrap:hover .avatar-circle {
+    border-color: var(--accent, #d8b878) !important;
+    transform: scale(1.04) !important;
+    box-shadow: 0 0 20px rgba(216, 184, 120, 0.4) !important;
+  }
+  .sidebar .avatar-circle img {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+    border-radius: 50% !important;
+  }
+  .sidebar .avatar-circle svg,
+  .sidebar .avatar-circle .default-icon {
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 44px !important;
+    max-height: 44px !important;
+    color: var(--muted, #888) !important;
+    display: block !important;
+  }
+  .sidebar .avatar-overlay {
+    position: absolute !important;
+    inset: 0 !important;
+    border-radius: 50% !important;
+    background: rgba(0, 0, 0, .55) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    opacity: 0 !important;
+    transition: opacity .2s ease !important;
+    pointer-events: none !important;
+  }
+  .sidebar .avatar-wrap:hover .avatar-overlay {
+    opacity: 1 !important;
+  }
+  .sidebar .avatar-overlay svg {
+    width: 22px !important;
+    height: 22px !important;
+    color: #ffffff !important;
+    stroke: #ffffff !important;
+    stroke-width: 2px !important;
+  }
+
+
+  /* ── Kunci Sidebar Statis Sempurna (Cegah Geser/Jumping) ── */
+  .sidebar {
+    width: var(--sidebar-w, 204px) !important;
+    padding: 28px 20px 16px !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    overflow: hidden !important;
+  }
+  .sidebar .sidebar-header {
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    width: 100% !important;
+    margin-bottom: 0 !important;
+    padding: 0 !important;
+  }
+  .sidebar .sidebar-nav {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    padding-right: 2px !important;
+  }
+  .sidebar .avatar-wrap {
+    position: relative !important;
+    width: 80px !important;
+    height: 80px !important;
+    max-width: 80px !important;
+    max-height: 80px !important;
+    margin: 0 auto 10px auto !important;
+    cursor: pointer !important;
+    display: block !important;
+    flex-shrink: 0 !important;
+    transition: none !important;
+  }
+  .sidebar .avatar-circle {
+    width: 80px !important;
+    height: 80px !important;
+    max-width: 80px !important;
+    max-height: 80px !important;
+    border-radius: 50% !important;
+    background: #161e27 !important;
+    overflow: hidden !important;
+    border: 2.5px solid rgba(216, 184, 120, 0.35) !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    transition: border-color .2s ease, box-shadow .2s ease !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, .45) !important;
+    position: relative !important;
+  }
+  .sidebar .avatar-circle img {
+    width: 80px !important;
+    height: 80px !important;
+    max-width: 80px !important;
+    max-height: 80px !important;
+    object-fit: cover !important;
+    object-position: center !important;
+    display: block !important;
+    border-radius: 50% !important;
+    transition: none !important;
+  }
+  .sidebar .admin-name-label {
+    margin-top: 0 !important;
+    margin-bottom: 14px !important;
+    font-size: .92rem !important;
+    text-align: center !important;
+    line-height: 1.3 !important;
+    transition: none !important;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     ── 6. PERBAIKAN KONTRAS: Tombol, Tab, Modal, Dropdown, Badge ──
+     Elemen-elemen ini hardcoded #fff / #f0f0f5 — tidak terlihat di dark mode
+  ═══════════════════════════════════════════════════════════════════ */
+
+  /* --- Tombol Batal / Cancel (banyak file admin pakai #fff / #f0f0f5) --- */
+  html.dark .btn-cancel,
+  html.dark .btn-cancel-modal {
+    background: var(--book-card, #161e27) !important;
+    border-color: var(--border-color, rgba(216,184,120,.18)) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+  html.dark .btn-cancel:hover,
+  html.dark .btn-cancel-modal:hover {
+    background: rgba(216,184,120,.12) !important;
+    border-color: var(--accent, #d8b878) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+
+  /* --- Tombol Close / X Modal --- */
+  html.dark .modal-close {
+    background: rgba(255,255,255,.08) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+  }
+  html.dark .modal-close:hover {
+    background: rgba(220,38,38,.18) !important;
+    color: #f87171 !important;
+    border-color: rgba(220,38,38,.3) !important;
+  }
+  html.dark .modal-close svg {
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+    stroke: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+
+  /* --- Tab Button (telah_dipinjam, daftar_buku, pengajuan_buku) --- */
+  html.dark .tab-btn:not(.active) {
+    background: var(--card, #121820) !important;
+    border-color: var(--border-color, rgba(216,184,120,.18)) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+  html.dark .tab-btn:not(.active):hover {
+    background: rgba(216,184,120,.1) !important;
+    border-color: var(--accent, #d8b878) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+  html.dark .tab-btn.active {
+    background: linear-gradient(135deg, #d8b878, #c8a060) !important;
+    color: #121820 !important;
+    border-color: #d8b878 !important;
+    font-weight: 800 !important;
+  }
+
+  /* --- Tab Count Badge --- */
+  html.dark .tab-count {
+    background: rgba(255,255,255,.08) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+  html.dark .tab-btn.active .tab-count {
+    background: rgba(0,0,0,.25) !important;
+    color: #121820 !important;
+  }
+
+  /* --- Status Tab (daftar_anggota.php filter tab) --- */
+  html.dark .status-tab:not(.active) {
+    background: var(--card, #121820) !important;
+    border: 1px solid var(--border-color, rgba(216,184,120,.18)) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+  html.dark .status-tab:not(.active):hover {
+    background: rgba(216,184,120,.1) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+  html.dark .status-tab.active {
+    background: linear-gradient(135deg, #d8b878, #c8a060) !important;
+    color: #121820 !important;
+    border-color: #d8b878 !important;
+  }
+
+  /* --- Year Nav Buttons (dashboard.php) --- */
+  html.dark .year-nav .nav-btn,
+  html.dark .year-nav .year-reset {
+    background: var(--book-card, #161e27) !important;
+    border: 1px solid var(--border-color, rgba(216,184,120,.18)) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+  html.dark .year-nav .nav-btn:hover,
+  html.dark .year-nav .year-reset:hover {
+    background: rgba(216,184,120,.12) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+
+  /* --- Icon Buttons (kelola_banner.php) --- */
+  html.dark .icon-btn {
+    background: var(--book-card, #161e27) !important;
+    border: 1px solid var(--border-color, rgba(216,184,120,.18)) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+  html.dark .icon-btn:hover {
+    background: rgba(216,184,120,.14) !important;
+    border-color: var(--accent, #d8b878) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+  html.dark .icon-btn.danger:hover {
+    background: rgba(220,38,38,.18) !important;
+    border-color: rgba(220,38,38,.4) !important;
+    color: #f87171 !important;
+  }
+
+  /* --- Btn Pilih Anggota (pinjam_buku.php) --- */
+  html.dark .btn-pilih-anggota {
+    background: var(--book-card, #161e27) !important;
+    border: 1.5px solid var(--border-color, rgba(216,184,120,.18)) !important;
+    color: var(--text, #eef3f4) !important;
+  }
+  html.dark .btn-pilih-anggota:hover {
+    background: rgba(216,184,120,.15) !important;
+    border-color: var(--accent, #d8b878) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+
+  /* --- Btn Hapus Riwayat (telah_dipinjam.php) --- */
+  html.dark .btn-hapus-riwayat {
+    background: rgba(220,38,38,.1) !important;
+    border-color: rgba(220,38,38,.35) !important;
+    color: #f87171 !important;
+  }
+  html.dark .btn-hapus-riwayat:hover {
+    background: rgba(220,38,38,.2) !important;
+    border-color: rgba(220,38,38,.5) !important;
+  }
+
+  /* --- Btn WA Disabled (telah_dipinjam.php) --- */
+  html.dark .btn-wa-disabled {
+    background: rgba(255,255,255,.05) !important;
+    border: 1px solid rgba(255,255,255,.08) !important;
+    color: var(--muted, rgba(238,243,244,.45)) !important;
+  }
+
+  /* --- Action Buttons Pengajuan (pengajuan_buku.php) --- */
+  html.dark .btn-action-approve {
+    background: rgba(5,150,105,.15) !important;
+    border-color: rgba(5,150,105,.3) !important;
+    color: #4ade80 !important;
+  }
+  html.dark .btn-action-approve:hover {
+    background: rgba(5,150,105,.25) !important;
+    border-color: rgba(5,150,105,.5) !important;
+  }
+  html.dark .btn-action-reject {
+    background: rgba(220,38,38,.15) !important;
+    border-color: rgba(220,38,38,.3) !important;
+    color: #f87171 !important;
+  }
+  html.dark .btn-action-reject:hover {
+    background: rgba(220,38,38,.25) !important;
+    border-color: rgba(220,38,38,.5) !important;
+  }
+
+  /* --- Card Thumb Button (pengajuan_buku.php) --- */
+  html.dark .card-thumb-btn {
+    background: rgba(216,184,120,.1) !important;
+    border: 1px solid rgba(216,184,120,.22) !important;
+    color: var(--accent, #d8b878) !important;
+  }
+  html.dark .card-thumb-btn:hover {
+    background: rgba(216,184,120,.2) !important;
+    border-color: var(--accent, #d8b878) !important;
+  }
+
+  /* --- Badge Anggota (daftar_anggota.php) --- */
+  html.dark .badge-pending {
+    background: rgba(245,158,11,.15) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245,158,11,.28) !important;
+  }
+  html.dark .badge-approved {
+    background: rgba(5,150,105,.15) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(5,150,105,.28) !important;
+  }
+  html.dark .badge-rejected {
+    background: rgba(220,38,38,.15) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(220,38,38,.28) !important;
+  }
+  html.dark .badge-frozen {
+    background: rgba(59,130,246,.15) !important;
+    color: #93c5fd !important;
+    border: 1px solid rgba(59,130,246,.28) !important;
+  }
+
+  /* --- Badge Pengajuan (pengajuan_buku.php) --- */
+  html.dark .badge-menunggu {
+    background: rgba(245,158,11,.15) !important;
+    color: #fbbf24 !important;
+    border: 1px solid rgba(245,158,11,.25) !important;
+  }
+  html.dark .badge-disetujui {
+    background: rgba(5,150,105,.15) !important;
+    color: #4ade80 !important;
+    border: 1px solid rgba(5,150,105,.25) !important;
+  }
+  html.dark .badge-ditolak {
+    background: rgba(220,38,38,.15) !important;
+    color: #f87171 !important;
+    border: 1px solid rgba(220,38,38,.25) !important;
+  }
+  html.dark .badge-pickup {
+    background: rgba(59,130,246,.12) !important;
+    color: #93c5fd !important;
+    border: 1px solid rgba(59,130,246,.22) !important;
+  }
+
+  /* --- Dropdown Genre (halaman_admin.php) --- */
+  html.dark #genreDropdown {
+    background: var(--card, #121820) !important;
+    border-color: var(--border-color, rgba(216,184,120,.25)) !important;
+    color: var(--text, #eef3f4) !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,.5) !important;
+  }
+
+  /* --- Image Preview Wrap (halaman_admin.php upload area) --- */
+  html.dark .img-preview-wrap {
+    background: var(--book-card, #161e27) !important;
+    border-color: var(--border-color, rgba(216,184,120,.2)) !important;
+  }
+  html.dark .img-preview-wrap:hover {
+    border-color: var(--accent, #d8b878) !important;
+  }
+  html.dark .img-preview-wrap .upload-placeholder {
+    color: var(--muted, rgba(238,243,244,.55)) !important;
+  }
+
+  /* --- Like / Save buttons in detail modal (daftar_buku.php, beranda.php) --- */
+  html.dark .detail-btn-like,
+  html.dark .detail-btn-save {
+    background: rgba(255,255,255,.04) !important;
+    border-color: var(--border-color, rgba(216,184,120,.18)) !important;
+    color: var(--muted, rgba(238,243,244,.65)) !important;
+  }
+
+  /* --- Hapus File Musik (pengaturan_musik.php) --- */
+  html.dark .btn-hapus-file {
+    background: rgba(220,38,38,.1) !important;
+    border: 1.5px solid rgba(220,38,38,.28) !important;
+    color: #f87171 !important;
+  }
+  html.dark .btn-hapus-file:hover {
+    background: rgba(220,38,38,.2) !important;
+    border-color: rgba(220,38,38,.45) !important;
+  }
+
+  /* --- Hover #222 pada tombol (mencegah teks gelap di latar gelap) --- */
+  html.dark .btn-submit:hover,
+  html.dark .btn-search:hover,
+  html.dark .btn-print:hover,
+  html.dark .btn-simpan:hover {
+    background: linear-gradient(135deg, #c8a060, #b88e48) !important;
+    color: #121820 !important;
+  }
+  html.dark .btn-save:hover {
+    opacity: .88 !important;
+  }
+
+  /* ── Mode Terang: kembalikan warna natural terang ── */
+  html:not(.dark) .btn-cancel,
+  html.light .btn-cancel,
+  html:not(.dark) .btn-cancel-modal,
+  html.light .btn-cancel-modal {
+    background: #f0f0f5 !important;
+    border-color: #d0d0e0 !important;
+    color: #4b5563 !important;
+  }
+  html:not(.dark) .btn-cancel:hover,
+  html.light .btn-cancel:hover,
+  html:not(.dark) .btn-cancel-modal:hover,
+  html.light .btn-cancel-modal:hover {
+    background: #e5e5ed !important;
+    color: #221d14 !important;
+  }
+  html:not(.dark) .modal-close,
+  html.light .modal-close {
+    background: #f0f0f5 !important;
+    color: #4b5563 !important;
+  }
+  html:not(.dark) .tab-btn:not(.active),
+  html.light .tab-btn:not(.active) {
+    background: #f0f0f7 !important;
+    border-color: #d0d0e4 !important;
+    color: #6b7280 !important;
+  }
+  html:not(.dark) .tab-btn.active,
+  html.light .tab-btn.active {
+    background: linear-gradient(135deg, #d8b878, #c8a060) !important;
+    color: #1a1205 !important;
+    border-color: #c8a060 !important;
+  }
+  html:not(.dark) .status-tab:not(.active),
+  html.light .status-tab:not(.active) {
+    background: #f0f0f7 !important;
+    color: #6b7280 !important;
+  }
+  html:not(.dark) .icon-btn,
+  html.light .icon-btn {
+    background: #f0f0f5 !important;
+    color: #4b5563 !important;
+    border: 1px solid #d0d0e0 !important;
+  }
+  html:not(.dark) .badge-pending,
+  html.light .badge-pending {
+    background: #fff3cd !important;
+    color: #8a6100 !important;
+    border: 1px solid #ffe08a !important;
+  }
+  html:not(.dark) .badge-approved,
+  html.light .badge-approved {
+    background: #e8f5e9 !important;
+    color: #1a8a4a !important;
+    border: 1px solid #a8d5b5 !important;
+  }
+  html:not(.dark) .badge-rejected,
+  html.light .badge-rejected {
+    background: #fce4ec !important;
+    color: #c0392b !important;
+    border: 1px solid #f5a0b0 !important;
+  }
+  html:not(.dark) .badge-frozen,
+  html.light .badge-frozen {
+    background: #e0e7ff !important;
+    color: #3730a3 !important;
+    border: 1px solid #a5b4fc !important;
+  }
+  html:not(.dark) .btn-action-approve,
+  html.light .btn-action-approve {
+    background: #e8f5e9 !important;
+    color: #1a8a4a !important;
+    border-color: #a8d5b5 !important;
+  }
+  html:not(.dark) .btn-action-reject,
+  html.light .btn-action-reject {
+    background: #fce4ec !important;
+    color: #c0392b !important;
+    border-color: #f5a0b0 !important;
+  }
+  html:not(.dark) .btn-hapus-riwayat,
+  html.light .btn-hapus-riwayat {
+    background: #fff5f5 !important;
+    border-color: #fca5a5 !important;
+    color: #dc2626 !important;
+  }
+  html:not(.dark) .img-preview-wrap,
+  html.light .img-preview-wrap {
+    background: #f8f9ff !important;
+    border-color: #d0d0e0 !important;
+  }
+  html:not(.dark) .sidebar-toggle,
+  html.light .sidebar-toggle {
+    background: #ffffff !important;
+    border-color: #d0d0e0 !important;
+    color: #221d14 !important;
+    box-shadow: 0 2px 10px rgba(0,0,0,.15) !important;
+  }
+  html:not(.dark) .sidebar-toggle svg,
+  html.light .sidebar-toggle svg {
+    stroke: #221d14 !important;
+    color: #221d14 !important;
+  }
+
+
+  /* ═══════════════════════════════════════════════════════════════════
+     ── 7. RESPONSIVE MOBILE SIDEBAR & BURGER MENU (UNIVERSAL) ──
+     Memastikan tombol burger selalu terlihat, dapat diklik, dan
+     sidebar muncul di atas semua elemen di mobile/tablet (<= 768px).
+  ═══════════════════════════════════════════════════════════════════ */
+  @media (max-width: 768px) {
+    .sidebar-toggle {
+      display: flex !important;
+      visibility: visible !important;
+      opacity: 1 !important;
+      position: fixed !important;
+      top: 14px !important;
+      left: 14px !important;
+      z-index: 10005 !important;
+      width: 42px !important;
+      height: 42px !important;
+      border-radius: 12px !important;
+      border: 1.5px solid var(--accent, #d8b878) !important;
+      background: var(--card, #121820) !important;
+      color: var(--accent, #d8b878) !important;
+      box-shadow: 0 4px 16px rgba(0,0,0,.55) !important;
+      align-items: center !important;
+      justify-content: center !important;
+      cursor: pointer !important;
+      pointer-events: auto !important;
+      transition: transform .15s ease, background .2s ease !important;
+    }
+    .mobile-topbar .sidebar-toggle {
+      position: static !important;
+      box-shadow: none !important;
+    }
+    .sidebar-toggle:active {
+      transform: scale(0.92) !important;
+    }
+    .sidebar-toggle svg {
+      width: 22px !important;
+      height: 22px !important;
+      stroke: var(--accent, #d8b878) !important;
+      color: var(--accent, #d8b878) !important;
+      stroke-width: 2.3px !important;
+    }
+
+    .sidebar {
+      position: fixed !important;
+      top: 0 !important;
+      left: 0 !important;
+      bottom: 0 !important;
+      width: 220px !important;
+      max-width: 80vw !important;
+      height: 100vh !important;
+      height: 100dvh !important;
+      z-index: 10010 !important;
+      transform: translateX(-100%) !important;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1) !important;
+      box-shadow: 4px 0 35px rgba(0,0,0,0.7) !important;
+    }
+    .sidebar.open {
+      transform: translateX(0) !important;
+    }
+
+    .sidebar-overlay {
+      display: block !important;
+      position: fixed !important;
+      inset: 0 !important;
+      background: rgba(9,12,16,.75) !important;
+      backdrop-filter: blur(5px) !important;
+      -webkit-backdrop-filter: blur(5px) !important;
+      z-index: 10008 !important;
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+      transition: opacity 0.25s ease, visibility 0.25s ease !important;
+    }
+    .sidebar-overlay.open {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+
+    .main {
+      margin-left: 0 !important;
+      padding-top: 72px !important;
     }
   }
 </style>
@@ -362,7 +1271,18 @@ window.AksaAudio = (function() {
     audio.addEventListener('play',  function() { setBtnUI(true); });
     audio.addEventListener('pause', function() { setBtnUI(false); });
     audio.addEventListener('ended', function() {
+      // Reset posisi ke awal lalu putar ulang otomatis (loop)
       try { localStorage.setItem(TIME_KEY, '0'); } catch(e) {}
+      if (!userPaused) {
+        audio.currentTime = 0;
+        var p = audio.play();
+        if (p !== undefined) {
+          p.then(function() {
+            audio.muted = false;
+            setBtnUI(true);
+          }).catch(function() { setBtnUI(false); });
+        }
+      }
     });
 
     // Simpan posisi sebelum halaman ditutup/berpindah
@@ -446,6 +1366,55 @@ window.AksaAudio = (function() {
  * menyimpan posisi audio sebelum berpindah, dan menghaluskan transisi drawer di mobile.
  */
 (function() {
+  window.toggleSidebar = function(forceState) {
+    var sidebar = document.getElementById('sidebar');
+    var overlay = document.querySelector('.sidebar-overlay') || document.getElementById('sidebarOverlay');
+    if (!sidebar) return;
+    var willOpen = (typeof forceState === 'boolean') ? forceState : !sidebar.classList.contains('open');
+    if (willOpen) {
+      sidebar.classList.add('open');
+      if (overlay) overlay.classList.add('open');
+      document.body.classList.add('sidebar-open');
+    } else {
+      sidebar.classList.remove('open');
+      if (overlay) overlay.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    }
+  };
+
+  function initSidebarToggle() {
+    var toggle = document.getElementById('sidebarToggle');
+    var overlay = document.querySelector('.sidebar-overlay') || document.getElementById('sidebarOverlay');
+
+    if (toggle) {
+      toggle.onclick = null;
+      // Gunakan capture phase (true) dan stopImmediatePropagation untuk mencegah double-toggle
+      toggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        window.toggleSidebar();
+        return false;
+      }, true);
+    }
+
+    if (overlay) {
+      overlay.onclick = null;
+      overlay.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
+        window.toggleSidebar(false);
+        return false;
+      }, true);
+    }
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        window.toggleSidebar(false);
+      }
+    });
+  }
   function initSmoothSidebarNav() {
     var sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
@@ -509,6 +1478,7 @@ window.AksaAudio = (function() {
       window.AksaAudio.init();
     }
     initSmoothSidebarNav();
+    initSidebarToggle();
   }
 
   if (document.readyState === 'loading') {

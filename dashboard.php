@@ -8,6 +8,13 @@ if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
 }
 
 require_once "db.php";
+// ─── Hitung badge sidebar (pending anggota & pengajuan buku) ───
+$cnt_p_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM users WHERE role='member' AND status='pending'");
+$pending_count = $cnt_p_q ? (int)(mysqli_fetch_assoc($cnt_p_q)['c'] ?? 0) : 0;
+$cnt_a_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='menunggu'");
+$cnt_aju_badge = $cnt_a_q ? (int)(mysqli_fetch_assoc($cnt_a_q)['c'] ?? 0) : 0;
+$sidebar_badges_loaded = true;
+
 
 $page_title = "Dashboard – AKSA NOVA";
 
@@ -16,6 +23,17 @@ $profil_res  = mysqli_query($conn, "SELECT * FROM admin_profile LIMIT 1");
 $profil      = $profil_res ? mysqli_fetch_assoc($profil_res) : null;
 $admin_name  = $profil["display_name"] ?? ($_SESSION["user_name"] ?? "Admin");
 $admin_foto  = $profil["foto"] ?? "";
+
+// ─── Pesan hasil simpan profil / ganti sandi admin (dikirim balik oleh update_profil_admin.php) ───
+$profil_msg      = "";
+$profil_msg_type = "";
+if (isset($_GET["profil_saved"])) {
+    $profil_msg = "Profil berhasil disimpan.";
+    $profil_msg_type = "success";
+} elseif (isset($_GET["profil_err"])) {
+    $profil_msg = $_GET["profil_err"];
+    $profil_msg_type = "error";
+}
 
 // ─────────────────────────────────────────────
 //  HELPER: deteksi struktur tabel secara aman
@@ -248,20 +266,22 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Cormorant+Garamond:wght@700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+  <?php require_once 'settings_include.php'; ?>
   <style>
     :root {
-      --sidebar-bg:  #4a4a5a;
-      --sidebar-dark:#2e2e3a;
-      --accent:      #5a5a6e;
-      --btn-primary: #3a3a4a;
-      --text:        #1a1a2e;
-      --muted:       #7a7a9a;
-      --bg:          #f0f0f0;
-      --card:        #ffffff;
+      --sidebar-bg:  #10151b;
+      --accent:      #d8b878;
+      --btn-primary: linear-gradient(135deg,#d8b878,#c8a060);
+      --text:        #eef3f4;
+      --muted:       rgba(238,243,244,.65);
+      --bg:          #090c10;
+      --card:        #121820;
+      --border-color:rgba(216,184,120,.18);
+      --card-border: rgba(216,184,120,.12);
       --radius:      10px;
       --sidebar-w:   204px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
-      --shadow:      0 2px 12px rgba(0,0,0,.07);
+      --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -275,27 +295,53 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     @keyframes bodyIn { from { opacity:0; } to { opacity:1; } }
 
     /* ── SIDEBAR (identik dengan halaman lain) ── */
+    /* ── SIDEBAR ── */
     .sidebar {
       width: var(--sidebar-w);
-      background: linear-gradient(180deg, #5a5a6e 0%, #2e2e3a 100%);
-      display: flex; flex-direction: column; align-items: center;
-      padding: 36px 20px 28px;
-      position: fixed; top:0; left:0; bottom:0; z-index: 100;
+      background: var(--sidebar-bg, #10151b);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 16px;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
       transition: transform var(--trans);
+      overflow: hidden;
     }
+    .sidebar-header { flex-shrink: 0; display:flex; flex-direction:column; align-items:center; width:100%; }
+    .sidebar-nav {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.35) transparent;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 5px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); border-radius: 10px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; }
     .sidebar-overlay.open { display:block; }
     .sidebar-toggle {
       display:none; position:fixed; top:14px; left:14px; z-index:200;
-      width:40px; height:40px; border-radius:10px; border:none;
-      background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.15);
-      cursor:pointer; align-items:center; justify-content:center;
+      width:42px; height:42px; border-radius:10px; cursor:pointer;
+      align-items:center; justify-content:center;
+      background:#161e27; border:1.5px solid var(--accent,#d8b878);
+      box-shadow:0 4px 16px rgba(0,0,0,.45); color:var(--accent,#d8b878);
+      transition:all .2s;
     }
-    .sidebar-toggle svg { width:20px; height:20px; }
+    .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
+    .sidebar-toggle:active { transform:scale(0.92); }
 
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:96px; height:96px; border-radius:50%;
+      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
@@ -321,7 +367,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     }
     .modal-overlay.open { display:flex; }
     .modal-box {
-      background:#fff; border-radius:16px; width:100%; max-width:380px;
+      background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:16px; width:100%; max-width:380px;
       max-height:90vh; overflow-y:auto; padding:24px;
       box-shadow:0 20px 60px rgba(0,0,0,.25);
       animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
@@ -332,7 +378,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     }
     .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
     .modal-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; font-weight:700; color:var(--text); }
-    .modal-close { border:none; background:#f0f0f5; width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text); }
+    .modal-close { border:none; background:var(--book-card,#161e27); width:30px; height:30px; border-radius:8px; display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text); }
     .modal-close svg { width:16px; height:16px; }
     .img-preview-wrap { position:relative; border:2px dashed #d8d8e4; overflow:hidden; cursor:pointer; }
     .img-preview-wrap img { width:100%; height:100%; object-fit:cover; }
@@ -340,7 +386,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     .upload-placeholder svg { width:26px; height:26px; }
     .form-group { margin-bottom:14px; }
     .form-label { display:block; font-size:.78rem; font-weight:700; color:var(--text); margin-bottom:6px; }
-    .form-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid #e0e0ea; font-family:'Nunito',sans-serif; font-size:.85rem; }
+    .form-input { width:100%; padding:10px 12px; border-radius:8px; border:1px solid var(--border-color,rgba(216,184,120,.2)); font-family:'Nunito',sans-serif; font-size:.85rem; background:rgba(255,255,255,.05); color:var(--text,#eef3f4); }
     .form-input:focus { outline:none; border-color:var(--accent); }
     .modal-footer { display:flex; gap:10px; margin-top:18px; }
     .btn-cancel, .btn-save {
@@ -349,32 +395,42 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       transition:opacity var(--trans);
     }
     .btn-cancel:hover, .btn-save:hover { opacity:.85; }
-    .btn-cancel { background:#f0f0f5; color:var(--text); }
+    .btn-cancel { background:var(--book-card,#161e27); color:var(--muted); }
     .btn-save { background:var(--accent); color:#fff; }
 
-    .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+    .admin-name-label { color:var(--text,#eef3f4); font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
     .total-badge {
-      background: rgba(255,255,255,.18); color:#fff;
+      background: rgba(216,184,120,.16); color:var(--accent,#d8b878);
+      border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:24px; text-align:center;
+      margin-bottom:20px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:10px;
-      padding:10px 14px; border-radius:8px; border:none;
-      background:rgba(255,255,255,.12); color:#fff;
-      font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700;
-      cursor:pointer; margin-bottom:8px;
-      transition:background var(--trans);
+      width:100%; display:flex; align-items:center; gap:11px;
+      padding:10px 14px; border-radius:9px;
+      border:1px solid rgba(216,184,120,.16);
+      background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
+      font-family:inherit; font-size:.83rem; font-weight:700;
+      cursor:pointer; margin-bottom:7px;
+      transition:all var(--trans);
       text-align:left; text-decoration:none;
+      flex-shrink:0; box-sizing:border-box;
     }
-    .sidebar-btn:hover { background:rgba(255,255,255,.22); }
-    .sidebar-btn.active { background:rgba(255,255,255,.3); }
-    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
+    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn.active {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820; font-weight:800;
+      box-shadow:0 4px 14px rgba(216,184,120,.35);
+    }
+    .sidebar-btn.active svg { color:#121820; stroke:#121820; stroke-width:2.2px; }
 
     /* ── MAIN ── */
-    .main { margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); }
+    .main { view-transition-name:app-main; margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); }
 
     .content-header {
       display:flex; align-items:center; justify-content:space-between;
@@ -388,6 +444,8 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       padding:10px 16px; border-radius:8px; font-size:.78rem; font-weight:700;
       margin-bottom:18px; animation:fadeUp .4s both;
     }
+    .notice-success { background:rgba(5,150,105,.15); color:#4ade80; border-color:rgba(5,150,105,.3); }
+    .notice-error   { background:rgba(220,38,38,.15); color:#f87171; border-color:rgba(220,38,38,.3); }
 
     /* Stat cards */
     .stat-grid {
@@ -429,15 +487,15 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     thead th {
       text-align:left; font-size:.68rem; text-transform:uppercase; letter-spacing:.06em;
       color:var(--muted); font-weight:800; padding:12px 16px;
-      border-bottom:1.5px solid #eee; white-space:nowrap;
+      border-bottom:1.5px solid var(--border-color,rgba(216,184,120,.18)); white-space:nowrap;
     }
     tbody td {
       padding:11px 16px; font-size:.82rem; color:var(--text);
-      border-bottom:1px solid #f2f2f6; vertical-align:middle;
+      border-bottom:1px solid var(--border-color,rgba(216,184,120,.1)); vertical-align:middle;
     }
     tbody tr:last-child td { border-bottom:none; }
-    tbody tr:hover { background:#fafafe; }
-    tbody tr.row-now td { background:#f0f4ff; font-weight:700; }
+    tbody tr:hover { background:rgba(255,255,255,.04); }
+    tbody tr.row-now td { background:rgba(216,184,120,.14); font-weight:700; }
     .cell-num { font-family:'JetBrains Mono', monospace; }
     .cell-dash { color:#c8c8d4; }
 
@@ -448,7 +506,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     }
     .pop-item {
       display:flex; align-items:center; gap:10px;
-      padding:10px 18px; border-bottom:1px solid #f2f2f6;
+      padding:10px 18px; border-bottom:1px solid var(--border-color,rgba(216,184,120,.1));
     }
     .pop-item:last-child { border-bottom:none; }
     .pop-rank {
@@ -476,7 +534,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     .laporan-row {
       display:flex; align-items:center; justify-content:space-between;
       padding:6px 0; font-size:.82rem; color:var(--text);
-      border-bottom:1px solid #f2f2f6;
+      border-bottom:1px solid var(--border-color,rgba(216,184,120,.1));
     }
     .laporan-row:last-child { border-bottom:none; }
     .laporan-row span:last-child { font-weight:800; font-family:'JetBrains Mono', monospace; }
@@ -489,12 +547,12 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     }
     .year-nav .nav-btn {
       width:30px; height:30px; border-radius:8px; border:none;
-      background:#fff; box-shadow:var(--shadow); color:var(--text);
+      background:var(--book-card,#161e27); box-shadow:var(--shadow); color:var(--text);
       display:flex; align-items:center; justify-content:center;
       text-decoration:none; font-weight:800; font-size:.9rem;
       transition:background var(--trans);
     }
-    .year-nav .nav-btn:hover { background:#ececf4; }
+    .year-nav .nav-btn:hover { background:rgba(216,184,120,.12); }
     .year-nav .year-label {
       font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:700;
       color:var(--text); min-width:52px; text-align:center;
@@ -521,10 +579,18 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       text-decoration:none; transition:background var(--trans);
     }
     .btn-whatsapp:hover { background:#1ebc59; }
+    .btn-excel {
+      display:flex; align-items:center; gap:6px;
+      background:linear-gradient(135deg,#1d6f42,#19593a); color:#fff; border:none;
+      padding:7px 16px; border-radius:20px; cursor:pointer;
+      font-family:'Nunito',sans-serif; font-size:.76rem; font-weight:800;
+      text-decoration:none; transition:background var(--trans);
+    }
+    .btn-excel:hover { background:linear-gradient(135deg,#155432,#0f3f24); }
 
     tfoot td {
       padding:12px 16px; font-size:.8rem; font-weight:800; color:var(--text);
-      border-top:1.5px solid #eee; background:#fafafe;
+      border-top:1.5px solid var(--border-color,rgba(216,184,120,.18)); background:var(--card,#121820);
     }
 
     .print-header { display:none; }
@@ -556,10 +622,10 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       }
       tbody tr:hover { background:var(--card); }
       tbody tr.row-now { background:var(--card); }
-      tbody tr.row-now td { background:#f0f4ff; }
+      tbody tr.row-now td { background:rgba(216,184,120,.14); }
       tbody td {
         display:flex; align-items:center; justify-content:space-between; gap:12px;
-        padding:11px 14px; border-bottom:1px solid #f2f2f6; text-align:right;
+        padding:11px 14px; border-bottom:1px solid var(--border-color,rgba(216,184,120,.1)); text-align:right;
       }
       tbody tr td:last-child { border-bottom:none; }
       tbody td::before {
@@ -568,12 +634,12 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       }
       tfoot { display:block; }
       tfoot tr {
-        display:block; background:#fafafe; border-radius:var(--radius);
+        display:block; background:var(--card); border-radius:var(--radius);
         box-shadow:var(--shadow); margin-top:16px; overflow:hidden;
       }
       tfoot td {
         display:flex; align-items:center; justify-content:space-between; gap:12px;
-        padding:11px 14px; border-top:none; border-bottom:1px solid #eee; background:transparent;
+        padding:11px 14px; border-top:none; border-bottom:1px solid var(--border-color,rgba(216,184,120,.1)); background:transparent;
       }
       tfoot td:last-child { border-bottom:none; }
       tfoot td::before {
@@ -618,10 +684,12 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
 </div>
 
 <aside class="sidebar" id="sidebar">
+
+  <div class="sidebar-header">
   <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
     <div class="avatar-circle">
       <?php if ($admin_foto && file_exists($admin_foto)): ?>
-        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
+        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
       <?php else: ?>
         <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -636,6 +704,9 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     </div>
   </div>
   <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
+  </div>
+
+  <nav class="sidebar-nav">
 
   <a class="sidebar-btn active" href="dashboard.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
@@ -690,10 +761,16 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       </svg>
       Pengaturan Musik
     </a>
-  <a class="sidebar-btn" href="beranda.php">
+  
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan
+    </button>
+    <a class="sidebar-btn" href="beranda.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     Kembali
   </a>
+  </nav>
 </aside>
 
 <main class="main">
@@ -704,6 +781,10 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       <div class="content-sub">Ringkasan aktivitas perpustakaan &amp; rekap peminjaman bulanan</div>
     </div>
   </div>
+
+  <?php if ($profil_msg): ?>
+  <div class="notice notice-<?= $profil_msg_type ?>"><?= $profil_msg_type === "success" ? "✅" : "⚠️" ?> <?= htmlspecialchars($profil_msg) ?></div>
+  <?php endif; ?>
 
   <?php if (!$skema_lengkap): ?>
   <div class="notice">
@@ -755,6 +836,10 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
           <?php if ($tahun !== $tahun_sekarang): ?>
             <a class="year-reset" href="?tahun=<?= $tahun_sekarang ?>">Tahun ini</a>
           <?php endif; ?>
+          <a class="btn-excel" href="export_excel_dashboard.php?tahun=<?= $tahun ?>" title="Download laporan sebagai file Excel">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+            Export Excel
+          </a>
           <button class="btn-print" onclick="window.print()">
             🖨️ Cetak Laporan
           </button>
@@ -833,6 +918,10 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M12.04 2c-5.46 0-9.9 4.44-9.9 9.9 0 1.75.46 3.45 1.32 4.95L2 22l5.29-1.39a9.87 9.87 0 0 0 4.75 1.21h.01c5.46 0 9.9-4.44 9.9-9.9s-4.44-9.9-9.91-9.9zm5.8 14.06c-.24.68-1.4 1.3-1.93 1.38-.49.08-1.11.11-1.79-.11-.41-.13-.94-.3-1.62-.6-2.85-1.23-4.71-4.1-4.85-4.29-.14-.19-1.16-1.54-1.16-2.94s.73-2.09.99-2.37c.26-.29.56-.36.75-.36l.53.01c.17.01.4-.06.62.48.24.58.81 2 .88 2.14.07.15.12.32.02.52-.09.19-.14.31-.28.48-.14.16-.29.36-.42.48-.14.13-.28.28-.12.55.16.28.71 1.17 1.53 1.9 1.05.94 1.94 1.23 2.21 1.37.28.14.44.12.6-.07.16-.19.68-.79.87-1.06.18-.27.36-.22.6-.13.24.09 1.55.73 1.82.86.27.13.44.2.5.31.07.12.07.66-.17 1.35z"/></svg>
           Kirim via WhatsApp
         </a>
+        <a class="btn-excel" href="export_excel_dashboard.php?tahun=<?= $tahun ?>" title="Download laporan Excel">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+          Export Excel
+        </a>
         <button class="btn-print" onclick="window.print()">🖨️ Cetak Laporan</button>
       </div>
     </div>
@@ -877,57 +966,10 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
 
 </main>
 
-<!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
-<div class="modal-overlay" id="profilModalOverlay">
-  <div class="modal-box" style="max-width:380px;">
-    <div class="modal-header">
-      <div class="modal-title">Edit Profil</div>
-      <button class="modal-close" onclick="closeProfilModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
-      <input type="hidden" name="redirect" value="dashboard.php"/>
 
-      <!-- Preview foto -->
-      <div class="img-preview-wrap" style="aspect-ratio:1/1;max-width:160px;margin:0 auto 18px;border-radius:50%;" onclick="document.getElementById('inputFotoAdmin').click()">
-        <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>" alt="Foto" style="display:block;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder" style="display:none;">
-        <?php else: ?>
-          <img id="profilPreviewImg" src="" alt="Foto" style="display:none;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder">
-        <?php endif; ?>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <span style="font-size:.7rem;">Upload Foto</span>
-          </div>
-      </div>
-      <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
-
-      <div class="form-group">
-        <label class="form-label">Nama Tampilan</label>
-        <input class="form-input" type="text" name="display_name"
-               value="<?= htmlspecialchars($admin_name) ?>"
-               placeholder="Nama yang ditampilkan" required/>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn-cancel" onclick="closeProfilModal()">Batal</button>
-        <button type="submit" class="btn-save">Simpan</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <script>
-const toggle  = document.getElementById('sidebarToggle');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('sidebarOverlay');
-toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
-overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+// Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
 // ─── Modal Edit Profil ───
 function openProfilModal() {
@@ -952,6 +994,13 @@ document.getElementById('inputFotoAdmin').addEventListener('change', function(e)
   };
   reader.readAsDataURL(file);
 });
+
+<?php if ($profil_msg_type === "error"): ?>
+// Buka lagi modal Edit Profil kalau sebelumnya gagal (mis. sandi lama salah), biar user tidak perlu klik ulang
+document.addEventListener('DOMContentLoaded', openProfilModal);
+<?php endif; ?>
 </script>
+<?php require_once 'modal_profil_admin.php';
+require_once 'pengaturan_panel.php'; ?>
 </body>
 </html>

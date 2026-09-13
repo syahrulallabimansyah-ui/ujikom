@@ -4,7 +4,7 @@
 // Karena diakses dari dalam dashboard, halaman ini langsung memakai sesi login yang sedang aktif
 // (tidak perlu lagi memasukkan ulang email & password, dan TIDAK ADA LAGI konfirmasi kata sandi
 // saat ini sebelum menyimpan — sesi login yang aktif sudah cukup sebagai otorisasi).
-// Username, NIK, dan nomor anggota TIDAK bisa diubah lewat halaman ini. Ganti kata sandi baru
+// Username, NIS, dan nomor anggota TIDAK bisa diubah lewat halaman ini. Ganti kata sandi baru
 // tetap opsional (kosongkan jika tidak ingin mengganti).
 session_start();
 require_once "db.php";
@@ -855,7 +855,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
           </div>
           <div class="readonly-item">
             <div class="readonly-label">
-              <span>NIK Terdaftar</span>
+              <span>NIS Terdaftar</span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </div>
             <div class="readonly-value"><?= htmlspecialchars($user["nik"] ?: "—") ?></div>
@@ -908,33 +908,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
 </main>
 
 <script>
-  // ─── Sidebar Mobile Toggle ───
-  (function () {
-    var toggle  = document.getElementById('sidebarToggle');
-    var sidebar = document.getElementById('sidebar');
-    var overlay = document.getElementById('sidebarOverlay');
-    if (!toggle || !sidebar) return;
-
-    function openSidebar() {
-      sidebar.classList.add('open');
-      document.body.classList.add('sidebar-open');
-      if (overlay) overlay.classList.add('open');
-    }
-    function closeSidebar() {
-      sidebar.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-      if (overlay) overlay.classList.remove('open');
-    }
-
-    toggle.addEventListener('click', function (e) {
-      e.stopPropagation();
-      sidebar.classList.contains('open') ? closeSidebar() : openSidebar();
-    });
-    if (overlay) overlay.addEventListener('click', closeSidebar);
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && sidebar.classList.contains('open')) closeSidebar();
-    });
-  })();
+  // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
   // ─── Preview Foto Profil Baru ───
   <?php if (!$blocked): ?>

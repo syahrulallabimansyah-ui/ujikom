@@ -9,6 +9,13 @@ if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
 }
 
 require_once "db.php";
+// ─── Hitung badge sidebar (pending anggota & pengajuan buku) ───
+$cnt_p_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM users WHERE role='member' AND status='pending'");
+$pending_count = $cnt_p_q ? (int)(mysqli_fetch_assoc($cnt_p_q)['c'] ?? 0) : 0;
+$cnt_a_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='menunggu'");
+$cnt_aju_badge = $cnt_a_q ? (int)(mysqli_fetch_assoc($cnt_a_q)['c'] ?? 0) : 0;
+$sidebar_badges_loaded = true;
+
 
 $page_title = "Admin Panel – AKSA NOVA";
 $msg        = "";
@@ -182,20 +189,22 @@ ob_start();
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet"/>
+  <?php require_once 'settings_include.php'; ?>
   <style>
     :root {
-      --sidebar-bg:  #4a4a5a;
-      --sidebar-dark:#2e2e3a;
-      --accent:      #5a5a6e;
-      --btn-primary: #3a3a4a;
-      --text:        #1a1a2e;
-      --muted:       #7a7a9a;
-      --bg:          #f0f0f0;
-      --card:        #ffffff;
+      --sidebar-bg:  #10151b;
+      --accent:      #d8b878;
+      --btn-primary: linear-gradient(135deg,#d8b878,#c8a060);
+      --text:        #eef3f4;
+      --muted:       rgba(238,243,244,.65);
+      --bg:          #090c10;
+      --card:        #121820;
+      --border-color:rgba(216,184,120,.18);
+      --card-border: rgba(216,184,120,.12);
       --radius:      10px;
       --sidebar-w:   204px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
-      --shadow:      0 2px 12px rgba(0,0,0,.07);
+      --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -211,7 +220,7 @@ ob_start();
     /* ── SIDEBAR ── */
     .sidebar {
       width: var(--sidebar-w);
-      background: linear-gradient(180deg, #5a5a6e 0%, #2e2e3a 100%);
+      background: var(--sidebar-bg, #10151b);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -242,15 +251,19 @@ ob_start();
     .sidebar-overlay.open { display:block; }
     .sidebar-toggle {
       display:none; position:fixed; top:14px; left:14px; z-index:200;
-      width:40px; height:40px; border-radius:10px; border:none;
-      background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.15);
-      cursor:pointer; align-items:center; justify-content:center;
+      width:42px; height:42px; border-radius:10px; cursor:pointer;
+      align-items:center; justify-content:center;
+      background:#161e27; border:1.5px solid var(--accent,#d8b878);
+      box-shadow:0 4px 16px rgba(0,0,0,.45); color:var(--accent,#d8b878);
+      transition:all .2s;
     }
-    .sidebar-toggle svg { width:20px; height:20px; }
+    .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
+    .sidebar-toggle:active { transform:scale(0.92); }
 
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:96px; height:96px; border-radius:50%;
+      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
@@ -269,43 +282,52 @@ ob_start();
     .avatar-overlay svg { width:24px; height:24px; color:#fff; }
     #avatar-input { display:none; }
 
-    .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+    .admin-name-label { color:var(--text,#eef3f4); font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
     .total-badge {
-      background: rgba(255,255,255,.18); color:#fff;
+      background: rgba(216,184,120,.16); color:var(--accent,#d8b878);
+      border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:24px; text-align:center;
+      margin-bottom:20px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:10px;
-      padding:10px 14px; border-radius:8px; border:none;
-      background:rgba(255,255,255,.12); color:#fff;
-      font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700;
-      cursor:pointer; margin-bottom:8px;
-      transition:background var(--trans);
+      width:100%; display:flex; align-items:center; gap:11px;
+      padding:10px 14px; border-radius:9px;
+      border:1px solid rgba(216,184,120,.16);
+      background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
+      font-family:inherit; font-size:.83rem; font-weight:700;
+      cursor:pointer; margin-bottom:7px;
+      transition:all var(--trans);
       text-align:left; text-decoration:none;
-      flex-shrink:0;
+      flex-shrink:0; box-sizing:border-box;
     }
-    .sidebar-btn:hover { background:rgba(255,255,255,.22); }
-    .sidebar-btn.active { background:rgba(255,255,255,.3); }
-    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
+    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn.active {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820; font-weight:800;
+      box-shadow:0 4px 14px rgba(216,184,120,.35);
+    }
+    .sidebar-btn.active svg { color:#121820; stroke:#121820; stroke-width:2.2px; }
 
     /* ── MAIN ── */
-    .main { margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); }
+    .main { view-transition-name:app-main; margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); }
 
     /* Alert */
     .alert {
       padding:12px 18px; border-radius:8px; font-size:.82rem;
       font-weight:700; margin-bottom:16px; animation:fadeUp .4s both;
     }
-    .alert-success { background:#e8f5e9; color:#1a8a4a; border:1px solid #c8e6c9; }
-    .alert-error   { background:#fce4ec; color:#c0392b; border:1px solid #f8bbd0; }
+    .alert-success { background:rgba(5,150,105,.15); color:#4ade80; border:1px solid rgba(5,150,105,.3); }
+    .alert-error   { background:rgba(220,38,38,.15); color:#f87171; border:1px solid rgba(220,38,38,.3); }
 
     /* Topbar */
     .topbar {
       display:flex; align-items:center;
-      background:#fff; border-radius:50px;
+      background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:50px;
       padding:0 18px; height:46px; gap:10px;
       margin-bottom:24px; box-shadow:var(--shadow);
       animation:fadeUp .5s .05s both;
@@ -408,7 +430,7 @@ ob_start();
     .modal-overlay.open { display:flex; }
 
     .modal {
-      background:#fff; border-radius:14px;
+      background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:14px;
       width:100%; max-width:480px;
       max-height:90vh; overflow-y:auto;
       box-shadow:0 20px 60px rgba(0,0,0,.25);
@@ -428,7 +450,7 @@ ob_start();
     .modal-title { font-family:'Cormorant Garamond',serif; font-size:1.3rem; font-weight:700; color:var(--text); }
     .modal-close {
       width:32px; height:32px; border-radius:50%;
-      border:none; background:#f0f0f5;
+      border:none; background:rgba(255,255,255,.08);
       cursor:pointer; display:flex; align-items:center; justify-content:center;
       transition:background var(--trans);
     }
@@ -441,11 +463,11 @@ ob_start();
       border-radius:10px; overflow:hidden;
       border:2px dashed #d0d0e0;
       display:flex; align-items:center; justify-content:center;
-      background:#f8f9ff; margin-bottom:16px;
+      background:var(--book-card,#161e27); margin-bottom:16px;
       cursor:pointer; transition:border-color var(--trans);
       position:relative;
     }
-    .img-preview-wrap:hover { border-color:var(--btn-primary); }
+    .img-preview-wrap:hover { border-color:var(--accent,#d8b878); }
     .img-preview-wrap img { width:100%; height:100%; object-fit:cover; display:none; border-radius:8px; }
     .img-preview-wrap .upload-placeholder {
       display:flex; flex-direction:column;
@@ -510,7 +532,7 @@ ob_start();
     .cam-btn:active { transform:scale(.95); }
     .cam-btn-shoot {
       width:58px; height:58px; border-radius:50%;
-      background:#fff; border:4px solid #666;
+      background:rgba(255,255,255,.88); border:4px solid #666;
     }
     .cam-btn-shoot:hover { border-color:#999; }
     .cam-btn-secondary {
@@ -527,23 +549,23 @@ ob_start();
     .form-label { font-size:.76rem; font-weight:700; color:var(--muted); margin-bottom:5px; display:block; text-transform:uppercase; letter-spacing:.05em; }
     .form-input, .form-select {
       width:100%; padding:10px 14px; border-radius:8px;
-      border:1.5px solid #e4e5f0;
+      border:1.5px solid var(--border-color,rgba(216,184,120,.18));
       font-family:'Nunito',sans-serif; font-size:.85rem;
-      color:var(--text); background:#fff;
+      color:var(--text); background:rgba(255,255,255,.05);
       outline:none; transition:border-color var(--trans);
     }
-    .form-input:focus, .form-select:focus { border-color:var(--btn-primary); }
+    .form-input:focus, .form-select:focus { border-color:var(--accent,#d8b878); }
     .form-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
 
     .isbn-input-row { display:flex; gap:8px; }
     .isbn-input-row .form-input { flex:1; }
     .btn-cari-isbn {
-      flex-shrink:0; width:42px; border-radius:8px; border:1.5px solid #e4e5f0;
-      background:#fff; color:var(--btn-primary); cursor:pointer; font-size:1rem;
+      flex-shrink:0; width:42px; border-radius:8px; border:1.5px solid var(--border-color,rgba(216,184,120,.18));
+      background:rgba(255,255,255,.05); color:var(--accent,#d8b878); cursor:pointer; font-size:1rem;
       display:flex; align-items:center; justify-content:center;
       transition:all var(--trans);
     }
-    .btn-cari-isbn:hover:not(:disabled) { border-color:var(--btn-primary); background:var(--btn-primary); color:#fff; }
+    .btn-cari-isbn:hover:not(:disabled) { border-color:var(--accent,#d8b878); background:var(--btn-primary); color:#fff; }
     .btn-cari-isbn:disabled { opacity:.5; cursor:not-allowed; }
     .isbn-status { font-size:.7rem; margin-top:5px; line-height:1.4; font-family:'Nunito',sans-serif; }
 
@@ -558,12 +580,12 @@ ob_start();
     .btn-submit:hover { background:#222; }
     .btn-cancel {
       padding:11px 20px; border-radius:8px;
-      border:1.5px solid #e4e5f0; background:#fff;
+      border:1.5px solid var(--border-color,rgba(216,184,120,.18)); background:var(--book-card,#161e27);
       font-family:'Nunito',sans-serif; font-size:.85rem;
       font-weight:700; color:var(--muted); cursor:pointer;
       transition:all var(--trans);
     }
-    .btn-cancel:hover { border-color:var(--btn-primary); color:var(--btn-primary); }
+    .btn-cancel:hover { border-color:var(--accent,#d8b878); color:var(--accent,#d8b878); }
 
     /* Animations */
     @keyframes fadeUp {
@@ -589,7 +611,7 @@ ob_start();
     }
     .detail-overlay.open { display:flex; }
     .detail-modal {
-      background:#fff; border-radius:16px;
+      background:var(--card,#121820); border-radius:16px; border:1px solid var(--border-color,rgba(216,184,120,.18));
       width:100%; max-width:520px;
       max-height:92vh; overflow-y:auto;
       box-shadow:0 24px 70px rgba(0,0,0,.28);
@@ -629,7 +651,7 @@ ob_start();
     .detail-body { padding:22px 24px 26px; }
     .detail-genre-chip {
       display:inline-block;
-      background:#eef0ff; color:#2b4fff;
+      background:rgba(216,184,120,.16); color:var(--accent,#d8b878);
       font-size:.65rem; font-weight:800;
       padding:3px 10px; border-radius:20px;
       letter-spacing:.05em; text-transform:uppercase;
@@ -650,7 +672,7 @@ ob_start();
     }
     .detail-meta-chip {
       display:flex; align-items:center; gap:5px;
-      background:#f8f9ff; border:1px solid #eef0fc;
+      background:var(--book-card,#161e27); border:1px solid #eef0fc;
       border-radius:8px; padding:6px 12px;
       font-size:.72rem; font-weight:700; color:var(--muted);
     }
@@ -662,9 +684,9 @@ ob_start();
       margin-bottom:7px;
     }
     .detail-sinopsis {
-      font-size:.83rem; line-height:1.7; color:#3a3a5a;
-      background:#f8f9ff; border-radius:10px;
-      padding:14px 16px; border-left:3px solid var(--btn-primary);
+      font-size:.83rem; line-height:1.7; color:var(--text,#eef3f4);
+      background:var(--book-card,#161e27); border-radius:10px;
+      padding:14px 16px; border-left:3px solid var(--accent,#d8b878);
     }
     .detail-sinopsis-empty {
       font-size:.82rem; color:var(--muted); font-style:italic;
@@ -698,8 +720,8 @@ ob_start();
       flex-direction:column; gap:12px;
     }
     .spinner {
-      width:32px; height:32px; border:3px solid #eee;
-      border-top-color:var(--btn-primary);
+      width:32px; height:32px; border:3px solid rgba(255,255,255,.12);
+      border-top-color:var(--accent,#d8b878);
       border-radius:50%; animation:spin .7s linear infinite;
     }
     @keyframes spin { to { transform:rotate(360deg); } }
@@ -744,7 +766,7 @@ ob_start();
     <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
       <div class="avatar-circle">
         <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
+          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
         <?php else: ?>
           <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -823,6 +845,11 @@ ob_start();
       </svg>
       Pengaturan Musik
     </a>
+    
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan
+    </button>
     <a class="sidebar-btn" href="beranda.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       Kembali
@@ -922,53 +949,9 @@ ob_start();
   </div>
   <!-- ═══════════ /TAB: KELOLA BUKU ═══════════ -->
 
-
 </main>
 
-<!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
-<div class="modal-overlay" id="profilModalOverlay">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-header">
-      <div class="modal-title">Edit Profil</div>
-      <button class="modal-close" onclick="closeProfilModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
-      <input type="hidden" name="redirect" value="halaman_admin.php"/>
 
-      <!-- Preview foto -->
-      <div class="img-preview-wrap" style="aspect-ratio:1/1;max-width:160px;margin:0 auto 18px;border-radius:50%;" onclick="document.getElementById('inputFotoAdmin').click()">
-        <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>" alt="Foto" style="display:block;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder" style="display:none;">
-        <?php else: ?>
-          <img id="profilPreviewImg" src="" alt="Foto" style="display:none;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder">
-        <?php endif; ?>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <span style="font-size:.7rem;">Upload Foto</span>
-          </div>
-      </div>
-      <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
-
-      <div class="form-group">
-        <label class="form-label">Nama Tampilan</label>
-        <input class="form-input" type="text" name="display_name"
-               value="<?= htmlspecialchars($admin_name) ?>"
-               placeholder="Nama yang ditampilkan" required/>
-      </div>
-
-      <div class="modal-footer">
-        <button type="button" class="btn-cancel" onclick="closeProfilModal()">Batal</button>
-        <button type="submit" class="btn-submit">Simpan</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <!-- ═══════════ MODAL TAMBAH / EDIT ═══════════ -->
 <div class="modal-overlay" id="modalOverlay">
@@ -1047,9 +1030,9 @@ ob_start();
                onblur="setTimeout(()=>closeGenreDropdown(),180)"/>
         <div id="genreDropdown" style="
           display:none; position:absolute; left:0; right:0; top:100%; z-index:600;
-          background:#fff; border:1.5px solid #e4e5f0; border-top:none;
+          background:var(--card,#121820); border:1.5px solid var(--border-color,rgba(216,184,120,.25)); border-top:none;
           border-radius:0 0 10px 10px; max-height:210px; overflow-y:auto;
-          box-shadow:0 8px 24px rgba(0,0,0,.10);
+          box-shadow:0 8px 24px rgba(0,0,0,.45);
         "></div>
       </div>
 
@@ -1244,11 +1227,7 @@ document.getElementById('inputFotoAdmin').addEventListener('change', function(e)
 });
 
 // ─── Sidebar toggle ───
-const toggle  = document.getElementById('sidebarToggle');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('sidebarOverlay');
-toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
-overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+// Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
 // ─── Modal ───
 function openModal(mode, buku = null) {
@@ -1543,17 +1522,24 @@ function filterGenre(val) {
 
   if (matches.length === 0) { dd.style.display = 'none'; return; }
 
+  // Warna dari CSS variables supaya dark/light mode selaras
+  const cs = getComputedStyle(document.documentElement);
+  const colorText   = cs.getPropertyValue('--text').trim()   || '#eef3f4';
+  const colorAccent = cs.getPropertyValue('--accent').trim() || '#d8b878';
+  const colorBorder = cs.getPropertyValue('--border-color').trim() || 'rgba(216,184,120,.18)';
+  const bgHover     = `rgba(216,184,120,0.12)`;
+
   // Dibangun lewat DOM API (bukan string innerHTML) supaya event klik
   // tidak pernah rusak/hilang meskipun nama genre punya tanda kutip dsb.
   dd.innerHTML = '';
   matches.forEach(g => {
     const item = document.createElement('div');
-    item.style.cssText = "padding:9px 14px; font-size:.83rem; font-family:'Nunito',sans-serif; cursor:pointer; color:#1a1a2e; transition:background .15s; border-bottom:1px solid #f2f2f8;";
+    item.style.cssText = `padding:9px 14px; font-size:.83rem; font-family:'Outfit',sans-serif; cursor:pointer; color:${colorText}; transition:background .15s,color .15s; border-bottom:1px solid ${colorBorder};`;
     item.innerHTML = highlightMatch(escHTML(g), q);
     item.addEventListener('mousedown', (e) => e.preventDefault()); // cegah blur menutup dropdown sebelum klik terbaca
     item.addEventListener('click', () => pilihGenre(g));
-    item.addEventListener('mouseover', () => { item.style.background = '#f0f2ff'; item.style.color = '#2b4fff'; });
-    item.addEventListener('mouseout',  () => { item.style.background = '';        item.style.color = '#1a1a2e'; });
+    item.addEventListener('mouseover', () => { item.style.background = bgHover; item.style.color = colorAccent; });
+    item.addEventListener('mouseout',  () => { item.style.background = '';       item.style.color = colorText; });
     dd.appendChild(item);
   });
 
@@ -1569,7 +1555,7 @@ function highlightMatch(text, q) {
   const idx = text.toLowerCase().indexOf(q);
   if (idx === -1) return text;
   return text.slice(0, idx)
-    + `<strong style="color:#2b4fff;">${text.slice(idx, idx + q.length)}</strong>`
+    + `<strong style="color:var(--accent,#d8b878);font-weight:800;">${text.slice(idx, idx + q.length)}</strong>`
     + text.slice(idx + q.length);
 }
 
@@ -1634,6 +1620,8 @@ function closeGenreDropdown() {
   });
 })();
 </script>
+<?php require_once 'modal_profil_admin.php';
+require_once 'pengaturan_panel.php'; ?>
 </body>
 </html>
 <?php ob_end_flush(); ?>

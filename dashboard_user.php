@@ -1053,22 +1053,7 @@ ob_start();
 </div>
 
 <script>
-  // Sidebar Toggle
-  const toggle  = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  if (toggle && sidebar && overlay) {
-    toggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-      overlay.classList.toggle('open');
-      document.body.classList.toggle('sidebar-open', sidebar.classList.contains('open'));
-    });
-    overlay.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      overlay.classList.remove('open');
-      document.body.classList.remove('sidebar-open');
-    });
-  }
+  // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
   // Modal Detail Buku
   function bukaDetailBuku(id) {

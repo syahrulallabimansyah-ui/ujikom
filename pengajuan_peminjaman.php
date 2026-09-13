@@ -892,23 +892,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
 </div>
 
 <script>
-  // ─── Sidebar Toggle Mobile ───
-  const sidebarToggle = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('sidebar');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
-
-  if (sidebarToggle) {
-    sidebarToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-      sidebarOverlay.classList.toggle('open');
-    });
-  }
-  if (sidebarOverlay) {
-    sidebarOverlay.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      sidebarOverlay.classList.remove('open');
-    });
-  }
+  // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
   // ─── Upload Kartu Image Preview & Drag-and-Drop ───
   const uploadArea = document.getElementById('uploadArea');

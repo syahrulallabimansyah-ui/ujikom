@@ -9,6 +9,13 @@ if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
 }
 
 require_once "db.php";
+// ─── Hitung badge sidebar (pending anggota & pengajuan buku) ───
+$cnt_p_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM users WHERE role='member' AND status='pending'");
+$pending_count = $cnt_p_q ? (int)(mysqli_fetch_assoc($cnt_p_q)['c'] ?? 0) : 0;
+$cnt_a_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='menunggu'");
+$cnt_aju_badge = $cnt_a_q ? (int)(mysqli_fetch_assoc($cnt_a_q)['c'] ?? 0) : 0;
+$sidebar_badges_loaded = true;
+
 
 $page_title = "Pengaturan Musik – AKSA NOVA";
 $msg        = "";
@@ -125,22 +132,23 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title><?= htmlspecialchars($page_title) ?></title>
 <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet"/>
+  <?php require_once 'settings_include.php'; ?>
 <style>
-  :root {
-    --sidebar-bg:  #4a4a5a;
-    --sidebar-dark:#2e2e3a;
-    --accent:      #5a5a6e;
-    --btn-primary: #3a3a4a;
-    --text:        #1a1a2e;
-    --muted:       #7a7a9a;
-    --bg:          #f0f0f0;
-    --card:        #ffffff;
-    --radius:      10px;
-    --sidebar-w:   204px;
-    --trans:       .2s cubic-bezier(.22,1,.36,1);
-    --shadow:      0 2px 12px rgba(0,0,0,.07);
-    --gold:        #c89a4e;
-  }
+    :root {
+      --sidebar-bg:  #10151b;
+      --accent:      #d8b878;
+      --btn-primary: linear-gradient(135deg,#d8b878,#c8a060);
+      --text:        #eef3f4;
+      --muted:       rgba(238,243,244,.65);
+      --bg:          #090c10;
+      --card:        #121820;
+      --border-color:rgba(216,184,120,.18);
+      --card-border: rgba(216,184,120,.12);
+      --radius:      10px;
+      --sidebar-w:   204px;
+      --trans:       .2s cubic-bezier(.22,1,.36,1);
+      --shadow:      0 2px 12px rgba(0,0,0,.3);
+    }
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   body {
@@ -155,7 +163,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   /* ── SIDEBAR (identik dengan halaman_admin.php agar konsisten) ── */
   .sidebar {
     width: var(--sidebar-w);
-    background: linear-gradient(180deg, #5a5a6e 0%, #2e2e3a 100%);
+    background: var(--sidebar-bg, #10151b);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -181,15 +189,19 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; }
   .sidebar-overlay.open { display:block; }
   .sidebar-toggle {
-    display:none; position:fixed; top:14px; left:14px; z-index:200;
-    width:40px; height:40px; border-radius:10px; border:none;
-    background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.15);
-    cursor:pointer; align-items:center; justify-content:center;
-  }
-  .sidebar-toggle svg { width:20px; height:20px; }
+      display:none; position:fixed; top:14px; left:14px; z-index:200;
+      width:42px; height:42px; border-radius:10px; cursor:pointer;
+      align-items:center; justify-content:center;
+      background:#161e27; border:1.5px solid var(--accent,#d8b878);
+      box-shadow:0 4px 16px rgba(0,0,0,.45); color:var(--accent,#d8b878);
+      transition:all .2s;
+    }
+    .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
+    .sidebar-toggle:active { transform:scale(0.92); }
 
   .avatar-circle {
-    width:96px; height:96px; border-radius:50%;
+    width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
     background:#c0c0c8; overflow:hidden;
     border:3px solid rgba(255,255,255,.25);
     display:flex; align-items:center; justify-content:center;
@@ -198,31 +210,46 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
   .avatar-circle .default-icon { width:52px; height:52px; color:#888; }
 
-  .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+  .admin-name-label { color:var(--text,#eef3f4); font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+    .total-badge {
+      background: rgba(216,184,120,.16); color:var(--accent,#d8b878);
+      border: 1px solid rgba(216,184,120,.3);
+      font-size:.72rem; font-weight:700;
+      padding:4px 12px; border-radius:50px;
+      margin-bottom:20px; text-align:center;
+    }
 
-  .sidebar-btn {
-    width:100%; display:flex; align-items:center; gap:10px;
-    padding:10px 14px; border-radius:8px; border:none;
-    background:rgba(255,255,255,.12); color:#fff;
-    font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700;
-    cursor:pointer; margin-bottom:8px;
-    transition:background var(--trans);
-    text-align:left; text-decoration:none;
-    flex-shrink:0;
-  }
-  .sidebar-btn:hover { background:rgba(255,255,255,.22); }
-  .sidebar-btn.active { background:rgba(255,255,255,.3); }
-  .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
+    .sidebar-btn {
+      width:100%; display:flex; align-items:center; gap:11px;
+      padding:10px 14px; border-radius:9px;
+      border:1px solid rgba(216,184,120,.16);
+      background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
+      font-family:inherit; font-size:.83rem; font-weight:700;
+      cursor:pointer; margin-bottom:7px;
+      transition:all var(--trans);
+      text-align:left; text-decoration:none;
+      flex-shrink:0; box-sizing:border-box;
+    }
+    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn.active {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820; font-weight:800;
+      box-shadow:0 4px 14px rgba(216,184,120,.35);
+    }
+    .sidebar-btn.active svg { color:#121820; stroke:#121820; stroke-width:2.2px; }
 
   /* ── MAIN ── */
-  .main { margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); max-width: 760px; }
+  .main { view-transition-name:app-main; margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); max-width: 760px; }
 
   .alert {
     padding:12px 18px; border-radius:8px; font-size:.82rem;
     font-weight:700; margin-bottom:16px; animation:fadeUp .4s both;
   }
-  .alert-success { background:#e8f5e9; color:#1a8a4a; border:1px solid #c8e6c9; }
-  .alert-error   { background:#fce4ec; color:#c0392b; border:1px solid #f8bbd0; }
+  .alert-success { background:rgba(5,150,105,.15); color:#4ade80; border:1px solid rgba(5,150,105,.3); }
+  .alert-error   { background:rgba(220,38,38,.15); color:#f87171; border:1px solid rgba(220,38,38,.3); }
   @keyframes fadeUp { from { opacity:0; transform:translateY(8px);} to { opacity:1; transform:translateY(0);} }
 
   .content-header { margin-bottom: 18px; animation: fadeUp .5s .05s both; }
@@ -319,7 +346,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700;
     cursor:pointer; transition: background var(--trans);
   }
-  .btn-hapus-file:hover { background:#fdeeee; }
+  .btn-hapus-file:hover { background:rgba(220,38,38,.2); border-color:rgba(220,38,38,.5); }
 
   /* Responsive */
   @media (max-width:860px) {
@@ -333,7 +360,26 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     .main { margin-left:0; padding:70px 14px 24px; }
     .card { padding: 18px; }
   }
-</style>
+    .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
+    .avatar-circle {
+      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      background:#161e27; overflow:hidden;
+      border:3px solid rgba(216,184,120,.25);
+      display:flex; align-items:center; justify-content:center;
+      transition:border-color .2s;
+    }
+    .avatar-wrap:hover .avatar-circle { border-color:var(--accent,#d8b878); }
+    .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
+    .avatar-circle .default-icon { width:52px; height:52px; color:#888; }
+    .avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,.5); display:flex;
+      align-items:center; justify-content:center;
+      opacity:0; transition:opacity .2s;
+    }
+    .avatar-wrap:hover .avatar-overlay { opacity:1; }
+    .avatar-overlay svg { width:24px; height:24px; color:#fff; }
+  </style>
 </head>
 <body>
 
@@ -346,14 +392,22 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
 
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-header">
-    <div class="avatar-circle">
-      <?php if ($admin_foto && file_exists($admin_foto)): ?>
-        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
-      <?php else: ?>
-        <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
+      <div class="avatar-circle">
+        <?php if ($admin_foto && file_exists($admin_foto)): ?>
+          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
+        <?php else: ?>
+          <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        <?php endif; ?>
+      </div>
+      <div class="avatar-overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
         </svg>
-      <?php endif; ?>
+      </div>
     </div>
     <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
   </div>
@@ -373,7 +427,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     </a>
     <a class="sidebar-btn" href="daftar_anggota.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-      Daftar Anggota
+      Daftar Anggota<?php if (!empty($pending_count) && $pending_count > 0): ?><span style="margin-left:auto;background:#e74c3c;color:#fff;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $pending_count ?></span><?php endif; ?>
     </a>
     <a class="sidebar-btn" href="pinjam_buku.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -409,6 +463,11 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
       </svg>
       Pengaturan Musik
     </a>
+    
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan
+    </button>
     <a class="sidebar-btn" href="beranda.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
       Kembali
@@ -493,11 +552,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
 </main>
 
 <script>
-  const toggle  = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('sidebar');
-  const overlay = document.getElementById('sidebarOverlay');
-  toggle.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
-  overlay.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+  // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
   const musikFileInput = document.getElementById('musikFileInput');
   const fileNameLabel  = document.getElementById('fileNameLabel');
@@ -508,5 +563,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   });
 </script>
 
+<?php require_once 'modal_profil_admin.php';
+require_once 'pengaturan_panel.php'; ?>
 </body>
 </html>

@@ -9,6 +9,13 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 }
 
 require_once 'db.php';
+// ─── Hitung badge sidebar (pending anggota & pengajuan buku) ───
+$cnt_p_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM users WHERE role='member' AND status='pending'");
+$pending_count = $cnt_p_q ? (int)(mysqli_fetch_assoc($cnt_p_q)['c'] ?? 0) : 0;
+$cnt_a_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='menunggu'");
+$cnt_aju_badge = $cnt_a_q ? (int)(mysqli_fetch_assoc($cnt_a_q)['c'] ?? 0) : 0;
+$sidebar_badges_loaded = true;
+
 assert($conn instanceof mysqli);
 mysqli_set_charset($conn, 'utf8mb4');
 
@@ -24,6 +31,10 @@ $profil_res = mysqli_query($conn, 'SELECT * FROM admin_profile LIMIT 1');
 $profil     = $profil_res ? mysqli_fetch_assoc($profil_res) : null;
 $admin_name = $profil['display_name'] ?? ($_SESSION['user_name'] ?? 'Admin');
 $admin_foto = $profil['foto'] ?? '';
+
+// Jumlah anggota berstatus pending (badge sidebar, konsisten dengan halaman_admin.php)
+$pending_res   = mysqli_query($conn, "SELECT COUNT(*) AS c FROM users WHERE role='member' AND status='pending'");
+$pending_count = $pending_res ? (int)(mysqli_fetch_assoc($pending_res)['c'] ?? 0) : 0;
 
 // ─────────────────────────────────────────────
 //  AKSI: Setujui / Tolak Pengajuan
@@ -74,7 +85,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $now = date('Y-m-d H:i:s');
                     mysqli_query($conn, "UPDATE pengajuan_peminjaman SET status = 'disetujui', approved_at = '$now' WHERE id = $pengajuan_id");
 
-                    $msg = 'Pengajuan peminjaman berhasil disetujui! ' . $total_buku . ' eksemplar buku otomatis masuk ke <a href="telah_dipinjam.php" style="color:#d8b878;font-weight:700;text-decoration:underline;">Telah Dipinjam</a>.';
+                    $msg = 'Pengajuan peminjaman berhasil disetujui! ' . $total_buku . ' eksemplar buku otomatis masuk ke <a href="telah_dipinjam.php" style="color:var(--accent, #d8b878);font-weight:700;text-decoration:underline;">Telah Dipinjam</a>.';
                     $msg_type = 'success';
                 } else {
                     $msg = 'Gagal mengurangi stok buku. Kemungkinan stok baru saja berkurang oleh transaksi lain.';
@@ -153,24 +164,23 @@ if ($q_res) {
   <title><?= htmlspecialchars($page_title) ?></title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg:           #090c10;
-      --sidebar-bg:   #10151b;
-      --card:         #121820;
-      --accent:       #d8b878;
-      --accent2:      #f0d9a8;
-      --accent-rgb:   216,184,120;
-      --text:         #eef3f4;
-      --muted:        rgba(238,243,244,.65);
-      --border-color: rgba(216,184,120,.18);
-      --card-border:  rgba(216,184,120,.12);
-      --book-card:    #161e27;
-      --radius:       10px;
-      --sidebar-w:    204px;
-      --trans:        .2s cubic-bezier(.22,1,.36,1);
-      --shadow:       0 4px 24px rgba(0,0,0,.5);
+      --sidebar-bg:  #10151b;
+      --accent:      #d8b878;
+      --btn-primary: linear-gradient(135deg,#d8b878,#c8a060);
+      --text:        #eef3f4;
+      --muted:       rgba(238,243,244,.65);
+      --bg:          #090c10;
+      --card:        #121820;
+      --book-card:   #161e27;
+      --border-color:rgba(216,184,120,.18);
+      --card-border: rgba(216,184,120,.12);
+      --radius:      10px;
+      --sidebar-w:   204px;
+      --trans:       .2s cubic-bezier(.22,1,.36,1);
+      --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
 
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
@@ -182,26 +192,77 @@ if ($q_res) {
       display: flex;
     }
 
-    /* ── SIDEBAR ── */
+    /* ── SIDEBAR (identik dengan halaman_admin.php) ── */
     .sidebar {
-      width:var(--sidebar-w); background:var(--sidebar-bg); border-right:1px solid var(--border-color);
-      display:flex; flex-direction:column; padding:20px 12px; gap:6px; flex-shrink:0;
-      position:fixed; top:0; left:0; bottom:0; z-index:100; overflow-y:auto;
-      transition:transform var(--trans);
+      width: var(--sidebar-w);
+      background: var(--sidebar-bg, #10151b);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 28px 20px 16px;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+      z-index: 100;
+      transition: transform var(--trans);
+      overflow: hidden;
     }
-    .admin-profile { display:flex; flex-direction:column; align-items:center; gap:8px; padding-bottom:16px; border-bottom:1px solid var(--card-border); margin-bottom:6px; }
-    .admin-avatar { width:64px; height:64px; border-radius:50%; object-fit:cover; border:2px solid var(--accent); box-shadow:0 0 16px rgba(216,184,120,.2); }
-    .admin-avatar-placeholder { width:64px; height:64px; border-radius:50%; background:var(--card); border:2px solid var(--accent); display:flex; align-items:center; justify-content:center; color:var(--accent); }
-    .admin-name-label { font-size:.8rem; font-weight:700; color:var(--accent); text-align:center; }
+    .sidebar-header { flex-shrink: 0; display:flex; flex-direction:column; align-items:center; width:100%; }
+    .sidebar-nav {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.35) transparent;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 5px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); border-radius: 10px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
+
+    .avatar-wrap { position:relative; margin-bottom:14px; }
+    .avatar-circle {
+      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      background:#c0c0c8; overflow:hidden;
+      border:3px solid rgba(255,255,255,.25);
+      display:flex; align-items:center; justify-content:center;
+    }
+    .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
+    .avatar-circle .default-icon { width:40px; height:40px; color:#888; }
+
+    .admin-name-label { color:var(--text,#eef3f4); font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+    .total-badge {
+      background: rgba(216,184,120,.16); color:var(--accent,#d8b878);
+      border: 1px solid rgba(216,184,120,.3);
+      font-size:.72rem; font-weight:700;
+      padding:4px 12px; border-radius:50px;
+      margin-bottom:20px; text-align:center;
+    }
 
     .sidebar-btn {
-      display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:var(--radius);
-      color:var(--muted); text-decoration:none; font-size:.8rem; font-weight:600;
-      transition:all var(--trans); border:1px solid transparent; position:relative;
+      width:100%; display:flex; align-items:center; gap:11px;
+      padding:10px 14px; border-radius:9px;
+      border:1px solid rgba(216,184,120,.16);
+      background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
+      font-family:inherit; font-size:.83rem; font-weight:700;
+      cursor:pointer; margin-bottom:7px;
+      transition:all var(--trans);
+      text-align:left; text-decoration:none;
+      flex-shrink:0; box-sizing:border-box;
     }
-    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
-    .sidebar-btn:hover { background:rgba(216,184,120,.1); color:var(--accent); border-color:var(--card-border); }
-    .sidebar-btn.active { background:rgba(216,184,120,.18); color:var(--accent); border-color:var(--border-color); font-weight:700; }
+    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn.active {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820; font-weight:800;
+      box-shadow:0 4px 14px rgba(216,184,120,.35);
+    }
+    .sidebar-btn.active svg { color:#121820; stroke:#121820; stroke-width:2.2px; }
 
     .badge-nav {
       margin-left:auto; background:rgba(245,158,11,.2); color:#fbbf24;
@@ -210,7 +271,7 @@ if ($q_res) {
     }
 
     /* ── MAIN ── */
-    .main { margin-left:var(--sidebar-w); flex:1; min-width:0; padding:28px 36px 60px; }
+    .main { view-transition-name:app-main; margin-left:var(--sidebar-w); flex:1; min-width:0; padding:28px 36px 60px; }
 
     .page-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; gap:16px; flex-wrap:wrap; }
     .page-title { font-family:'Cormorant Garamond',serif; font-size:2rem; font-weight:700; color:var(--text); line-height:1.1; }
@@ -229,10 +290,10 @@ if ($q_res) {
     }
     .stat-icon { width:46px; height:46px; border-radius:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
     .stat-icon svg { width:22px; height:22px; }
-    .stat-icon.gold  { background:rgba(216,184,120,.15); color:var(--accent); border:1px solid rgba(216,184,120,.3); }
-    .stat-icon.warn  { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
-    .stat-icon.green { background:rgba(5,150,105,.15); color:#4ade80; border:1px solid rgba(5,150,105,.3); }
-    .stat-icon.red   { background:rgba(220,38,38,.15); color:#f87171; border:1px solid rgba(220,38,38,.3); }
+    .stat-icon.gold  { background:#eef0f5; color:var(--btn-primary); border:1px solid var(--border-color); }
+    .stat-icon.warn  { background:#fff3e0; color:#c67c0f; border:1px solid #ffe0b2; }
+    .stat-icon.green { background:#e8f5e9; color:#1a8a4a; border:1px solid #c8e6c9; }
+    .stat-icon.red   { background:#fce4ec; color:#c0392b; border:1px solid #f8bbd0; }
     .stat-val { font-size:1.6rem; font-weight:800; color:var(--text); line-height:1; }
     .stat-lbl { font-size:.74rem; font-weight:600; color:var(--muted); margin-top:4px; text-transform:uppercase; letter-spacing:.05em; }
 
@@ -247,8 +308,8 @@ if ($q_res) {
       text-decoration:none; transition:all var(--trans); display:flex; align-items:center; gap:6px;
     }
     .tab-btn:hover { color:var(--text); }
-    .tab-btn.active { background:rgba(216,184,120,.18); color:var(--accent); }
-    .tab-count { font-size:.65rem; padding:1px 6px; border-radius:10px; background:rgba(255,255,255,.08); }
+    .tab-btn.active { background:linear-gradient(135deg,#d8b878,#c8a060); color:#121820; border-color:#d8b878; }
+    .tab-count { font-size:.65rem; padding:1px 6px; border-radius:10px; background:rgba(255,255,255,.08); color:var(--muted); }
 
     .search-box { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--card-border); border-radius:10px; padding:6px 12px; }
     .search-box svg { width:15px; height:15px; color:var(--muted); }
@@ -260,10 +321,10 @@ if ($q_res) {
       overflow:hidden; box-shadow:var(--shadow);
     }
     table { width:100%; border-collapse:collapse; text-align:left; font-size:.8rem; }
-    thead tr { background:rgba(216,184,120,.08); border-bottom:1px solid var(--border-color); }
+    thead tr { background:#f7f7fb; border-bottom:1px solid var(--border-color); }
     th { padding:14px 16px; font-weight:700; color:var(--accent); font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
     tbody tr { border-bottom:1px solid var(--card-border); transition:background var(--trans); }
-    tbody tr:hover { background:rgba(216,184,120,.03); }
+    tbody tr:hover { background:rgba(255,255,255,.04); }
     td { padding:14px 16px; vertical-align:middle; color:var(--text); }
 
     /* Borrower info */
@@ -274,46 +335,46 @@ if ($q_res) {
 
     /* Book Info */
     .book-cell { display:flex; align-items:center; gap:10px; max-width:260px; }
-    .book-thumb { width:38px; height:50px; border-radius:6px; object-fit:cover; border:1px solid var(--card-border); flex-shrink:0; background:#10151b; }
-    .book-thumb-empty { width:38px; height:50px; border-radius:6px; border:1px solid var(--card-border); background:#10151b; display:flex; align-items:center; justify-content:center; color:rgba(216,184,120,.3); flex-shrink:0; }
+    .book-thumb { width:38px; height:50px; border-radius:6px; object-fit:cover; border:1px solid var(--card-border); flex-shrink:0; background:var(--book-card); }
+    .book-thumb-empty { width:38px; height:50px; border-radius:6px; border:1px solid var(--card-border); background:var(--book-card); display:flex; align-items:center; justify-content:center; color:#c9cadb; flex-shrink:0; }
     .book-title-cell { font-weight:700; font-size:.8rem; color:var(--text); line-height:1.3; }
     .book-author-cell { font-size:.7rem; color:var(--muted); }
 
     /* Member Card Thumbnail Trigger */
     .card-thumb-btn {
       display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:6px;
-      background:rgba(216,184,120,.1); border:1px solid rgba(216,184,120,.25);
-      color:var(--accent); font-size:.72rem; font-weight:700; cursor:pointer; transition:all var(--trans);
+      background:#eef0ff; border:1px solid #dbe0ff;
+      color:#2b4fff; font-size:.72rem; font-weight:700; cursor:pointer; transition:all var(--trans);
     }
-    .card-thumb-btn:hover { background:rgba(216,184,120,.2); border-color:var(--accent); }
+    .card-thumb-btn:hover { background:rgba(216,184,120,.2); border-color:var(--accent,#d8b878); }
     .card-thumb-btn svg { width:13px; height:13px; }
 
     /* Badges */
     .badge { display:inline-flex; align-items:center; gap:5px; padding:4px 9px; border-radius:6px; font-size:.7rem; font-weight:700; }
-    .badge-menunggu { background:rgba(245,158,11,.15); color:#fbbf24; border:1px solid rgba(245,158,11,.3); }
-    .badge-disetujui{ background:rgba(5,150,105,.15); color:#4ade80; border:1px solid rgba(5,150,105,.3); }
-    .badge-ditolak  { background:rgba(220,38,38,.15); color:#f87171; border:1px solid rgba(220,38,38,.3); }
+    .badge-menunggu { background:#fff3e0; color:#c67c0f; border:1px solid #ffe0b2; }
+    .badge-disetujui{ background:#e8f5e9; color:#1a8a4a; border:1px solid #c8e6c9; }
+    .badge-ditolak  { background:#fce4ec; color:#c0392b; border:1px solid #f8bbd0; }
 
     .badge-pickup { display:inline-flex; align-items:center; gap:4px; font-size:.68rem; font-weight:700; padding:3px 7px; border-radius:4px; margin-top:3px; }
-    .badge-pickup.sekarang { background:rgba(216,184,120,.15); color:var(--accent); }
-    .badge-pickup.nanti { background:rgba(99,102,241,.15); color:#a5b4fc; }
+    .badge-pickup.sekarang { background:rgba(216,184,120,.12); color:var(--btn-primary); }
+    .badge-pickup.nanti { background:rgba(59,130,246,.12); color:#93c5fd; }
 
     /* Action Buttons */
     .action-group { display:flex; align-items:center; gap:6px; }
     .btn-action-approve {
       padding:6px 12px; border-radius:6px; border:none;
-      background:rgba(5,150,105,.2); color:#4ade80; border:1px solid rgba(5,150,105,.4);
+      background:#e8f5e9; color:#1a8a4a; border:1px solid #c8e6c9;
       font-family:inherit; font-size:.72rem; font-weight:800; cursor:pointer;
       display:inline-flex; align-items:center; gap:5px; transition:all var(--trans);
     }
-    .btn-action-approve:hover { background:rgba(5,150,105,.35); border-color:#4ade80; }
+    .btn-action-approve:hover { background:rgba(5,150,105,.25); border-color:rgba(5,150,105,.5); }
     .btn-action-reject {
       padding:6px 12px; border-radius:6px; border:none;
-      background:rgba(220,38,38,.15); color:#f87171; border:1px solid rgba(220,38,38,.35);
+      background:#fce4ec; color:#c0392b; border:1px solid #f8bbd0;
       font-family:inherit; font-size:.72rem; font-weight:800; cursor:pointer;
       display:inline-flex; align-items:center; gap:5px; transition:all var(--trans);
     }
-    .btn-action-reject:hover { background:rgba(220,38,38,.3); border-color:#f87171; }
+    .btn-action-reject:hover { background:rgba(220,38,38,.25); border-color:rgba(220,38,38,.5); }
 
     /* Modals */
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(4px); z-index:300; align-items:center; justify-content:center; padding:20px; }
@@ -330,17 +391,20 @@ if ($q_res) {
       background:var(--book-card); color:var(--text); font-family:inherit; font-size:.82rem;
       outline:none; resize:none; margin-top:8px;
     }
-    .textarea-reject:focus { border-color:var(--accent); }
+    .textarea-reject:focus { border-color:var(--btn-primary); }
 
     /* Sidebar Toggle & Overlay */
     .sidebar-toggle {
       display:none; position:fixed; top:14px; left:14px; z-index:200;
-      width:42px; height:42px; border-radius:12px; border:1px solid var(--border-color);
-      background:var(--card); box-shadow:0 4px 16px rgba(0,0,0,.3);
-      cursor:pointer; align-items:center; justify-content:center;
+      width:42px; height:42px; border-radius:10px; cursor:pointer;
+      align-items:center; justify-content:center;
+      background:#161e27; border:1.5px solid var(--accent,#d8b878);
+      box-shadow:0 4px 16px rgba(0,0,0,.45); color:var(--accent,#d8b878);
+      transition:all .2s;
     }
-    .sidebar-toggle:active { transform:scale(.9); }
-    .sidebar-toggle svg { width:20px; height:20px; color:var(--accent); }
+    .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
+    .sidebar-toggle:active { transform:scale(0.92); }
 
     .sidebar-overlay {
       position:fixed; inset:0; background:rgba(9,12,16,.65);
@@ -364,6 +428,25 @@ if ($q_res) {
       .stats-grid { grid-template-columns:1fr; }
       .table-card { overflow-x:auto; }
     }
+      .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
+    .avatar-circle {
+      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      background:#161e27; overflow:hidden;
+      border:3px solid rgba(216,184,120,.25);
+      display:flex; align-items:center; justify-content:center;
+      transition:border-color .2s;
+    }
+    .avatar-wrap:hover .avatar-circle { border-color:var(--accent,#d8b878); }
+    .avatar-circle img { width:100%; height:100%; object-fit:cover; display:block; }
+    .avatar-circle .default-icon { width:52px; height:52px; color:#888; }
+    .avatar-overlay {
+      position:absolute; inset:0; border-radius:50%;
+      background:rgba(0,0,0,.5); display:flex;
+      align-items:center; justify-content:center;
+      opacity:0; transition:opacity .2s;
+    }
+    .avatar-wrap:hover .avatar-overlay { opacity:1; }
+    .avatar-overlay svg { width:24px; height:24px; color:#fff; }
   </style>
   <?php require_once 'settings_include.php'; ?>
 </head>
@@ -376,70 +459,85 @@ if ($q_res) {
 </button>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-<!-- Sidebar Admin -->
+<!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="admin-profile">
-    <?php if ($admin_foto && file_exists(__DIR__ . '/' . $admin_foto)): ?>
-      <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= time() ?>" class="admin-avatar" alt="Admin"/>
-    <?php else: ?>
-      <div class="admin-avatar-placeholder">
-        <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 4-6 8-6s8 2 8 6"/></svg>
+
+  <div class="sidebar-header">
+    <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
+      <div class="avatar-circle">
+        <?php if ($admin_foto && file_exists($admin_foto)): ?>
+          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
+        <?php else: ?>
+          <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+        <?php endif; ?>
       </div>
-    <?php endif; ?>
-    <div class="admin-name-label"><?= htmlspecialchars($admin_name) ?></div>
+      <div class="avatar-overlay">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+        </svg>
+      </div>
+    </div>
+    <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
   </div>
 
-  <a class="sidebar-btn" href="dashboard.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
-    Dashboard
-  </a>
-  <a class="sidebar-btn" href="halaman_admin.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Perbarui Buku
-  </a>
-  <a class="sidebar-btn" href="kelola_banner.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
-    Kelola Banner
-  </a>
-  <a class="sidebar-btn" href="daftar_anggota.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Daftar Anggota
-  </a>
-  <a class="sidebar-btn" href="pinjam_buku.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    Pinjam Buku
-  </a>
-  <a class="sidebar-btn active" href="pengajuan_buku.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-    Pengajuan Buku
-    <?php if ($cnt_menunggu > 0): ?>
-      <span class="badge-nav"><?= $cnt_menunggu ?></span>
-    <?php endif; ?>
-  </a>
-  <a class="sidebar-btn" href="telah_dipinjam.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-    Telah Dipinjam
-  </a>
-  <a class="sidebar-btn" href="pengaturan_denda.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-    Pengaturan Denda
-  </a>
-  <a class="sidebar-btn" href="pengaturan_musik.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
-    Pengaturan Musik
-  </a>
-  <a class="sidebar-btn" href="beranda.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    Kembali
-  </a>
-  <button class="sidebar-btn" onclick="bukaSettings(); return false;" style="width:100%;border:none;background:none;cursor:pointer;text-align:left;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-    Pengaturan
-  </button>
-  <a class="sidebar-btn" href="logout.php" style="color:#f87171;margin-top:auto;">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-    Keluar
-  </a>
+  <nav class="sidebar-nav">
+    <a class="sidebar-btn" href="dashboard.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
+      Dashboard
+    </a>
+    <a class="sidebar-btn" href="halaman_admin.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      Perbarui Buku
+    </a>
+    <a class="sidebar-btn" href="kelola_banner.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
+      Kelola Banner
+    </a>
+    <a class="sidebar-btn" href="daftar_anggota.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      Daftar Anggota
+      <?php if ($pending_count > 0): ?>
+        <span style="margin-left:auto;background:#e74c3c;color:#fff;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $pending_count ?></span>
+      <?php endif; ?>
+    </a>
+    <a class="sidebar-btn" href="pinjam_buku.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      Pinjam Buku
+    </a>
+    <a class="sidebar-btn active" href="pengajuan_buku.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      Pengajuan Buku
+      <?php if ($cnt_menunggu > 0): ?>
+        <span class="badge-nav"><?= $cnt_menunggu ?></span>
+      <?php endif; ?>
+    </a>
+    <a class="sidebar-btn" href="telah_dipinjam.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Telah Dipinjam
+    </a>
+    <a class="sidebar-btn" href="pengaturan_denda.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan Denda
+    </a>
+    <a class="sidebar-btn" href="pengaturan_musik.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      Pengaturan Musik
+    </a>
+    
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan
+    </button>
+    <a class="sidebar-btn" href="beranda.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
+      Kembali
+    </a>
+  </nav>
+
 </aside>
 
 <main class="main">
@@ -465,7 +563,7 @@ if ($q_res) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
       </div>
       <div>
-        <div class="stat-val" style="color:#fbbf24;"><?= $cnt_menunggu ?></div>
+        <div class="stat-val" style="color:#c67c0f;"><?= $cnt_menunggu ?></div>
         <div class="stat-lbl">Menunggu Persetujuan</div>
       </div>
     </div>
@@ -475,7 +573,7 @@ if ($q_res) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
       </div>
       <div>
-        <div class="stat-val" style="color:#4ade80;"><?= $cnt_disetujui ?></div>
+        <div class="stat-val" style="color:#1a8a4a;"><?= $cnt_disetujui ?></div>
         <div class="stat-lbl">Disetujui</div>
       </div>
     </div>
@@ -485,7 +583,7 @@ if ($q_res) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
       </div>
       <div>
-        <div class="stat-val" style="color:#f87171;"><?= $cnt_ditolak ?></div>
+        <div class="stat-val" style="color:#c0392b;"><?= $cnt_ditolak ?></div>
         <div class="stat-lbl">Ditolak</div>
       </div>
     </div>
@@ -609,7 +707,7 @@ if ($q_res) {
                   <div>
                     <div class="book-title-cell"><?= htmlspecialchars($row['judul'] ?? 'Buku Perpustakaan') ?></div>
                     <div class="book-author-cell">✍️ <?= htmlspecialchars($row['penulis'] ?: '—') ?></div>
-                    <div style="font-size:.68rem;color:<?= (int)($row['buku_stok'] ?? 0) > 0 ? '#4ade80' : '#f87171' ?>;margin-top:2px;">
+                    <div style="font-size:.68rem;color:<?= (int)($row['buku_stok'] ?? 0) > 0 ? '#1a8a4a' : '#c0392b' ?>;margin-top:2px;">
                       Sisa stok katalog: <strong><?= (int)($row['buku_stok'] ?? 0) ?></strong>
                     </div>
                   </div>
@@ -659,7 +757,7 @@ if ($q_res) {
                     Ditolak
                   </span>
                   <?php if (!empty($row['alasan_penolakan'])): ?>
-                    <div style="font-size:.68rem;color:#f87171;margin-top:2px;max-width:140px;word-break:break-word;">
+                    <div style="font-size:.68rem;color:#c0392b;margin-top:2px;max-width:140px;word-break:break-word;">
                       "<?= htmlspecialchars($row['alasan_penolakan']) ?>"
                     </div>
                   <?php endif; ?>
@@ -687,7 +785,7 @@ if ($q_res) {
                     </button>
                   </div>
                 <?php elseif ($status === 'disetujui'): ?>
-                  <span style="font-size:.72rem;color:#4ade80;font-weight:600;">✓ Masuk Peminjaman</span>
+                  <span style="font-size:.72rem;color:#1a8a4a;font-weight:600;">✓ Masuk Peminjaman</span>
                 <?php else: ?>
                   <span style="font-size:.72rem;color:var(--muted);">Ditolak</span>
                 <?php endif; ?>
@@ -775,22 +873,10 @@ if ($q_res) {
     }
   });
 
-  // Mobile Sidebar Toggle
-  const sidebarToggle = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('sidebar');
-  const sidebarOverlay = document.getElementById('sidebarOverlay');
-  if (sidebarToggle && sidebar && sidebarOverlay) {
-    sidebarToggle.addEventListener('click', () => {
-      sidebar.classList.toggle('open');
-      sidebarOverlay.classList.toggle('open');
-    });
-    sidebarOverlay.addEventListener('click', () => {
-      sidebar.classList.remove('open');
-      sidebarOverlay.classList.remove('open');
-    });
-  }
+  // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 </script>
 
-<?php require_once 'pengaturan_panel.php'; ?>
+<?php require_once 'modal_profil_admin.php';
+require_once 'pengaturan_panel.php'; ?>
 </body>
 </html>

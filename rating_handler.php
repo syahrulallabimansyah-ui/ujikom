@@ -9,6 +9,13 @@ if (!isset($_SESSION["user_id"])) {
     exit;
 }
 
+// Admin tidak boleh memberi rating — hanya anggota (member)
+if (($_SESSION["role"] ?? "") === "admin") {
+    http_response_code(403);
+    echo json_encode(["ok" => false, "msg" => "Admin tidak dapat memberi rating"]);
+    exit;
+}
+
 require_once "db.php";
 
 $user_id = (int)$_SESSION["user_id"];

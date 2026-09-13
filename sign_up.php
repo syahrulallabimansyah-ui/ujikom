@@ -339,14 +339,28 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       transition: background var(--trans), border-color var(--trans), box-shadow var(--trans);
     }
 
+    .select-wrap { position: relative; }
+
     .field select {
       cursor: pointer;
       appearance: none;
       -webkit-appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23d8b878' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 14px center;
+      -moz-appearance: none;
       padding-right: 40px;
+    }
+    /* Hilangkan panah bawaan browser (IE/Edge lama) agar tidak dobel dengan panah custom di atas */
+    .field select::-ms-expand {
+      display: none;
+    }
+    .select-arrow {
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 16px;
+      height: 16px;
+      color: #d8b878;
+      pointer-events: none;
     }
 
     .field select option {
@@ -760,8 +774,8 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       border-color: rgba(154,115,40,.22);
       color: #1a1714;
     }
-    html.theme-light .field select {
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239a7328' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    html.theme-light .select-arrow {
+      color: #9a7328;
     }
     html.theme-light .field select option {
       background: #ffffff;
@@ -793,6 +807,12 @@ $page_title = "Daftar Anggota – AKSA NOVA";
     }
     html.theme-light .foto-hint {
       color: #6b645b;
+    }
+    html.theme-light .hint {
+      color: #6b645b;
+    }
+    html.theme-light .foto-error {
+      color: #c0392b;
     }
     html.theme-light .foto-placeholder {
       background: #fbf8f2;
@@ -922,14 +942,19 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       <div class="row2">
         <div class="field">
           <label>Pilihan Kelas</label>
-          <select name="kelas" required>
-            <option value="" disabled <?= empty($old['kelas']) ? 'selected' : '' ?>>-- Pilih Kelas --</option>
-            <?php foreach ($daftar_kelas as $k): ?>
-              <option value="<?= htmlspecialchars($k) ?>" <?= $old['kelas'] === $k ? 'selected' : '' ?>>
-                <?= htmlspecialchars($k) ?>
-              </option>
-            <?php endforeach; ?>
-          </select>
+          <div class="select-wrap">
+            <select name="kelas" required>
+              <option value="" disabled <?= empty($old['kelas']) ? 'selected' : '' ?>>-- Pilih Kelas --</option>
+              <?php foreach ($daftar_kelas as $k): ?>
+                <option value="<?= htmlspecialchars($k) ?>" <?= $old['kelas'] === $k ? 'selected' : '' ?>>
+                  <?= htmlspecialchars($k) ?>
+                </option>
+              <?php endforeach; ?>
+            </select>
+            <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </div>
         </div>
         <div class="field">
           <label>Nomor HP <span style="font-size:.72rem;font-weight:400;color:var(--dim,#9c9489);">(Opsional)</span></label>

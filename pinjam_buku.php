@@ -12,6 +12,13 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 }
 
 require_once 'db.php';
+// ─── Hitung badge sidebar (pending anggota & pengajuan buku) ───
+$cnt_p_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM users WHERE role='member' AND status='pending'");
+$pending_count = $cnt_p_q ? (int)(mysqli_fetch_assoc($cnt_p_q)['c'] ?? 0) : 0;
+$cnt_a_q = mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='menunggu'");
+$cnt_aju_badge = $cnt_a_q ? (int)(mysqli_fetch_assoc($cnt_a_q)['c'] ?? 0) : 0;
+$sidebar_badges_loaded = true;
+
 
 assert($conn instanceof mysqli);
 mysqli_set_charset($conn, 'utf8mb4');
@@ -150,21 +157,23 @@ ob_start();
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Cormorant+Garamond:wght@700&display=swap" rel="stylesheet"/>
+  <?php require_once 'settings_include.php'; ?>
   <style>
     :root {
-      --sidebar-bg:  #4a4a5a;
-      --sidebar-dark:#2e2e3a;
-      --accent:      #5a5a6e;
-      --btn-primary: #3a3a4a;
+      --sidebar-bg:  #10151b;
+      --accent:      #d8b878;
+      --btn-primary: linear-gradient(135deg,#d8b878,#c8a060);
       --btn-pinjam:  #2563eb;
-      --text:        #1a1a2e;
-      --muted:       #7a7a9a;
-      --bg:          #f0f0f0;
-      --card:        #ffffff;
+      --text:        #eef3f4;
+      --muted:       rgba(238,243,244,.65);
+      --bg:          #090c10;
+      --card:        #121820;
+      --border-color:rgba(216,184,120,.18);
+      --card-border: rgba(216,184,120,.12);
       --radius:      10px;
       --sidebar-w:   204px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
-      --shadow:      0 2px 12px rgba(0,0,0,.07);
+      --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -180,29 +189,50 @@ ob_start();
     /* ── SIDEBAR ── */
     .sidebar {
       width: var(--sidebar-w);
-      background: linear-gradient(180deg, #5a5a6e 0%, #2e2e3a 100%);
+      background: var(--sidebar-bg, #10151b);
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 36px 20px 28px;
+      padding: 28px 20px 16px;
       position: fixed;
       top: 0; left: 0; bottom: 0;
       z-index: 100;
       transition: transform var(--trans);
+      overflow: hidden;
     }
+    .sidebar-header { flex-shrink: 0; display:flex; flex-direction:column; align-items:center; width:100%; }
+    .sidebar-nav {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.35) transparent;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 5px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.3); border-radius: 10px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; }
     .sidebar-overlay.open { display:block; }
     .sidebar-toggle {
       display:none; position:fixed; top:14px; left:14px; z-index:200;
-      width:40px; height:40px; border-radius:10px; border:none;
-      background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.15);
-      cursor:pointer; align-items:center; justify-content:center;
+      width:42px; height:42px; border-radius:10px; cursor:pointer;
+      align-items:center; justify-content:center;
+      background:#161e27; border:1.5px solid var(--accent,#d8b878);
+      box-shadow:0 4px 16px rgba(0,0,0,.45); color:var(--accent,#d8b878);
+      transition:all .2s;
     }
-    .sidebar-toggle svg { width:20px; height:20px; }
+    .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
+    .sidebar-toggle:active { transform:scale(0.92); }
 
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:96px; height:96px; border-radius:50%;
+      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
@@ -226,42 +256,52 @@ ob_start();
     .btn-save { flex:1; padding:11px; border-radius:8px; border:none; background:var(--btn-pinjam); color:#fff; font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700; cursor:pointer; transition:background var(--trans); }
     .btn-save:hover { background:#1d4ed8; }
 
-    .admin-name-label { color:#fff; font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
+    .admin-name-label { color:var(--text,#eef3f4); font-size:.95rem; font-weight:700; margin-bottom:8px; text-align:center; }
     .total-badge {
-      background: rgba(255,255,255,.18); color:#fff;
+      background: rgba(216,184,120,.16); color:var(--accent,#d8b878);
+      border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:8px; text-align:center;
+      margin-bottom:20px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:10px;
-      padding:10px 14px; border-radius:8px; border:none;
-      background:rgba(255,255,255,.12); color:#fff;
-      font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700;
-      cursor:pointer; margin-bottom:8px;
-      transition:background var(--trans);
+      width:100%; display:flex; align-items:center; gap:11px;
+      padding:10px 14px; border-radius:9px;
+      border:1px solid rgba(216,184,120,.16);
+      background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
+      font-family:inherit; font-size:.83rem; font-weight:700;
+      cursor:pointer; margin-bottom:7px;
+      transition:all var(--trans);
       text-align:left; text-decoration:none;
+      flex-shrink:0; box-sizing:border-box;
     }
-    .sidebar-btn:hover { background:rgba(255,255,255,.22); }
-    .sidebar-btn.active { background:rgba(255,255,255,.3); }
-    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; }
+    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn.active {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820; font-weight:800;
+      box-shadow:0 4px 14px rgba(216,184,120,.35);
+    }
+    .sidebar-btn.active svg { color:#121820; stroke:#121820; stroke-width:2.2px; }
 
     /* ── MAIN ── */
-    .main { margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); }
+    .main { view-transition-name:app-main; margin-left:var(--sidebar-w); flex:1; padding:26px 24px; transition:margin-left var(--trans); }
 
     /* Alert */
     .alert {
       padding:12px 18px; border-radius:8px; font-size:.82rem;
       font-weight:700; margin-bottom:16px; animation:fadeUp .4s both;
     }
-    .alert-success { background:#e8f5e9; color:#1a8a4a; border:1px solid #c8e6c9; }
-    .alert-error   { background:#fce4ec; color:#c0392b; border:1px solid #f8bbd0; }
+    .alert-success { background:rgba(5,150,105,.15); color:#4ade80; border:1px solid rgba(5,150,105,.3); }
+    .alert-error   { background:rgba(220,38,38,.15); color:#f87171; border:1px solid rgba(220,38,38,.3); }
 
     /* Topbar */
     .topbar {
       display:flex; align-items:center;
-      background:#fff; border-radius:50px;
+      background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:50px;
       padding:0 18px; height:46px; gap:10px;
       margin-bottom:24px; box-shadow:var(--shadow);
       animation:fadeUp .5s .05s both;
@@ -367,7 +407,7 @@ ob_start();
     }
     .modal-overlay.open { display:flex; }
     .modal {
-      background:#fff; border-radius:14px;
+      background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:14px;
       width:100%; max-width:440px;
       max-height:90vh; overflow-y:auto;
       box-shadow:0 20px 60px rgba(0,0,0,.25);
@@ -386,31 +426,32 @@ ob_start();
     .modal-book-info { font-size:.78rem; color:var(--muted); font-weight:600; margin-bottom:20px; }
     .modal-close {
       width:32px; height:32px; border-radius:50%;
-      border:none; background:#f0f0f5;
+      border:none; background:rgba(255,255,255,.07);
       cursor:pointer; display:flex; align-items:center; justify-content:center;
       transition:background var(--trans); flex-shrink:0;
     }
-    .modal-close:hover { background:#e0e0ea; }
+    .modal-close:hover { background:rgba(255,255,255,.14); }
+    .modal-close:hover svg { color:var(--text); }
     .modal-close svg { width:16px; height:16px; color:var(--muted); }
 
     .form-group { margin-bottom:14px; }
     .form-label { font-size:.76rem; font-weight:700; color:var(--muted); margin-bottom:5px; display:block; text-transform:uppercase; letter-spacing:.05em; }
     .form-input {
       width:100%; padding:10px 14px; border-radius:8px;
-      border:1.5px solid #e4e5f0;
+      border:1.5px solid var(--border-color,rgba(216,184,120,.18));
       font-family:'Nunito',sans-serif; font-size:.85rem;
-      color:var(--text); background:#fff;
+      color:var(--text); background:rgba(255,255,255,.05);
       outline:none; transition:border-color var(--trans);
     }
     .form-input:focus { border-color:var(--btn-pinjam); }
 
     /* ── PILIH ANGGOTA ── */
     .anggota-picker { display:flex; gap:8px; }
-    .anggota-picker .form-input { background:#f6f7fb; cursor:default; }
+    .anggota-picker .form-input { background:rgba(255,255,255,.03); cursor:default; }
     .btn-pilih-anggota {
       flex-shrink:0; white-space:nowrap;
       padding:0 14px; border-radius:8px; border:1.5px solid var(--btn-pinjam);
-      background:#fff; color:var(--btn-pinjam);
+      background:var(--book-card,#161e27); color:var(--accent,#d8b878);
       font-family:'Nunito',sans-serif; font-size:.78rem; font-weight:700;
       cursor:pointer; transition:all var(--trans);
     }
@@ -421,23 +462,23 @@ ob_start();
     .modal-anggota { max-width:400px; }
     .anggota-search {
       display:flex; align-items:center; gap:8px;
-      border:1.5px solid #e4e5f0; border-radius:8px;
+      border:1.5px solid var(--border-color,rgba(216,184,120,.18)); border-radius:8px;
       padding:8px 12px; margin-bottom:14px;
     }
-    .anggota-search svg { width:16px; height:16px; color:#aaa; flex-shrink:0; }
+    .anggota-search svg { width:16px; height:16px; color:var(--muted); flex-shrink:0; }
     .anggota-search input {
-      flex:1; border:none; outline:none;
+      flex:1; border:none; outline:none; background:transparent;
       font-family:'Nunito',sans-serif; font-size:.85rem; color:var(--text);
     }
     .anggota-list { max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; }
     .anggota-item {
       display:flex; align-items:center; gap:10px;
-      padding:9px 10px; border-radius:8px; border:1.5px solid #eceef5;
-      background:#fff; cursor:pointer; text-align:left;
+      padding:9px 10px; border-radius:8px; border:1.5px solid var(--border-color,rgba(216,184,120,.18));
+      background:rgba(255,255,255,.04); cursor:pointer; text-align:left;
       transition:all var(--trans); width:100%;
       font-family:'Nunito',sans-serif;
     }
-    .anggota-item:hover { border-color:var(--btn-pinjam); background:#f4f8ff; }
+    .anggota-item:hover { border-color:var(--btn-pinjam); background:rgba(255,255,255,.08); }
     .anggota-avatar {
       width:34px; height:34px; border-radius:50%; flex-shrink:0;
       background:linear-gradient(135deg,#3498db,#1a5276);
@@ -474,7 +515,7 @@ ob_start();
     .btn-submit:hover { background:#1d4ed8; }
     .btn-cancel {
       padding:11px 20px; border-radius:8px;
-      border:1.5px solid #e4e5f0; background:#fff;
+      border:1.5px solid #e4e5f0; background:var(--book-card,#161e27);
       font-family:'Nunito',sans-serif; font-size:.85rem;
       font-weight:700; color:var(--muted); cursor:pointer;
       transition:all var(--trans);
@@ -519,10 +560,11 @@ ob_start();
 
 <!-- SIDEBAR -->
 <aside class="sidebar" id="sidebar">
-  <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
+  <div class="sidebar-header">
+    <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
     <div class="avatar-circle">
       <?php if ($admin_foto && file_exists($admin_foto)): ?>
-        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin"/>
+        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
       <?php else: ?>
         <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -539,8 +581,9 @@ ob_start();
   </div>
 
   <div class="admin-name-label">Halo, <?= htmlspecialchars($admin_name) ?></div>
-
-  <a class="sidebar-btn" href="dashboard.php">
+  </div>
+  <nav class="sidebar-nav">
+    <a class="sidebar-btn" href="dashboard.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
     Dashboard
   </a>
@@ -554,7 +597,7 @@ ob_start();
   </a>
   <a class="sidebar-btn" href="daftar_anggota.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Daftar Anggota
+    Daftar Anggota<?php if (!empty($pending_count) && $pending_count > 0): ?><span style="margin-left:auto;background:#e74c3c;color:#fff;font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $pending_count ?></span><?php endif; ?>
   </a>
   <a class="sidebar-btn active" href="pinjam_buku.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -590,10 +633,16 @@ ob_start();
       </svg>
       Pengaturan Musik
     </a>
-  <a class="sidebar-btn" href="beranda.php">
+  
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      Pengaturan
+    </button>
+    <a class="sidebar-btn" href="beranda.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
     Kembali
   </a>
+  </nav>
 </aside>
 
 <!-- MAIN -->
@@ -747,61 +796,14 @@ ob_start();
   </div>
 </div>
 
-<!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
-<div class="modal-overlay" id="profilModalOverlay">
-  <div class="modal" style="max-width:380px;">
-    <div class="modal-header">
-      <div class="modal-title">Edit Profil</div>
-      <button class="modal-close" onclick="closeProfilModal()">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
-      <input type="hidden" name="redirect" value="pinjam_buku.php"/>
 
-      <!-- Preview foto -->
-      <div class="img-preview-wrap" style="aspect-ratio:1/1;max-width:160px;margin:0 auto 18px;border-radius:50%;" onclick="document.getElementById('inputFotoAdmin').click()">
-        <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>" alt="Foto" style="display:block;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder" style="display:none;">
-        <?php else: ?>
-          <img id="profilPreviewImg" src="" alt="Foto" style="display:none;border-radius:50%;"/>
-          <div class="upload-placeholder" id="profilUploadPlaceholder">
-        <?php endif; ?>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
-              <circle cx="12" cy="13" r="4"/>
-            </svg>
-            <span style="font-size:.7rem;">Upload Foto</span>
-          </div>
-      </div>
-      <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
-
-      <div class="form-group">
-        <label class="form-label">Nama Tampilan</label>
-        <input class="form-input" type="text" name="display_name"
-               value="<?= htmlspecialchars($admin_name) ?>"
-               placeholder="Nama yang ditampilkan" required/>
-      </div>
-
-      <div class="modal-footer">
-        <button type="submit" class="btn-save">Simpan</button>
-        <button type="button" class="btn-cancel" onclick="closeProfilModal()">Batal</button>
-      </div>
-    </form>
-  </div>
-</div>
 
 <script>
 // ─── Data anggota (dari akun yang terdaftar & disetujui) ───
 const anggotaData = <?= json_encode($anggota_list, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>;
 
 // ─── Sidebar toggle ───
-const toggle  = document.getElementById('sidebarToggle');
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('sidebarOverlay');
-toggle?.addEventListener('click', () => { sidebar.classList.toggle('open'); overlay.classList.toggle('open'); });
-overlay?.addEventListener('click', () => { sidebar.classList.remove('open'); overlay.classList.remove('open'); });
+// Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
 // ─── Modal Pinjam ───
 function bukaPinjamModal(bukuId, judul, penulis) {
@@ -930,6 +932,31 @@ document.getElementById('anggotaModalOverlay').addEventListener('click', functio
 function openProfilModal() {
   document.getElementById('profilModalOverlay').classList.add('open');
 }
+
+// ─── Toggle password visibility & strength di modal profil ───
+function togglePwAdmin(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  input.type = input.type === 'password' ? 'text' : 'password';
+  btn.style.color = input.type === 'text' ? 'var(--accent,#d8b878)' : 'var(--muted,#888)';
+}
+function cekKekuatanSandi(val) {
+  const bar=document.getElementById('pwStrengthBar'), label=document.getElementById('pwStrengthLabel');
+  if(!bar||!label) return;
+  let s=0;
+  if(val.length>=8) s++; if(/[A-Z]/.test(val)) s++; if(/[0-9]/.test(val)) s++; if(/[^A-Za-z0-9]/.test(val)) s++;
+  const c=['#ef4444','#f97316','#eab308','#22c55e'],l=['Terlalu lemah','Lemah','Sedang','Kuat'];
+  bar.style.width=val.length?s/4*100+'%':'0'; bar.style.background=val.length?(c[s-1]||'#ef4444'):'transparent';
+  label.textContent=val.length?(l[s-1]||'Terlalu lemah'):''; label.style.color=val.length?(c[s-1]||'#ef4444'):'';
+  cekKonfirmasi();
+}
+function cekKonfirmasi() {
+  const pw1=document.getElementById('pwNew'),pw2=document.getElementById('pwConfirm'),lb=document.getElementById('pwMatchLabel');
+  if(!pw1||!pw2||!lb) return;
+  if(!pw2.value){lb.textContent='';return;}
+  lb.textContent=pw1.value===pw2.value?'✅ Kata sandi cocok':'❌ Tidak cocok';
+  lb.style.color=pw1.value===pw2.value?'#22c55e':'#ef4444';
+}
 function closeProfilModal() {
   document.getElementById('profilModalOverlay').classList.remove('open');
   document.getElementById('inputFotoAdmin').value = '';
@@ -998,6 +1025,8 @@ document.getElementById('inputFotoAdmin').addEventListener('change', function(e)
   });
 })();
 </script>
+<?php require_once 'modal_profil_admin.php';
+require_once 'pengaturan_panel.php'; ?>
 </body>
 </html>
 <?php ob_end_flush(); ?>
