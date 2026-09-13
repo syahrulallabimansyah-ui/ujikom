@@ -98,19 +98,24 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
 /* ───────────────────────── Pengaturan lokasi perpustakaan ─────────────────────────
    Nilai default di bawah bisa ditimpa admin lewat tabel `pengaturan`
    (kunci: lokasi_alamat, lokasi_jam, lokasi_telepon) tanpa perlu ubah kode ini. */
-$lokasi_alamat  = "Jl. Pendidikan No. 1, Majalengka, Jawa Barat";
-$lokasi_jam     = "Senin – Jumat, 07.00 – 15.00 WIB";
-$lokasi_telepon = "(0233) 000-0000";
-$lgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('lokasi_alamat','lokasi_jam','lokasi_telepon')");
+$lokasi_sekolah   = "SMK Negeri 1 Rongga";
+$lokasi_alamat    = "Jl. Situ Gede / Jl. Raya Rongga (RT 01/RW 04), Desa Cibedug, Kec. Rongga, Kab. Bandung Barat, Jawa Barat 40565";
+$lokasi_jam       = "Senin – Jumat, 07.00 – 15.00 WIB";
+$lokasi_telepon   = "083829165209";
+$lokasi_map_query = "SMK Negeri 1 Rongga, Bandung Barat";
+$lgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('lokasi_sekolah','lokasi_alamat','lokasi_jam','lokasi_telepon','lokasi_map_query')");
 if ($lgt) {
     while ($l = mysqli_fetch_assoc($lgt)) {
-        if ($l["kunci"] === "lokasi_alamat"  && $l["nilai"] !== "") $lokasi_alamat  = $l["nilai"];
-        if ($l["kunci"] === "lokasi_jam"     && $l["nilai"] !== "") $lokasi_jam     = $l["nilai"];
-        if ($l["kunci"] === "lokasi_telepon" && $l["nilai"] !== "") $lokasi_telepon = $l["nilai"];
+        if ($l["kunci"] === "lokasi_sekolah"   && $l["nilai"] !== "") $lokasi_sekolah   = $l["nilai"];
+        if ($l["kunci"] === "lokasi_alamat"    && $l["nilai"] !== "") $lokasi_alamat    = $l["nilai"];
+        if ($l["kunci"] === "lokasi_jam"       && $l["nilai"] !== "") $lokasi_jam       = $l["nilai"];
+        if ($l["kunci"] === "lokasi_telepon"   && $l["nilai"] !== "") $lokasi_telepon   = $l["nilai"];
+        if ($l["kunci"] === "lokasi_map_query" && $l["nilai"] !== "") $lokasi_map_query = $l["nilai"];
     }
 }
-$lokasi_maps_embed = "https://www.google.com/maps?q=" . urlencode($lokasi_alamat) . "&output=embed";
-$lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlencode($lokasi_alamat);
+$query_peta        = !empty($lokasi_map_query) ? $lokasi_map_query : ($lokasi_sekolah . ", " . $lokasi_alamat);
+$lokasi_maps_embed = "https://maps.google.com/maps?q=" . urlencode($query_peta) . "&t=&z=16&ie=UTF8&iwloc=&output=embed";
+$lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlencode($query_peta);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -827,6 +832,22 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     transform: scale(1.08);
     transition: opacity 1.4s ease;
   }
+  /* GIF & VIDEO banner: gunakan <img>/<video> agar animasi/video tetap jalan */
+  .hero-bg-slide.is-gif,
+  .hero-bg-slide.is-video { background-image: none !important; }
+  .hero-bg-gif,
+  .hero-bg-video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+    display: block;
+  }
+  /* GIF & VIDEO tidak perlu efek zoom */
+  .hero-bg-slide.is-gif.active,
+  .hero-bg-slide.is-video.active { animation: none; }
   .hero-bg-slide.active {
     opacity: 1;
     animation: heroZoom 16s ease-out forwards;
@@ -2007,7 +2028,23 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     <!-- Gambar latar diatur admin lewat menu Kelola Banner ("Jadikan Latar Beranda") -->
     <div class="hero-bg" id="heroBg" aria-hidden="true">
       <?php foreach ($hero_images as $i => $hb): ?>
-        <div class="hero-bg-slide<?= $i === 0 ? " active" : "" ?>" style="background-image:url('<?= htmlspecialchars($hb["gambar"]) ?>')"></div>
+        <?php
+          $hb_ext    = strtolower(pathinfo($hb['gambar'], PATHINFO_EXTENSION));
+          $is_gif    = $hb_ext === 'gif';
+          $is_video  = in_array($hb_ext, ['mp4','webm']);
+          $is_static = !$is_gif && !$is_video;
+          $bg_style  = $is_static ? 'style="background-image:url(\'' . htmlspecialchars($hb['gambar']) . '\')"' : '';
+          $cls_extra = ($is_gif ? ' is-gif' : '') . ($is_video ? ' is-video' : '');
+        ?>
+        <div class="hero-bg-slide<?= $i === 0 ? ' active' : '' ?><?= $cls_extra ?>" <?= $bg_style ?>>
+          <?php if ($is_gif): ?>
+            <img src="<?= htmlspecialchars($hb['gambar']) ?>" alt="<?= htmlspecialchars($hb['judul'] ?? 'Banner') ?>" class="hero-bg-gif">
+          <?php elseif ($is_video): ?>
+            <video class="hero-bg-video" autoplay muted loop playsinline preload="auto">
+              <source src="<?= htmlspecialchars($hb['gambar']) ?>" type="video/<?= $hb_ext ?>">
+            </video>
+          <?php endif; ?>
+        </div>
       <?php endforeach; ?>
     </div>
     <div class="hero-overlay"></div>
@@ -2237,7 +2274,7 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
               </span>
               <div>
                 <h4 data-id="Alamat" data-en="Address">Alamat</h4>
-                <p><?= htmlspecialchars($lokasi_alamat) ?></p>
+                <p><strong><?= htmlspecialchars($lokasi_sekolah) ?></strong><br><?= htmlspecialchars($lokasi_alamat) ?></p>
               </div>
             </li>
             <li>

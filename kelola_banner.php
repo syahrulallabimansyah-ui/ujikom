@@ -64,7 +64,7 @@ if ($action === "tambah") {
     $urutan_baru = ((int)(mysqli_fetch_assoc($r)["m"] ?? 0)) + 1;
 
     if ($gambar === "") {
-        $msg = "Gambar banner wajib diunggah (format: jpg, jpeg, png, webp, gif)."; $msg_type = "error";
+        $msg = "File banner wajib diunggah (format: jpg, jpeg, png, webp, gif, mp4, webm)."; $msg_type = "error";
     } else {
         mysqli_query($conn,
             "INSERT INTO banner (judul, subjudul, gambar, link_url, urutan, aktif)
@@ -496,7 +496,13 @@ $total = count($banner_list);
       <div class="banner-card">
         <div class="banner-thumb">
           <?php if ($b["gambar"] && file_exists($b["gambar"])): ?>
-            <img src="<?= htmlspecialchars($b["gambar"]) ?>" alt="<?= htmlspecialchars($b["judul"]) ?>">
+            <?php $_bext = strtolower(pathinfo($b["gambar"], PATHINFO_EXTENSION)); ?>
+            <?php if (in_array($_bext, ["mp4","webm"])): ?>
+              <video src="<?= htmlspecialchars($b["gambar"]) ?>" muted autoplay loop playsinline style="width:100%;height:100%;object-fit:cover;border-radius:6px;"></video>
+              <span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:.65rem;padding:2px 7px;border-radius:4px;font-weight:700;">🎬 VIDEO</span>
+            <?php else: ?>
+              <img src="<?= htmlspecialchars($b["gambar"]) ?>" alt="<?= htmlspecialchars($b["judul"]) ?>">
+            <?php endif; ?>
           <?php endif; ?>
           <span class="banner-status <?= $b["aktif"] ? "on" : "off" ?>"><?= $b["aktif"] ? "Aktif" : "Nonaktif" ?></span>
           <span class="banner-order">#<?= $i + 1 ?></span>
@@ -566,9 +572,9 @@ $total = count($banner_list);
         <label>Gambar Banner *</label>
         <div class="upload-box" onclick="document.getElementById('inputGambar').click()">
           <img id="previewImg">
-          <div class="hint" id="uploadHint">Klik untuk unggah gambar — akan diminta menyesuaikan (crop) ke rasio 16:7 sebelum disimpan<br>Format: JPG, PNG, WEBP, GIF</div>
+          <div class="hint" id="uploadHint">Klik untuk unggah gambar<br><span style="color:var(--accent)">GIF / MP4 / WEBM</span>: langsung digunakan tanpa crop ✨<br>JPG/PNG/WEBP: crop ke rasio 16:7<br>Format: JPG, PNG, WEBP, GIF (maks 5 MB)</div>
         </div>
-        <input type="file" name="gambar" id="inputGambar" accept=".jpg,.jpeg,.png,.webp,.gif" style="display:none;">
+        <input type="file" name="gambar" id="inputGambar" accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.webm" style="display:none;">
       </div>
 
       <div class="form-group">
@@ -668,9 +674,49 @@ document.getElementById('modalCropOverlay').addEventListener('click', function(e
 document.getElementById('inputGambar').addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => bukaModalCrop(ev.target.result, file.name);
-  reader.readAsDataURL(file);
+  const name     = file.name.toLowerCase();
+  const isGif    = file.type === 'image/gif'   || name.endsWith('.gif');
+  const isVideo  = file.type.startsWith('video/') || name.endsWith('.mp4') || name.endsWith('.webm');
+  const inputEl  = document.getElementById('inputGambar');
+  const hint     = document.getElementById('uploadHint');
+  const prevImg  = document.getElementById('previewImg');
+  // Bersihkan preview video lama jika ada
+  const oldVid = document.getElementById('previewVideo');
+  if (oldVid) oldVid.remove();
+
+  if (isVideo) {
+    // VIDEO: tampilkan <video> preview, skip crop
+    inputEl.dataset.mediaType = 'video';
+    prevImg.style.display = 'none';
+    hint.style.display = 'none';
+    const url = URL.createObjectURL(file);
+    const vid = document.createElement('video');
+    vid.id = 'previewVideo';
+    vid.src = url;
+    vid.autoplay = true;
+    vid.muted = true;
+    vid.loop = true;
+    vid.playsInline = true;
+    vid.controls = true;
+    vid.style.cssText = 'max-width:100%;max-height:160px;border-radius:8px;display:block;margin:8px auto 0;';
+    document.querySelector('.upload-box').appendChild(vid);
+  } else if (isGif) {
+    // GIF: langsung preview tanpa crop agar animasi tetap terjaga
+    inputEl.dataset.mediaType = 'gif';
+    const reader = new FileReader();
+    reader.onload = ev => {
+      prevImg.src = ev.target.result;
+      prevImg.style.display = 'block';
+      hint.style.display = 'none';
+    };
+    reader.readAsDataURL(file);
+  } else {
+    // JPG/PNG/WEBP: buka crop tool
+    inputEl.dataset.mediaType = 'image';
+    const reader = new FileReader();
+    reader.onload = ev => bukaModalCrop(ev.target.result, file.name);
+    reader.readAsDataURL(file);
+  }
 });
 
 /* ─────────────────────────────────────────────
