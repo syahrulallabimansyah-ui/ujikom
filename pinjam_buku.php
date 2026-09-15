@@ -707,8 +707,11 @@ ob_start();
       <div class="book-info">
         <div class="book-title" title="<?= htmlspecialchars($buku['judul']) ?>"><?= htmlspecialchars($buku['judul']) ?></div>
         <div class="book-author"><?= htmlspecialchars($buku['penulis'] ?? '-') ?></div>
+        <?php if (!empty($buku['rak'])): ?>
+          <div style="font-size:.72rem;color:var(--accent,#d8b878);margin-bottom:8px;font-weight:600;">📍 <?= htmlspecialchars($buku['rak']) ?></div>
+        <?php endif; ?>
         <button class="btn-pinjam"
-          onclick="bukaPinjamModal(<?= $buku['id'] ?>, '<?= $judul_js ?>', '<?= $penulis_js ?>')">
+          onclick="bukaPinjamModal(<?= $buku['id'] ?>, '<?= $judul_js ?>', '<?= $penulis_js ?>', '<?= htmlspecialchars(addslashes($buku['rak'] ?? ''), ENT_QUOTES) ?>')">
           📖 Pinjam Buku
         </button>
       </div>
@@ -806,9 +809,10 @@ const anggotaData = <?= json_encode($anggota_list, JSON_HEX_TAG | JSON_HEX_APOS 
 // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
 
 // ─── Modal Pinjam ───
-function bukaPinjamModal(bukuId, judul, penulis) {
+function bukaPinjamModal(bukuId, judul, penulis, rak = '') {
   document.getElementById('inputBukuId').value = bukuId;
-  document.getElementById('modalBookInfo').textContent = `"${judul}" oleh ${penulis}`;
+  const rakBadge = rak ? ` &middot; <span style="color:var(--accent,#d8b878);font-weight:700;">📍 ${rak}</span>` : '';
+  document.getElementById('modalBookInfo').innerHTML = `"${judul}" oleh ${penulis}${rakBadge}`;
 
   // Batas kembali default 7 hari dari sekarang (format date)
   const tujuhHari = new Date();

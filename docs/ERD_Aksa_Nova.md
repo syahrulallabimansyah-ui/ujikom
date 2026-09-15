@@ -1,6 +1,8 @@
 # Entity Relationship Diagram (ERD) & Spesifikasi Basis Data
 ## Sistem Informasi Perpustakaan Digital — AKSA NOVA
 
+> **Versi:** 2.0 | **Terakhir Diperbarui:** 14 September 2026 | **Database:** MySQL 8.0 / InnoDB / `utf8mb4`
+
 Dokumen ini memuat arsitektur basis data relasional sistem **AKSA NOVA** (MySQL 8.0 / InnoDB / `utf8mb4`), mencakup diagram hubungan entitas, kardinalitas, kamus data lengkap (data dictionary), serta aturan integritas data.
 
 ---
@@ -27,12 +29,12 @@ erDiagram
     USERS {
         int id PK
         varchar full_name
-        varchar nik
+        varchar nik "Menyimpan NIS / NIK"
         varchar kelas
         varchar no_hp
         varchar no_anggota UK
         varchar username UK
-        varchar email UK
+        varchar email UK "Domain @student.smkn1rongga.sch.id"
         varchar password
         varchar foto
         enum role "admin, member"
@@ -63,6 +65,7 @@ erDiagram
         varchar genre
         text sinopsis
         int stok
+        varchar rak "Lokasi rak fisik buku"
         varchar gambar
         timestamp created_at
         timestamp updated_at
@@ -72,7 +75,7 @@ erDiagram
         int id PK
         varchar judul
         varchar subjudul
-        varchar gambar
+        varchar gambar "Path file gambar/GIF/video"
         varchar link_url
         int urutan
         tinyint aktif
@@ -136,7 +139,7 @@ erDiagram
 
     PENGATURAN {
         int id PK
-        varchar kunci UK
+        varchar kunci UK "denda, batas pinjam, lokasi sekolah, maps"
         varchar nilai
         varchar keterangan
         timestamp updated_at
@@ -158,18 +161,18 @@ erDiagram
 ## 2. Kamus Data Lengkap (Data Dictionary)
 
 ### 2.1 Tabel `users`
-Menyimpan data akun pengguna baik administrator perpustakaan maupun anggota (siswa/guru).
+Menyimpan data akun pengguna baik administrator perpustakaan maupun anggota (siswa/guru SMKN 1 Rongga).
 
 | Kolom | Tipe Data | Nullable | Default | Keterangan & Aturan |
 |---|---|---|---|---|
 | `id` | `INT` | No | AUTO_INCREMENT | **Primary Key** identitas unik pengguna. |
 | `full_name` | `VARCHAR(100)` | No | - | Nama lengkap resmi pengguna. |
-| `nik` | `VARCHAR(30)` | No | `''` | Nomor Induk Kependudukan / NIS. |
-| `kelas` | `VARCHAR(50)` | No | `''` | Tingkat kelas anggota (misal: "X RPL 1", "Alumni"). |
-| `no_hp` | `VARCHAR(20)` | No | `''` | Nomor WhatsApp aktif untuk notifikasi & pengingat. |
+| `nik` | `VARCHAR(30)` | No | `''` | **Nomor Induk Siswa (NIS)** / NIK siswa. Ditampilkan sebagai NIS pada profil & kartu anggota. |
+| `kelas` | `VARCHAR(50)` | No | `''` | Tingkat kelas anggota (misal: "X RPL 1", "XI TKJ 1"). |
+| `no_hp` | `VARCHAR(20)` | No | `''` | Nomor WhatsApp aktif untuk notifikasi & pengingat keterlambatan. |
 | `no_anggota` | `VARCHAR(30)` | No | `''` | **Unique Key**. Nomor unik kartu anggota (cth: `AN-202609-0012`). |
-| `username` | `VARCHAR(50)` | No | - | **Unique Key**. Nama pengguna untuk masuk (*login*). |
-| `email` | `VARCHAR(100)` | No | - | **Unique Key**. Alamat surat elektronik terdaftar. |
+| `username` | `VARCHAR(50)` | No | - | **Unique Key**. Nama pengguna untuk autentikasi. |
+| `email` | `VARCHAR(100)` | No | - | **Unique Key**. Alamat surel terdaftar (validasi domain `@student.smkn1rongga.sch.id`). |
 | `password` | `VARCHAR(255)` | No | - | Hash sandi menggunakan algoritma BCRYPT (`password_hash`). |
 | `foto` | `VARCHAR(255)` | No | `''` | Path file foto profil (disimpan di `uploads/foto_profil/`). |
 | `role` | `ENUM('admin','member')` | Yes | `'member'` | Peran pengguna dalam sistem. |
@@ -204,7 +207,7 @@ Master referensi tingkatan kelas siswa untuk mempermudah pendaftaran anggota.
 ---
 
 ### 2.4 Tabel `buku`
-Menyimpan seluruh katalog buku fisik perpustakaan.
+Menyimpan seluruh katalog buku fisik perpustakaan beserta metadata lokasi penempatan fisik.
 
 | Kolom | Tipe Data | Nullable | Default | Keterangan & Aturan |
 |---|---|---|---|---|
@@ -214,7 +217,8 @@ Menyimpan seluruh katalog buku fisik perpustakaan.
 | `isbn` | `VARCHAR(50)` | No | `''` | Kode ISBN (International Standard Book Number). |
 | `genre` | `VARCHAR(100)` | No | `''` | Kategori genre (misal: "Fiksi", "Teknologi", "Sains"). |
 | `sinopsis` | `TEXT` | Yes | `NULL` | Ringkasan isi atau deskripsi buku. |
-| `stok` | `INT` | No | `0` | Jumlah eksemplar fisik yang tersedia di rak. |
+| `stok` | `INT` | No | `0` | Jumlah eksemplar fisik yang tersedia. |
+| `rak` | `VARCHAR(100)` | No | `''` | **Lokasi Rak Buku** (cth: "Rak A-1 (Fiksi)", "Rak B-2 (Komputer)", "Rak Referensi"). Tampil pada modal detail buku di semua sisi antarmuka. |
 | `gambar` | `VARCHAR(500)` | No | `''` | Path gambar cover buku (`uploads/gambar/`). |
 | `created_at` | `TIMESTAMP` | Yes | `CURRENT_TIMESTAMP` | Waktu buku ditambahkan. |
 | `updated_at` | `TIMESTAMP` | Yes | `CURRENT_TIMESTAMP ON UPDATE` | Waktu perubahan data buku terakhir. |
@@ -251,7 +255,7 @@ Menangani alur pengajuan peminjaman buku online dari siswa sebelum disetujui pus
 | `buku_id` | `INT` | No | - | ID buku yang hendak dipinjam. |
 | `nama_peminjam`| `VARCHAR(150)` | No | - | Nama peminjam yang tertera di form. |
 | `file_kartu` | `VARCHAR(255)` | No | - | Path berkas bukti kartu yang diunggah (`uploads/kartu_pengajuan/`). |
-| `total_buku` | `INT` | No | `1` | Jumlah eksemplar yang diajukan (biasanya 1). |
+| `total_buku` | `INT` | No | `1` | Jumlah eksemplar yang diajukan. |
 | `batas_kembali`| `DATE` | No | - | Tanggal pengembalian yang direncanakan. |
 | `waktu_pengambilan` | `ENUM('sekarang','nanti')` | No | `'sekarang'` | Opsi pengambilan: langsung saat itu juga atau nanti di jam tertentu. |
 | `catatan_pengambilan` | `VARCHAR(255)` | Yes | `NULL` | Catatan waktu spesifik jika memilih "ambil nanti". |
@@ -298,33 +302,47 @@ Menangani alur pengajuan peminjaman buku online dari siswa sebelum disetujui pus
 ### 2.8 Tabel Pendukung: `banner`, `pengaturan`, `reminder_log`
 
 #### Tabel `banner`
-Menyimpan carousel promosi beranda.
-- `id` (PK, INT)
+Menyimpan data banner promosi/pengumuman carousel beranda.
+- `id` (PK, INT, AUTO_INCREMENT)
 - `judul` (VARCHAR 150)
 - `subjudul` (VARCHAR 255)
-- `gambar` (VARCHAR 500)
-- `link_url` (VARCHAR 255)
-- `urutan` (INT, default 0)
-- `aktif` (TINYINT 1, default 1)
+- `gambar` (VARCHAR 500) — Path berkas media di `uploads/banner/`. **Mendukung format:**
+  - Gambar statis (`.jpg`, `.jpeg`, `.png`, `.webp` maks 5MB)
+  - Animasi GIF (`.gif` maks 5MB)
+  - Video (`.mp4`, `.webm` maks 50MB)
+- `link_url` (VARCHAR 255) — Tautan opsional saat banner diklik.
+- `urutan` (INT, default 0) — Prioritas urutan slide.
+- `aktif` (TINYINT 1, default 1) — Flag aktif (1) atau nonaktif (0).
 - `created_at`, `updated_at` (TIMESTAMP)
 
 #### Tabel `pengaturan`
-Key-Value store untuk konfigurasi dinamis aplikasi.
-- `id` (PK, INT)
-- `kunci` (VARCHAR 100, **UNIQUE**) — misal: `'denda_per_hari'`, `'maks_pinjam_hari'`.
-- `nilai` (VARCHAR 500) — nilai konfigurasi.
-- `keterangan` (VARCHAR 255) — deskripsi fungsi konfigurasi.
+Key-Value store untuk konfigurasi dinamis aplikasi perpustakaan.
+- `id` (PK, INT, AUTO_INCREMENT)
+- `kunci` (VARCHAR 100, **UNIQUE**)
+- `nilai` (VARCHAR 500)
+- `keterangan` (VARCHAR 255)
 - `updated_at` (TIMESTAMP)
+
+**Daftar Kunci Pengaturan Aktif:**
+| `kunci` | Contoh Nilai | Keterangan |
+|---|---|---|
+| `denda_per_hari` | `1000` | Tarif denda keterlambatan per hari (Rupiah). |
+| `maks_pinjam_hari`| `7` | Batas maksimal durasi peminjaman standar (hari). |
+| `lokasi_sekolah` | `SMK Negeri 1 Rongga` | Nama resmi institusi perpustakaan. |
+| `lokasi_alamat` | `Jl. Situ Gede / Jl. Raya Rongga, Desa Cibedug (RT 01/RW 04), Kec. Rongga, Kab. Bandung Barat, Jawa Barat 40565` | Alamat fisik institusi. |
+| `lokasi_jam` | `Senin - Jumat: 07.30 - 16.00 WIB` | Jam operasional layanan perpustakaan. |
+| `lokasi_telepon` | `(022) 8686-xxxx / 0812-xxxx-xxxx` | Nomor kontak informasi perpustakaan. |
+| `lokasi_map_query`| `SMK Negeri 1 Rongga` | Query pencarian Google Maps embed pada halaman muka. |
 
 #### Tabel `reminder_log`
 Log historis pengingat keterlambatan buku via WhatsApp.
-- `id` (PK, INT)
+- `id` (PK, INT, AUTO_INCREMENT)
 - `peminjaman_id` (INT, **FK** `peminjaman.id` `ON DELETE CASCADE`)
 - `tanggal` (DATE) — tanggal pengingat.
 - `terlambat_hari` (INT) — status hari telat saat pengingat dikirim.
 - `wa_terkirim` (TINYINT 1, default 0)
 - `wa_terkirim_at` (DATETIME)
-- *Index*: `UNIQUE KEY (peminjaman_id, tanggal)` — memastikan maksimal 1 pengingat tercatat per peminjaman per hari.
+- *Index*: `UNIQUE KEY (peminjaman_id, tanggal)` — memastikan maksimal 1 pengingat tercatat per transaksi per hari.
 
 ---
 
@@ -358,10 +376,12 @@ Log historis pengingat keterlambatan buku via WhatsApp.
      ```sql
      UPDATE buku SET stok = stok + 1 WHERE id = ?;
      ```
-2. **Pencegahan Duplikasi Rating & Like**:
+2. **Ketersediaan Informasi Lokasi Rak**:
+   - Kolom `rak` di tabel `buku` bersifat `NOT NULL DEFAULT ''` dan diikutsertakan dalam query `SELECT * FROM buku` sehingga secara otomatis terkirim melalui endpoint `buku_detail.php` ke semua modal detail di frontend.
+3. **Pencegahan Duplikasi Rating & Like**:
    - `buku_ratings` memiliki `UNIQUE KEY (user_id, buku_id)` sehingga 1 anggota hanya bisa memiliki 1 entri rating per buku.
    - `buku_likes` memiliki `UNIQUE KEY (buku_id, user_id)`.
-3. **Keamanan Riwayat Transaksi**:
+4. **Keamanan Riwayat Transaksi**:
    - Penghapusan akun pengguna tidak menghapus data sirkulasi buku (FK `peminjaman.user_id` diatur `ON DELETE SET NULL`), dan `nama_peminjam` tetap tersimpan sebagai *historical snapshot*.
-4. **Pencegahan Spam Notifikasi Pengingat**:
+5. **Pencegahan Spam Notifikasi Pengingat**:
    - Tabel `reminder_log` memiliki kunci gabungan `UNIQUE KEY (peminjaman_id, tanggal)` sehingga pengingat keterlambatan via WhatsApp tidak dikirim ganda pada hari yang sama.

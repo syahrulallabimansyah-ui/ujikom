@@ -143,7 +143,7 @@ if ($search !== '') {
 
 $pengajuan_list = [];
 $q_res = mysqli_query($conn,
-    "SELECT p.*, b.judul, b.penulis, b.gambar as buku_gambar, b.stok as buku_stok, u.kelas, u.no_anggota, u.email, u.no_hp, u.foto as user_foto
+    "SELECT p.*, b.judul, b.penulis, b.gambar as buku_gambar, b.stok as buku_stok, b.rak as buku_rak, u.kelas, u.no_anggota, u.email, u.no_hp, u.foto as user_foto
      FROM pengajuan_peminjaman p
      LEFT JOIN buku b ON b.id = p.buku_id
      LEFT JOIN users u ON u.id = p.user_id
@@ -707,6 +707,11 @@ if ($q_res) {
                   <div>
                     <div class="book-title-cell"><?= htmlspecialchars($row['judul'] ?? 'Buku Perpustakaan') ?></div>
                     <div class="book-author-cell">✍️ <?= htmlspecialchars($row['penulis'] ?: '—') ?></div>
+                    <?php if (!empty($row['buku_rak'])): ?>
+                      <div style="font-size:.68rem;color:var(--accent,#d8b878);margin-top:2px;font-weight:600;">
+                        📍 <?= htmlspecialchars($row['buku_rak']) ?>
+                      </div>
+                    <?php endif; ?>
                     <div style="font-size:.68rem;color:<?= (int)($row['buku_stok'] ?? 0) > 0 ? '#1a8a4a' : '#c0392b' ?>;margin-top:2px;">
                       Sisa stok katalog: <strong><?= (int)($row['buku_stok'] ?? 0) ?></strong>
                     </div>

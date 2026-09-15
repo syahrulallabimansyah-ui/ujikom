@@ -1074,6 +1074,7 @@ ob_start();
           <div class="detail-body">
             <div class="detail-title">${b.judul}</div>
             <div class="detail-author">✍️ ${b.penulis || 'Penulis tidak diketahui'} · Kategori: ${b.genre || 'Umum'}</div>
+            ${b.rak ? `<div style="font-size:.78rem;color:var(--accent,#d8b878);margin-top:6px;display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>Lokasi: <strong>${b.rak}</strong></div>` : ''}
             <div class="detail-desc">${b.sinopsis ? b.sinopsis.replace(/\\n/g, '<br>') : 'Sinopsis belum tersedia.'}</div>
             ${b.stok > 0
               ? `<a href="pengajuan_peminjaman.php?buku_id=${b.id}" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;background:var(--accent);color:#090c10;font-weight:700;text-decoration:none;font-size:.82rem;margin-top:14px;box-shadow:0 4px 16px rgba(216,184,120,.3);">

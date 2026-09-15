@@ -3,9 +3,9 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Sep 03, 2026 at 12:44 AM
--- Server version: 8.0.30
--- PHP Version: 8.1.10
+-- Waktu pembuatan: 13 Sep 2026 pada 12.12
+-- Versi server: 8.0.30
+-- Versi PHP: 8.1.10
 
 SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
@@ -18,13 +18,13 @@ SET time_zone = "+00:00";
 /*!40101 SET NAMES utf8mb4 */;
 
 --
--- Database: `aksa_nova`
+-- Basis data: `aksa_nova`
 --
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `admin_profile`
+-- Struktur dari tabel `admin_profile`
 --
 
 CREATE TABLE `admin_profile` (
@@ -36,16 +36,16 @@ CREATE TABLE `admin_profile` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Dumping data for table `admin_profile`
+-- Dumping data untuk tabel `admin_profile`
 --
 
 INSERT INTO `admin_profile` (`id`, `user_id`, `display_name`, `foto`, `updated_at`) VALUES
-(1, 1, 'Hoshimi Miyabi', 'uploads/profil/admin_6a8eadc034d7f.png', '2026-08-26 09:11:28');
+(1, 1, 'Admin', 'uploads/profil/admin_6aa4b8dd7040b.jpg', '2026-09-12 02:28:45');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `banner`
+-- Struktur dari tabel `banner`
 --
 
 CREATE TABLE `banner` (
@@ -61,17 +61,18 @@ CREATE TABLE `banner` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Dumping data for table `banner`
+-- Dumping data untuk tabel `banner`
 --
 
 INSERT INTO `banner` (`id`, `judul`, `subjudul`, `gambar`, `link_url`, `urutan`, `aktif`, `created_at`, `updated_at`) VALUES
-(1, '', '', 'uploads/banner/banner_6a7d46716d677.jpg', '', 1, 0, '2026-08-13 04:22:09', '2026-08-31 09:04:13'),
-(4, '', '', 'uploads/banner/banner_6a7d4d43adf79.jpg', '', 4, 1, '2026-08-13 04:51:15', '2026-08-31 09:34:42');
+(1, '', '', 'uploads/banner/banner_6aa615ffdb620.jpg', '', 1, 1, '2026-08-13 04:22:09', '2026-09-13 03:18:23'),
+(4, '', '', 'uploads/banner/banner_6a7d4d43adf79.jpg', '', 7, 1, '2026-08-13 04:51:15', '2026-09-13 11:33:51'),
+(14, 'binbin', '', 'uploads/banner/banner_6aa67f38884f3.gif', '', 4, 1, '2026-09-13 10:47:20', '2026-09-13 11:33:51');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `buku`
+-- Struktur dari tabel `buku`
 --
 
 CREATE TABLE `buku` (
@@ -82,26 +83,27 @@ CREATE TABLE `buku` (
   `genre` varchar(100) NOT NULL DEFAULT '',
   `sinopsis` text,
   `stok` int NOT NULL DEFAULT '0',
+  `rak` varchar(100) NOT NULL DEFAULT '',
   `gambar` varchar(500) NOT NULL DEFAULT '',
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Dumping data for table `buku`
+-- Dumping data untuk tabel `buku`
 --
 
-INSERT INTO `buku` (`id`, `judul`, `penulis`, `isbn`, `genre`, `sinopsis`, `stok`, `gambar`, `created_at`, `updated_at`) VALUES
-(47, 'Kota yang bernama dan tak bernama', 'Ahmadun Y. Herfanda', '9789793062792', '', 'Short stories.', 1, 'uploads/gambar/buku_isbn_9789793062792_6a9550fa1f587.jpg', '2026-08-31 10:01:33', '2026-08-31 10:01:33'),
-(48, 'To Kill a Mockingbird', 'Harper Lee', '9780061120084', 'fiction', 'USA/CAN', 1, 'uploads/gambar/buku_isbn_9780061120084_6a955170e1ca8.jpg', '2026-08-31 10:03:33', '2026-08-31 10:03:33'),
-(49, 'The Hunger Games', 'Suzanne Collins', '9780439023528', 'severe poverty', '', 1, 'uploads/gambar/buku_isbn_9780439023528_6a95519f2df3e.jpg', '2026-08-31 10:04:31', '2026-08-31 10:04:31'),
-(50, 'Clean Code', 'Robert C. Martin', '9780132350884', 'Agile software development', 'You are reading this book for two reasons. First, you are a programmer. Second, you want to be a better programmer. Good. We need better programmers.', 1, 'uploads/gambar/buku_isbn_9780132350884_6a9551c410703.jpg', '2026-08-31 10:04:53', '2026-08-31 10:04:53'),
-(51, 'Harry Potter and the Philosopher\'s Stone', 'J. K. Rowling', '9780747532699', 'series:Harry_Potter', 'Mr. And Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much.', 1, 'uploads/gambar/buku_isbn_9780747532699_6a9551dccbb72.jpg', '2026-08-31 10:05:19', '2026-08-31 10:05:19');
+INSERT INTO `buku` (`id`, `judul`, `penulis`, `isbn`, `genre`, `sinopsis`, `stok`, `rak`, `gambar`, `created_at`, `updated_at`) VALUES
+(47, 'Kota yang bernama dan tak bernama', 'Ahmadun Y. Herfanda', '9789793062792', '', 'Short stories.', 5, 'Rak Umum 1', 'uploads/gambar/buku_isbn_9789793062792_6a9550fa1f587.jpg', '2026-08-31 10:01:33', '2026-09-13 11:45:51'),
+(48, 'To Kill a Mockingbird', 'Harper Lee', '9780061120084', 'fiction', 'USA/CAN', 1, 'Rak Umum 1', 'uploads/gambar/buku_isbn_9780061120084_6a955170e1ca8.jpg', '2026-08-31 10:03:33', '2026-09-13 11:45:51'),
+(49, 'The Hunger Games', 'Suzanne Collins', '9780439023528', 'severe poverty', '', 1, 'Rak Umum 1', 'uploads/gambar/buku_isbn_9780439023528_6a95519f2df3e.jpg', '2026-08-31 10:04:31', '2026-09-13 11:45:51'),
+(50, 'Clean Code', 'Robert C. Martin', '9780132350884', 'Agile software development', 'You are reading this book for two reasons. First, you are a programmer. Second, you want to be a better programmer. Good. We need better programmers.', 0, 'Rak Umum 1', 'uploads/gambar/buku_isbn_9780132350884_6a9551c410703.jpg', '2026-08-31 10:04:53', '2026-09-13 11:45:51'),
+(51, 'Harry Potter and the Philosopher\'s Stone', 'J. K. Rowling', '9780747532699', 'series:Harry_Potter', 'Mr. And Mrs. Dursley, of number four, Privet Drive, were proud to say that they were perfectly normal, thank you very much.', 10, 'Rak Umum 1', 'uploads/gambar/buku_isbn_9780747532699_6a9551dccbb72.jpg', '2026-08-31 10:05:19', '2026-09-13 11:45:51');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `buku_favorites`
+-- Struktur dari tabel `buku_favorites`
 --
 
 CREATE TABLE `buku_favorites` (
@@ -111,10 +113,17 @@ CREATE TABLE `buku_favorites` (
   `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+--
+-- Dumping data untuk tabel `buku_favorites`
+--
+
+INSERT INTO `buku_favorites` (`id`, `buku_id`, `user_id`, `created_at`) VALUES
+(26, 47, 26, '2026-09-12 08:27:16');
+
 -- --------------------------------------------------------
 
 --
--- Table structure for table `buku_likes`
+-- Struktur dari tabel `buku_likes`
 --
 
 CREATE TABLE `buku_likes` (
@@ -125,16 +134,16 @@ CREATE TABLE `buku_likes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Dumping data for table `buku_likes`
+-- Dumping data untuk tabel `buku_likes`
 --
 
 INSERT INTO `buku_likes` (`id`, `buku_id`, `user_id`, `created_at`) VALUES
-(24, 47, 21, '2026-09-01 04:11:52');
+(27, 47, 26, '2026-09-12 08:26:49');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `buku_ratings`
+-- Struktur dari tabel `buku_ratings`
 --
 
 CREATE TABLE `buku_ratings` (
@@ -149,7 +158,30 @@ CREATE TABLE `buku_ratings` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `peminjaman`
+-- Struktur dari tabel `kelas`
+--
+
+CREATE TABLE `kelas` (
+  `id` int NOT NULL,
+  `nama_kelas` varchar(50) NOT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+--
+-- Dumping data untuk tabel `kelas`
+--
+
+INSERT INTO `kelas` (`id`, `nama_kelas`, `created_at`) VALUES
+(5, 'XI RPL 1', '2026-09-06 05:57:26'),
+(6, 'XI RPL 2', '2026-09-06 05:57:26'),
+(7, 'XII RPL 1', '2026-09-06 05:57:26'),
+(8, 'XII RPL 2', '2026-09-06 05:57:26'),
+(13, 'Alumni', '2026-09-06 07:28:21');
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `peminjaman`
 --
 
 CREATE TABLE `peminjaman` (
@@ -167,10 +199,49 @@ CREATE TABLE `peminjaman` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+--
+-- Dumping data untuk tabel `peminjaman`
+--
+
+INSERT INTO `peminjaman` (`id`, `buku_id`, `user_id`, `nama_peminjam`, `waktu_pinjam`, `batas_kembali`, `waktu_kembali`, `terlambat_hari`, `denda`, `status_denda`, `status`, `created_at`) VALUES
+(31, 50, 26, 'Tsaritsa Anastasia', '2026-09-06 16:41:23', '2026-09-13 23:59:59', '2026-09-12 15:22:14', 0, 0, 'tidak_ada', 'dikembalikan', '2026-09-06 09:41:23'),
+(33, 49, 26, 'Tsaritsa Anastasia', '2026-09-12 15:21:38', '2026-09-19 23:59:59', '2026-09-12 15:22:12', 0, 0, 'tidak_ada', 'dikembalikan', '2026-09-12 08:21:38'),
+(34, 50, 52, 'Nur Janah', '2026-09-13 11:29:21', '2026-09-20 23:59:59', NULL, 0, 0, 'tidak_ada', 'dipinjam', '2026-09-13 04:29:21');
+
 -- --------------------------------------------------------
 
 --
--- Table structure for table `pengaturan`
+-- Struktur dari tabel `pengajuan_peminjaman`
+--
+
+CREATE TABLE `pengajuan_peminjaman` (
+  `id` int NOT NULL,
+  `user_id` int NOT NULL,
+  `buku_id` int NOT NULL,
+  `nama_peminjam` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_kartu` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `total_buku` int NOT NULL DEFAULT '1',
+  `batas_kembali` date NOT NULL,
+  `waktu_pengambilan` enum('sekarang','nanti') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'sekarang',
+  `catatan_pengambilan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('menunggu','disetujui','ditolak') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'menunggu',
+  `alasan_penolakan` text COLLATE utf8mb4_unicode_ci,
+  `approved_at` datetime DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+--
+-- Dumping data untuk tabel `pengajuan_peminjaman`
+--
+
+INSERT INTO `pengajuan_peminjaman` (`id`, `user_id`, `buku_id`, `nama_peminjam`, `file_kartu`, `total_buku`, `batas_kembali`, `waktu_pengambilan`, `catatan_pengambilan`, `status`, `alasan_penolakan`, `approved_at`, `created_at`) VALUES
+(5, 26, 50, 'Tsaritsa Anastasia', 'uploads/kartu_pengajuan/kartu_26_1788687614_f4eec17d.png', 1, '2026-09-13', 'sekarang', '', 'disetujui', NULL, '2026-09-06 16:41:23', '2026-09-06 09:40:14'),
+(13, 26, 49, 'Tsaritsa Anastasia', 'uploads/kartu_pengajuan/kartu_26_1789201078_a28303b5.png', 1, '2026-09-19', 'sekarang', 'Diambil langsung di perpustakaan hari ini', 'disetujui', NULL, '2026-09-12 15:21:38', '2026-09-12 08:17:58');
+
+-- --------------------------------------------------------
+
+--
+-- Struktur dari tabel `pengaturan`
 --
 
 CREATE TABLE `pengaturan` (
@@ -182,23 +253,28 @@ CREATE TABLE `pengaturan` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 --
--- Dumping data for table `pengaturan`
+-- Dumping data untuk tabel `pengaturan`
 --
 
 INSERT INTO `pengaturan` (`id`, `kunci`, `nilai`, `keterangan`, `updated_at`) VALUES
 (1, 'denda_per_hari', '5000', 'Tarif denda per hari keterlambatan (Rupiah)', '2026-08-22 13:28:40'),
 (2, 'denda_aktif', '0', 'Aktifkan fitur denda: 1=ya, 0=tidak', '2026-08-22 13:28:40'),
 (3, 'denda_grace_period', '0', 'Toleransi hari sebelum denda mulai dihitung (0 = langsung denda di hari pertama)', '2026-08-22 13:28:40'),
-(16, 'musik_file', 'uploads/musik/musik_6a954373ef75e.mp3', '', '2026-08-31 09:03:47'),
+(16, 'musik_file', 'uploads/musik/musik_6aa689b59fc23.mp3', '', '2026-09-13 11:32:05'),
 (17, 'musik_judul', 'OST - New Eridu', '', '2026-08-30 07:11:46'),
-(18, 'musik_aktif', '1', '', '2026-08-30 11:10:55'),
+(18, 'musik_aktif', '1', '', '2026-09-13 11:32:05'),
 (19, 'banner_mode', 'dinamis', '', '2026-08-30 08:33:20'),
-(21, 'banner_background_id', '4', '', '2026-08-30 12:37:40');
+(21, 'banner_background_id', '14', '', '2026-09-13 10:47:26'),
+(22, 'lokasi_sekolah', 'SMK Negeri 1 Rongga', 'Nama sekolah / perpustakaan', '2026-09-13 11:15:19'),
+(23, 'lokasi_alamat', 'Jl. Situ Gede / Jl. Raya Rongga (RT 01/RW 04), Desa Cibedug, Kec. Rongga, Kab. Bandung Barat, Jawa Barat 40565', 'Alamat lengkap perpustakaan', '2026-09-13 11:15:19'),
+(24, 'lokasi_jam', 'Senin – Jumat, 07.00 – 15.00 WIB', 'Jam operasional perpustakaan', '2026-09-13 11:15:19'),
+(25, 'lokasi_telepon', '083829165209', 'Nomor telepon / WhatsApp perpustakaan', '2026-09-13 11:15:19'),
+(26, 'lokasi_map_query', 'SMK Negeri 1 Rongga, Bandung Barat', 'Query pencarian Google Maps', '2026-09-13 11:15:19');
 
 -- --------------------------------------------------------
 
 --
--- Table structure for table `reminder_log`
+-- Struktur dari tabel `reminder_log`
 --
 
 CREATE TABLE `reminder_log` (
@@ -214,7 +290,7 @@ CREATE TABLE `reminder_log` (
 -- --------------------------------------------------------
 
 --
--- Table structure for table `users`
+-- Struktur dari tabel `users`
 --
 
 CREATE TABLE `users` (
@@ -235,49 +311,39 @@ CREATE TABLE `users` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 --
--- Dumping data for table `users`
+-- Dumping data untuk tabel `users`
 --
 
 INSERT INTO `users` (`id`, `full_name`, `nik`, `kelas`, `no_hp`, `no_anggota`, `username`, `email`, `password`, `foto`, `role`, `status`, `card_status`, `created_at`) VALUES
 (1, 'Administrator', '', '', '', 'AN-LAMA-00001', 'admin', 'admin@aksanova.com', '$2y$10$fG5Q3mZaf8XRV5K/s2S7yOULagsXHbA5rZP43ubCi9.Xq9yNerW9y', '', 'admin', 'approved', 'active', '2026-05-20 04:39:17'),
-(10, 'harris', '', '', '', 'AN-LAMA-00010', 'javaname', 'fremynakano@gmail.com', '$2y$10$.RG3q02ljnrdvkbkF2ISleQl0ySQGnE6bSpbXKYdP4slJ4xtpOcnm', '', 'member', 'approved', 'active', '2026-06-09 05:43:12'),
-(11, 'kamukamuaku', '', '', '', 'AN-LAMA-00011', 'bika', 'bibikiki@gmail.com', '$2y$10$C0DkJy8wtlN8HNEARk4py.mW0Qai2NhBmVPyx5GTk1Ik3MeYKTgkG', '', 'member', 'approved', 'active', '2026-08-04 05:26:28'),
-(12, 'arull', '1234567890123456', '12rpl4', '083829165208', 'AN-2026-48267', 'arull', 'syahrulbimansyah@student.smkn1rongga.sch.id', '$2y$10$wzqDNyxrEd0OOkazrMUnJeZW9ad5.5DrmP34iIZ.3/kev76xKSw8q', '', 'member', 'approved', 'active', '2026-08-05 15:14:49'),
-(13, 'kamukamu', '1234567890123451', '12rpl3', '083829165202', 'AN-2026-38567', 'kamukamu', 'syahrulgantengarul@gmail.com', '$2y$10$MkwjmrDAkQ0rFBbwzsMbQezy1jTQTV0lzLoIBuZxivJIMZBs5XE.q', '', 'member', 'approved', 'active', '2026-08-05 15:15:32'),
-(14, 'augusta', '09876543211234', '12rpl4', '', 'AN-2026-73326', 'augusta', 'augusta@gmail.com', '$2y$10$hRdPCb5nuKXNhKO0Etz5Jeqkr4jgMUImnZZ1KB1vv1GjKmdsoGY5O', '', 'member', 'approved', 'active', '2026-08-09 10:43:39'),
-(15, 'Arul Aruldoang', '111111111111111111', 'rpl2', '083816287171', 'AN-2026-93586', 'arularuldoang', 'arularuldoang@gmail.com', '$2y$10$YS0F24uVOjtWBC.TsjQRaumES7SGK01EOQZ6UB1Os7hvVIqH.NQdS', '', 'member', 'approved', 'active', '2026-08-09 12:31:55'),
-(16, 'akuaku', '1234567890098765', 'xii rpl 3', '08381929997', 'AN-2026-43572', 'akuaku', 'syahrul.bimansyah42@smk.belajar.com', '$2y$10$xQUTf69jeBJfEe2uzEcCP.oeH06XuvGkhLi015XD9gJy7Gl/8Qwg2', '', 'member', 'approved', 'active', '2026-08-10 01:15:00'),
-(17, 'arull', '1234567890123458', '12rpl4', '083829165209', 'AN-2026-26600', 'arull1', 'haha@gmail.com', '$2y$10$QMV9Y3SnVte6Sk1thXG7Keh4jSLXq6Q0Ns8kA71g5fymNyTZAA6ZK', '', 'member', 'approved', 'active', '2026-08-13 02:05:48'),
-(18, 'Hendi', '123456789014', '12rpl4', '083829165208', 'AN-2026-71477', 'hendi', 'ahmadfikri@student.smkn1rongga.sch.id', '$2y$10$vSJZ3fvh5Lhzgi6JRKbxIuf00LJJqWw/ICqeih8AVu3ryomNDFHE2', '', 'member', 'approved', 'active', '2026-08-20 03:12:08'),
-(19, 'arull', '1234567890123455', '12rpl4', '083829165201', 'AN-2026-51899', 'arull2', 'hihi@gmail.com', '$2y$10$1COVdBsrVBPmM8U6L1V2Bus23xx1/T/Rq1k1dRq2ctfGTFKSXkIJq', '', 'member', 'approved', 'active', '2026-08-22 13:21:17'),
-(20, 'arull00', '1234567890123453', '12rpl7', '083829165205', 'AN-2026-43256', 'arull00', 'syahrulganteng@gmail.com', '$2y$10$FG8c7.JydudoXuX6/.LO9.fAtHGbctFFY75YcUztllfAVxy1dKc7i', 'uploads/anggota/anggota_88f2586a2760e1db.png', 'member', 'approved', 'active', '2026-08-22 14:46:30'),
-(21, 'Iuno', '1234567890123452', '12rpl4', '083829165204', 'AN-2026-11635', 'iuno', 'hoho@gmail.com', '$2y$10$TDtqzEqnWr57E9/lfcdK.uucPVG3V5lLdSlMsL1Lp62JJ03Lee/hi', 'uploads/anggota/anggota_71f5803f1a7c181e.jpg', 'member', 'approved', 'active', '2026-08-27 02:01:57');
+(26, 'Tsaritsa Anastasia', '', 'Alumni', '083829165202', 'AN-2026-84262', 'tsaritsaanastasia', 'tsaritsaanastasia@student.smkn1rongga.sch.id', '$2y$10$zhUhf66PZbAEJMksIMM3K.mSyzFASdorET5kpvORkHLrGr3toA6pe', 'uploads/anggota/anggota_3a9a51558685d13a.jpg', 'member', 'approved', 'active', '2026-09-06 06:40:36'),
+(52, 'Nur Janah', '', 'XI RPL 1', '083829165208', 'AN-2026-45952', 'nurjanah', 'nurj88230@student.smkn1rongga.sch.id', '$2y$10$Rai8g7YisUAbOz1kpEuXceB605A0krDct7DYKOp8i5Rp3uUhS8Pie', 'uploads/anggota/anggota_e26c6355378d9400.jpg', 'member', 'approved', 'active', '2026-09-12 08:09:20');
 
 --
--- Indexes for dumped tables
+-- Indeks untuk tabel yang dibuang
 --
 
 --
--- Indexes for table `admin_profile`
+-- Indeks untuk tabel `admin_profile`
 --
 ALTER TABLE `admin_profile`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_admin_user` (`user_id`);
 
 --
--- Indexes for table `banner`
+-- Indeks untuk tabel `banner`
 --
 ALTER TABLE `banner`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `buku`
+-- Indeks untuk tabel `buku`
 --
 ALTER TABLE `buku`
   ADD PRIMARY KEY (`id`);
 
 --
--- Indexes for table `buku_favorites`
+-- Indeks untuk tabel `buku_favorites`
 --
 ALTER TABLE `buku_favorites`
   ADD PRIMARY KEY (`id`),
@@ -285,7 +351,7 @@ ALTER TABLE `buku_favorites`
   ADD KEY `fk_favorites_user` (`user_id`);
 
 --
--- Indexes for table `buku_likes`
+-- Indeks untuk tabel `buku_likes`
 --
 ALTER TABLE `buku_likes`
   ADD PRIMARY KEY (`id`),
@@ -293,7 +359,7 @@ ALTER TABLE `buku_likes`
   ADD KEY `fk_likes_user` (`user_id`);
 
 --
--- Indexes for table `buku_ratings`
+-- Indeks untuk tabel `buku_ratings`
 --
 ALTER TABLE `buku_ratings`
   ADD PRIMARY KEY (`id`),
@@ -301,7 +367,14 @@ ALTER TABLE `buku_ratings`
   ADD KEY `fk_ratings_buku` (`buku_id`);
 
 --
--- Indexes for table `peminjaman`
+-- Indeks untuk tabel `kelas`
+--
+ALTER TABLE `kelas`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `nama_kelas` (`nama_kelas`);
+
+--
+-- Indeks untuk tabel `peminjaman`
 --
 ALTER TABLE `peminjaman`
   ADD PRIMARY KEY (`id`),
@@ -309,14 +382,23 @@ ALTER TABLE `peminjaman`
   ADD KEY `fk_peminjaman_user` (`user_id`);
 
 --
--- Indexes for table `pengaturan`
+-- Indeks untuk tabel `pengajuan_peminjaman`
+--
+ALTER TABLE `pengajuan_peminjaman`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `user_id` (`user_id`),
+  ADD KEY `buku_id` (`buku_id`),
+  ADD KEY `status` (`status`);
+
+--
+-- Indeks untuk tabel `pengaturan`
 --
 ALTER TABLE `pengaturan`
   ADD PRIMARY KEY (`id`),
   ADD UNIQUE KEY `uq_kunci` (`kunci`);
 
 --
--- Indexes for table `reminder_log`
+-- Indeks untuk tabel `reminder_log`
 --
 ALTER TABLE `reminder_log`
   ADD PRIMARY KEY (`id`),
@@ -324,7 +406,7 @@ ALTER TABLE `reminder_log`
   ADD KEY `idx_peminjaman` (`peminjaman_id`);
 
 --
--- Indexes for table `users`
+-- Indeks untuk tabel `users`
 --
 ALTER TABLE `users`
   ADD PRIMARY KEY (`id`),
@@ -333,109 +415,121 @@ ALTER TABLE `users`
   ADD UNIQUE KEY `uq_no_anggota` (`no_anggota`);
 
 --
--- AUTO_INCREMENT for dumped tables
+-- AUTO_INCREMENT untuk tabel yang dibuang
 --
 
 --
--- AUTO_INCREMENT for table `admin_profile`
+-- AUTO_INCREMENT untuk tabel `admin_profile`
 --
 ALTER TABLE `admin_profile`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=2;
 
 --
--- AUTO_INCREMENT for table `banner`
+-- AUTO_INCREMENT untuk tabel `banner`
 --
 ALTER TABLE `banner`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=12;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
 
 --
--- AUTO_INCREMENT for table `buku`
+-- AUTO_INCREMENT untuk tabel `buku`
 --
 ALTER TABLE `buku`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
--- AUTO_INCREMENT for table `buku_favorites`
+-- AUTO_INCREMENT untuk tabel `buku_favorites`
 --
 ALTER TABLE `buku_favorites`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=25;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
 
 --
--- AUTO_INCREMENT for table `buku_likes`
+-- AUTO_INCREMENT untuk tabel `buku_likes`
 --
 ALTER TABLE `buku_likes`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=26;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=28;
 
 --
--- AUTO_INCREMENT for table `buku_ratings`
+-- AUTO_INCREMENT untuk tabel `buku_ratings`
 --
 ALTER TABLE `buku_ratings`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=18;
 
 --
--- AUTO_INCREMENT for table `peminjaman`
+-- AUTO_INCREMENT untuk tabel `kelas`
 --
-ALTER TABLE `peminjaman`
+ALTER TABLE `kelas`
   MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=29;
 
 --
--- AUTO_INCREMENT for table `pengaturan`
+-- AUTO_INCREMENT untuk tabel `peminjaman`
 --
-ALTER TABLE `pengaturan`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=22;
+ALTER TABLE `peminjaman`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=35;
 
 --
--- AUTO_INCREMENT for table `reminder_log`
+-- AUTO_INCREMENT untuk tabel `pengajuan_peminjaman`
+--
+ALTER TABLE `pengajuan_peminjaman`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT untuk tabel `pengaturan`
+--
+ALTER TABLE `pengaturan`
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=27;
+
+--
+-- AUTO_INCREMENT untuk tabel `reminder_log`
 --
 ALTER TABLE `reminder_log`
   MODIFY `id` int NOT NULL AUTO_INCREMENT;
 
 --
--- AUTO_INCREMENT for table `users`
+-- AUTO_INCREMENT untuk tabel `users`
 --
 ALTER TABLE `users`
-  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=23;
+  MODIFY `id` int NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=53;
 
 --
--- Constraints for dumped tables
+-- Ketidakleluasaan untuk tabel pelimpahan (Dumped Tables)
 --
 
 --
--- Constraints for table `admin_profile`
+-- Ketidakleluasaan untuk tabel `admin_profile`
 --
 ALTER TABLE `admin_profile`
   ADD CONSTRAINT `fk_admin_profile_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `buku_favorites`
+-- Ketidakleluasaan untuk tabel `buku_favorites`
 --
 ALTER TABLE `buku_favorites`
   ADD CONSTRAINT `fk_favorites_buku` FOREIGN KEY (`buku_id`) REFERENCES `buku` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_favorites_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `buku_likes`
+-- Ketidakleluasaan untuk tabel `buku_likes`
 --
 ALTER TABLE `buku_likes`
   ADD CONSTRAINT `fk_likes_buku` FOREIGN KEY (`buku_id`) REFERENCES `buku` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_likes_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `buku_ratings`
+-- Ketidakleluasaan untuk tabel `buku_ratings`
 --
 ALTER TABLE `buku_ratings`
   ADD CONSTRAINT `fk_ratings_buku` FOREIGN KEY (`buku_id`) REFERENCES `buku` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_ratings_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
 
 --
--- Constraints for table `peminjaman`
+-- Ketidakleluasaan untuk tabel `peminjaman`
 --
 ALTER TABLE `peminjaman`
   ADD CONSTRAINT `fk_peminjaman_buku` FOREIGN KEY (`buku_id`) REFERENCES `buku` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   ADD CONSTRAINT `fk_peminjaman_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE SET NULL ON UPDATE CASCADE;
 
 --
--- Constraints for table `reminder_log`
+-- Ketidakleluasaan untuk tabel `reminder_log`
 --
 ALTER TABLE `reminder_log`
   ADD CONSTRAINT `fk_reminder_peminjaman` FOREIGN KEY (`peminjaman_id`) REFERENCES `peminjaman` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;

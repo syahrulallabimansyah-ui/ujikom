@@ -79,6 +79,7 @@ if ($action === "tambah") {
     $genre   = trim(mysqli_real_escape_string($conn, $_POST["genre"]    ?? ""));
     $sinopsis = trim(mysqli_real_escape_string($conn, $_POST["sinopsis"] ?? ""));
     $stok    = max(0, (int)($_POST["stok"] ?? 1));
+    $rak     = trim(mysqli_real_escape_string($conn, $_POST["rak"] ?? ""));
     // Cover hasil pencarian otomatis via ISBN (sudah diunduh & disimpan oleh cari_isbn.php)
     $gambar_auto = trim(mysqli_real_escape_string($conn, $_POST["gambar_auto"] ?? ""));
 
@@ -92,8 +93,8 @@ if ($action === "tambah") {
         $gambar = $gambar_upload !== "" ? $gambar_upload : $gambar_auto;
 
         mysqli_query($conn,
-            "INSERT INTO buku (judul, penulis, isbn, genre, sinopsis, stok, gambar)
-             VALUES ('$judul','$penulis','$isbn','$genre','$sinopsis',$stok,'$gambar')"
+            "INSERT INTO buku (judul, penulis, isbn, genre, sinopsis, stok, gambar, rak)
+             VALUES ('$judul','$penulis','$isbn','$genre','$sinopsis',$stok,'$gambar','$rak')"
         );
         $msg = "Buku berhasil ditambahkan!"; $msg_type = "success";
         if ($upload_error !== "") { $msg .= " Catatan: $upload_error"; }
@@ -109,6 +110,7 @@ if ($action === "update") {
     $genre    = trim(mysqli_real_escape_string($conn, $_POST["genre"]    ?? ""));
     $sinopsis = trim(mysqli_real_escape_string($conn, $_POST["sinopsis"] ?? ""));
     $stok    = max(0, (int)($_POST["stok"] ?? 1));
+    $rak     = trim(mysqli_real_escape_string($conn, $_POST["rak"] ?? ""));
     $gambar_lama = trim(mysqli_real_escape_string($conn, $_POST["gambar_lama"] ?? ""));
     $gambar_auto = trim(mysqli_real_escape_string($conn, $_POST["gambar_auto"] ?? ""));
 
@@ -121,7 +123,7 @@ if ($action === "update") {
     } else {
         mysqli_query($conn,
             "UPDATE buku SET judul='$judul', penulis='$penulis', isbn='$isbn',
-             genre='$genre', sinopsis='$sinopsis', stok=$stok, gambar='$gambar_final'
+             genre='$genre', sinopsis='$sinopsis', stok=$stok, gambar='$gambar_final', rak='$rak'
              WHERE id=$id"
         );
         $msg = "Buku berhasil diperbarui!"; $msg_type = "success";
@@ -1037,6 +1039,11 @@ ob_start();
       </div>
 
       <div class="form-group">
+        <label class="form-label">Lokasi Rak Buku</label>
+        <input class="form-input" type="text" name="rak" id="formRak" placeholder="Contoh: Rak A-1 (Fiksi), Baris 2, dsb."/>
+      </div>
+
+      <div class="form-group">
         <label class="form-label">Sinopsis / Ringkasan</label>
         <textarea class="form-input" name="sinopsis" id="formSinopsis"
                   placeholder="Tulis sinopsis atau ringkasan buku…"
@@ -1175,6 +1182,7 @@ function renderDetail(b) {
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
           Stok: <span style="color:${stokColor};font-weight:800;">${escHTML(String(b.stok))} (${stokLabel})</span>
         </div>
+        ${b.rak ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>Rak: <span style="color:var(--accent,#d8b878);font-weight:700;">${escHTML(b.rak)}</span></div>` : ''}
         <div class="detail-meta-chip">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
           Ditambah: <span>${tglInput}</span>
@@ -1246,6 +1254,7 @@ function openModal(mode, buku = null) {
     document.getElementById('formIsbn').value          = '';
     document.getElementById('formStok').value          = '1';
     document.getElementById('formGenre').value         = '';
+    document.getElementById('formRak').value           = '';
     document.getElementById('formSinopsis').value      = '';
     document.getElementById('btnSubmit').textContent   = 'Simpan';
     document.getElementById('isbnStatus').textContent  = '';
@@ -1262,6 +1271,7 @@ function openModal(mode, buku = null) {
     document.getElementById('formIsbn').value          = buku.isbn;
     document.getElementById('formStok').value          = buku.stok;
     document.getElementById('formGenre').value         = buku.genre;
+    document.getElementById('formRak').value           = buku.rak || '';
     document.getElementById('formSinopsis').value      = buku.sinopsis || '';
     document.getElementById('btnSubmit').textContent   = 'Perbarui';
     document.getElementById('isbnStatus').textContent  = '';

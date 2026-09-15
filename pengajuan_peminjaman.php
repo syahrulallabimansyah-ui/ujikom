@@ -661,6 +661,9 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
                   <div class="book-chip <?= (int)$buku_terpilih['stok'] > 0 ? 'stock-ok' : 'stock-low' ?>" id="previewStok">
                     Sisa Stok: <?= (int)$buku_terpilih['stok'] ?> buku
                   </div>
+                  <div class="book-chip" id="previewRak" style="<?= empty($buku_terpilih['rak']) ? 'display:none;' : '' ?>color:var(--accent,#d8b878);border-color:rgba(216,184,120,.35);">
+                    📍 <?= htmlspecialchars($buku_terpilih['rak'] ?? '') ?>
+                  </div>
                 </div>
 
                 <button type="button" class="btn-change-book" onclick="bukaModalPilihBuku()">
@@ -869,6 +872,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
              data-penulis="<?= htmlspecialchars($b['penulis'] ?: 'Penulis tidak diketahui', ENT_QUOTES) ?>"
              data-genre="<?= htmlspecialchars($b['genre'] ?: '', ENT_QUOTES) ?>"
              data-stok="<?= (int)$b['stok'] ?>"
+             data-rak="<?= htmlspecialchars($b['rak'] ?? '', ENT_QUOTES) ?>"
              data-gambar="<?= htmlspecialchars($b['gambar'] ?: '', ENT_QUOTES) ?>"
              onclick="pilihBukuDariModal(this)">
           <div class="book-picker-cover">
@@ -883,6 +887,9 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
           <div class="book-picker-info">
             <div class="book-picker-title"><?= htmlspecialchars($b['judul']) ?></div>
             <div class="book-picker-author"><?= htmlspecialchars($b['penulis'] ?: 'Penulis tidak diketahui') ?></div>
+            <?php if (!empty($b['rak'])): ?>
+              <div style="font-size:.72rem;color:var(--accent,#d8b878);margin-top:2px;">📍 <?= htmlspecialchars($b['rak']) ?></div>
+            <?php endif; ?>
           </div>
           <div class="book-picker-stock">Stok: <?= (int)$b['stok'] ?></div>
         </div>
@@ -1064,6 +1071,16 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     if (prevStok) {
       prevStok.textContent = 'Sisa Stok: ' + stok + ' buku';
       prevStok.className = 'book-chip ' + (stok > 0 ? 'stock-ok' : 'stock-low');
+    }
+    const rak = el.dataset.rak || '';
+    const prevRak = document.getElementById('previewRak');
+    if (prevRak) {
+      if (rak) {
+        prevRak.textContent = '📍 ' + rak;
+        prevRak.style.display = 'inline-flex';
+      } else {
+        prevRak.style.display = 'none';
+      }
     }
 
     // Cover

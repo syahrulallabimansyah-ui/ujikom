@@ -513,7 +513,12 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     }
 
     bookTitle.textContent = data.judul || 'Judul Buku Tidak Diketahui';
-    bookAuth.textContent  = data.penulis ? ('Penulis: ' + data.penulis) : '-';
+    var authText = data.penulis ? ('Penulis: ' + data.penulis) : '-';
+    if (data.rak) {
+      bookAuth.innerHTML = escapeHtml(authText) + ' &middot; <span style="color:var(--accent,#d8b878);font-weight:700;">📍 ' + escapeHtml(data.rak) + '</span>';
+    } else {
+      bookAuth.textContent = authText;
+    }
     namaPem.textContent   = data.nama_peminjam || '-';
 
     var infoKelas = data.kelas ? data.kelas : '';

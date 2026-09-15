@@ -31,7 +31,7 @@ $latest_id = 0;
 if ($count_menunggu > 0) {
     $sql = "SELECT p.id, p.user_id, p.buku_id, p.nama_peminjam, p.total_buku, p.batas_kembali, 
                    p.waktu_pengambilan, p.catatan_pengambilan, p.created_at,
-                   b.judul, b.penulis, b.gambar,
+                   b.judul, b.penulis, b.gambar, b.rak,
                    u.kelas, u.no_hp
             FROM pengajuan_peminjaman p
             LEFT JOIN buku b ON b.id = p.buku_id
