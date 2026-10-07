@@ -1091,6 +1091,10 @@
   }
 
 
+
+  /* Hide mobile topbar on desktop */
+  .mobile-topbar { display: none; }
+
   /* ═══════════════════════════════════════════════════════════════════
      ── 7. RESPONSIVE MOBILE SIDEBAR & BURGER MENU (UNIVERSAL) ──
      Memastikan tombol burger selalu terlihat, dapat diklik, dan
@@ -1144,11 +1148,16 @@
       height: 100dvh !important;
       z-index: 10010 !important;
       transform: translateX(-100%) !important;
-      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1) !important;
-      box-shadow: 4px 0 35px rgba(0,0,0,0.7) !important;
+      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.28s, box-shadow 0.28s !important;
+      box-shadow: none !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
     }
     .sidebar.open {
       transform: translateX(0) !important;
+      box-shadow: 4px 0 35px rgba(0,0,0,0.7) !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
     }
 
     .sidebar-overlay {
@@ -1174,6 +1183,90 @@
       margin-left: 0 !important;
       padding-top: 72px !important;
     }
+
+    /* ── MOBILE TOPBAR (reusable untuk semua halaman) ── */
+    .mobile-topbar {
+      display: flex !important;
+      align-items: center !important;
+      gap: 12px !important;
+      position: fixed !important;
+      top: 0 !important; left: 0 !important; right: 0 !important;
+      height: 60px !important;
+      padding: 0 14px !important;
+      padding-top: env(safe-area-inset-top, 0) !important;
+      background: var(--sidebar-bg, #10151b) !important;
+      border-bottom: 1px solid var(--border-color, rgba(216,184,120,.15)) !important;
+      box-shadow: 0 2px 18px rgba(0,0,0,.35) !important;
+      z-index: 10005 !important;
+      transition: opacity var(--trans, .2s), visibility var(--trans, .2s) !important;
+    }
+    body.sidebar-open .mobile-topbar {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .mobile-topbar .sidebar-toggle {
+      position: static !important;
+      box-shadow: none !important;
+      flex-shrink: 0 !important;
+    }
+    .mobile-topbar-divider {
+      display: block !important;
+      width: 1px !important;
+      height: 26px !important;
+      flex-shrink: 0 !important;
+      background: linear-gradient(180deg, transparent, var(--border-color, rgba(216,184,120,.35)) 50%, transparent) !important;
+    }
+    .mobile-topbar-brand {
+      display: flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      min-width: 0 !important;
+      overflow: hidden !important;
+    }
+    .mobile-topbar-brand svg {
+      width: 19px !important; height: 19px !important;
+      color: var(--accent, #d8b878) !important;
+      flex-shrink: 0 !important;
+    }
+    .mobile-topbar-brand span {
+      font-family: 'Cormorant Garamond', serif !important;
+      font-weight: 700 !important;
+      font-size: .92rem !important;
+      color: var(--accent, #d8b878) !important;
+      letter-spacing: .04em !important;
+      white-space: nowrap !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+    }
+    .mobile-topbar-actions {
+      margin-left: auto !important;
+      display: flex !important;
+      align-items: center !important;
+      gap: 8px !important;
+      flex-shrink: 0 !important;
+    }
+    .mobile-topbar-actions a,
+    .mobile-topbar-actions button {
+      display: flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      width: 36px !important; height: 36px !important;
+      border-radius: 10px !important;
+      border: 1px solid var(--border-color, rgba(216,184,120,.18)) !important;
+      background: rgba(216,184,120,.08) !important;
+      color: var(--accent, #d8b878) !important;
+      cursor: pointer !important;
+      transition: background .2s !important;
+      text-decoration: none !important;
+    }
+    .mobile-topbar-actions a:hover,
+    .mobile-topbar-actions button:hover {
+      background: rgba(216,184,120,.18) !important;
+    }
+    .mobile-topbar-actions svg {
+      width: 18px !important; height: 18px !important;
+    }
   }
 </style>
 
@@ -1186,13 +1279,23 @@
  * dan langsung dilanjutkan dari posisi terakhir di halaman tujuan.
  */
 window.AksaAudio = (function() {
-  var TIME_KEY   = 'aksanova_audio_time';
-  var STATUS_KEY = 'aksanova_audio_status';
-  var SRC_KEY    = 'aksanova_audio_src';
-  var inited     = false;
+  var TIME_KEY       = 'aksanova_audio_time';
+  var STATUS_KEY     = 'aksanova_audio_status';
+  var SRC_KEY        = 'aksanova_audio_src';
+  var inited         = false;
+  var gestureBound   = false;
+  var pausedByHidden = false;
 
   function getAudio() { return document.getElementById('audioLatar'); }
   function getBtn()   { return document.getElementById('btnMusik'); }
+
+  function getSongKey(src) {
+    if (!src) return '';
+    try {
+      var clean = src.split('?')[0].split('#')[0];
+      return clean.substring(clean.lastIndexOf('/') + 1).toLowerCase();
+    } catch(e) { return src.toLowerCase(); }
+  }
 
   function saveState() {
     var audio = getAudio();
@@ -1213,10 +1316,12 @@ window.AksaAudio = (function() {
   }
 
   function init() {
+    if (inited) return;
     var audio = getAudio();
     var btn   = getBtn();
     if (!audio) return;
 
+    inited = true;
     audio.volume = 0.55;
 
     // Cek sumber audio saat ini
@@ -1231,21 +1336,27 @@ window.AksaAudio = (function() {
     var userPaused = false;
     try { userPaused = (localStorage.getItem(STATUS_KEY) === 'paused'); } catch(e) {}
 
-    // Jika lagu berubah dari admin, mulai dari awal. Jika lagu sama, lanjutkan waktu terakhir.
-    if (currentSrc && currentSrc !== savedSrc) {
+    // Jika file lagu berubah di pengaturan admin, mulai dari awal
+    var curKey   = getSongKey(currentSrc);
+    var savedKey = getSongKey(savedSrc);
+    if (curKey && savedKey && curKey !== savedKey) {
       savedTime = 0;
       try {
         localStorage.setItem(SRC_KEY, currentSrc);
         localStorage.setItem(TIME_KEY, '0');
       } catch(e) {}
+    } else if (currentSrc && !savedSrc) {
+      try { localStorage.setItem(SRC_KEY, currentSrc); } catch(e) {}
     }
 
     // Terapkan posisi detik pemutaran terakhir sedini mungkin
     function applySavedTime() {
       if (savedTime > 0 && isFinite(savedTime)) {
         try {
-          if (Math.abs(audio.currentTime - savedTime) > 0.3) {
-            audio.currentTime = savedTime;
+          if (!audio.duration || savedTime < audio.duration) {
+            if (Math.abs(audio.currentTime - savedTime) > 0.3) {
+              audio.currentTime = savedTime;
+            }
           }
         } catch(e) {}
       }
@@ -1268,10 +1379,13 @@ window.AksaAudio = (function() {
       }
     });
 
-    audio.addEventListener('play',  function() { setBtnUI(true); });
-    audio.addEventListener('pause', function() { setBtnUI(false); });
+    audio.addEventListener('play', function() {
+      if (!audio.muted) setBtnUI(true);
+    });
+    audio.addEventListener('pause', function() {
+      if (!pausedByHidden) setBtnUI(false);
+    });
     audio.addEventListener('ended', function() {
-      // Reset posisi ke awal lalu putar ulang otomatis (loop)
       try { localStorage.setItem(TIME_KEY, '0'); } catch(e) {}
       if (!userPaused) {
         audio.currentTime = 0;
@@ -1294,8 +1408,11 @@ window.AksaAudio = (function() {
       btn._aksaBound = true;
       btn.addEventListener('click', function(e) {
         e.preventDefault();
-        if (audio.paused) {
+        e.stopPropagation();
+        if (audio.paused || audio.muted) {
           userPaused = false;
+          pausedByHidden = false;
+          audio.muted = false;
           try { localStorage.setItem(STATUS_KEY, 'playing'); } catch(e) {}
           playAudio();
         } else {
@@ -1310,6 +1427,38 @@ window.AksaAudio = (function() {
       });
     }
 
+    function removeGestureListeners() {
+      if (!gestureBound) return;
+      gestureBound = false;
+      ['click', 'keydown', 'touchstart'].forEach(function(ev) {
+        document.removeEventListener(ev, onUserGesture);
+      });
+    }
+
+    var onUserGesture = function(ev) {
+      if (ev && ev.target && btn && (ev.target === btn || btn.contains(ev.target))) return;
+      if (!userPaused) {
+        audio.muted = false;
+        applySavedTime();
+        var p = audio.play();
+        if (p !== undefined) {
+          p.then(function() {
+            setBtnUI(true);
+            try { localStorage.setItem(STATUS_KEY, 'playing'); } catch(e) {}
+          }).catch(function() {});
+        }
+      }
+      removeGestureListeners();
+    };
+
+    function attachGestureListeners() {
+      if (gestureBound) return;
+      gestureBound = true;
+      ['click', 'keydown', 'touchstart'].forEach(function(ev) {
+        document.addEventListener(ev, onUserGesture, { once: false, passive: true });
+      });
+    }
+
     function playAudio() {
       applySavedTime();
       var p = audio.play();
@@ -1317,38 +1466,42 @@ window.AksaAudio = (function() {
         p.then(function() {
           audio.muted = false;
           setBtnUI(true);
+          removeGestureListeners();
         }).catch(function() {
-          // Autoplay fallback: jika browser butuh interaksi user pertama
+          // Autoplay bersuara dicegah browser: putar mode muted agar stream siap, tunggu interaksi pertama
           audio.muted = true;
           audio.play().then(function() {
-            setBtnUI(true);
+            setBtnUI(false);
           }).catch(function() {
             setBtnUI(false);
           });
-          var userGesture = function() {
-            audio.muted = false;
-            if (audio.paused && !userPaused) {
-              audio.play();
-            }
-            ['click','touchstart','keydown','scroll'].forEach(function(ev) {
-              document.removeEventListener(ev, userGesture);
-            });
-          };
-          ['click','touchstart','keydown','scroll'].forEach(function(ev) {
-            document.addEventListener(ev, userGesture, { once: true, passive: true });
-          });
+          attachGestureListeners();
         });
       }
     }
 
-    // Jalankan pemutaran jika tidak dipause oleh user
-    if (!userPaused) {
-      playAudio();
-    } else {
-      setBtnUI(false);
-    }
+    // Tangani tab diminimalkan / pindah tab
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        if (!audio.paused) {
+          pausedByHidden = true;
+          audio.pause();
+          setBtnUI(false);
+        }
+      } else if (pausedByHidden && !userPaused) {
+        pausedByHidden = false;
+        playAudio();
+      }
+    });
 
-    inited = true;
+    // Jalankan pemutaran jika tidak dipause oleh user
+    if (userPaused) {
+      audio.pause();
+      audio.removeAttribute('autoplay');
+      setBtnUI(false);
+    } else {
+      playAudio();
+    }
   }
 
   return {

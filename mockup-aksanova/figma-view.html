@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Figma Editor Simulation — AKSA NOVA Landing Page</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .figma-grid {
+      background-color: #1a1a1a;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.15) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+  </style>
+</head>
+<body class="bg-[#121212] text-[#E0E0E0] h-screen flex flex-col overflow-hidden font-sans select-none">
+
+  <!-- Top Figma Toolbar -->
+  <header class="h-12 bg-[#1e1e1e] border-b border-[#333] px-4 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 rounded bg-[#0d99ff]/15 border border-[#0d99ff]/30 flex items-center justify-center font-bold text-[#0d99ff] text-sm">
+        ❖
+      </div>
+      <div class="text-xs">
+        <span class="text-neutral-400">AKSA NOVA</span>
+        <span class="text-neutral-600 mx-1.5">/</span>
+        <span class="text-neutral-100 font-semibold">Desktop Landing Page (1440px)</span>
+      </div>
+      <span class="bg-[#2a2a2a] text-[10px] text-neutral-400 px-2 py-0.5 rounded border border-neutral-700">v2.2</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <a href="index.html" target="_blank" class="px-3 py-1 bg-gradient-to-r from-[#D8B878] to-[#B89548] text-black font-bold text-xs rounded hover:opacity-90 transition">
+        Buka Pure Web Preview ↗
+      </a>
+    </div>
+  </header>
+
+  <div class="flex-1 flex overflow-hidden">
+    <!-- Left Layers -->
+    <aside class="w-64 bg-[#252525] border-r border-[#333] flex flex-col shrink-0 text-xs">
+      <div class="p-3 border-b border-[#333] font-semibold text-neutral-300 flex items-center justify-between">
+        <span>Layers / Frames</span>
+        <span class="text-[10px] text-neutral-500 font-mono">1440 × 4400</span>
+      </div>
+      <div class="flex-1 overflow-y-auto p-2 space-y-1">
+        <div class="p-2 rounded bg-[#333] text-white font-medium flex items-center gap-2">
+          <span class="text-[#0d99ff]">#</span>
+          <span>Desktop Frame</span>
+        </div>
+        <div class="pl-4 space-y-1 border-l border-neutral-700 ml-3 text-neutral-300">
+          <div class="p-1 rounded hover:bg-[#333] cursor-pointer">❖ 00_Header_Navigation</div>
+          <div class="p-1 rounded hover:bg-[#333] cursor-pointer">❖ 01_Hero_Section</div>
+          <div class="p-1 rounded hover:bg-[#333] cursor-pointer text-[#D8B878]">❖ 02_Buku_Spotlight_Rak</div>
+          <div class="p-1 rounded hover:bg-[#333] cursor-pointer">❖ 03_Tata_Tertib_Rules</div>
+          <div class="p-1 rounded hover:bg-[#333] cursor-pointer">❖ 04_Fitur_Bento_Grid</div>
+          <div class="p-1 rounded hover:bg-[#333] cursor-pointer text-emerald-400">❖ 05_Peta_SMKN1Rongga</div>
+          <div class="p-1 rounded hover:bg-[#333] cursor-pointer">❖ 06_Footer_Identity</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Canvas Frame Container -->
+    <main class="flex-1 figma-grid overflow-y-auto p-8 lg:p-12 flex justify-center">
+      <div class="w-full max-w-[1240px] bg-[#090C10] border border-neutral-700 rounded-xl shadow-2xl overflow-hidden self-start">
+        <iframe src="index.html" class="w-full h-[3800px] border-none" title="Landing Page Preview"></iframe>
+      </div>
+    </main>
+
+    <!-- Right Properties -->
+    <aside class="w-64 bg-[#252525] border-l border-[#333] flex flex-col shrink-0 text-xs p-3 space-y-4 hidden xl:block">
+      <div class="font-semibold text-neutral-300 pb-2 border-b border-[#333]">Design Inspector</div>
+      <div class="space-y-2">
+        <div class="text-[11px] text-neutral-400 font-bold uppercase">Color Tokens</div>
+        <div class="space-y-1.5 font-mono text-[11px]">
+          <div class="flex items-center justify-between p-1.5 bg-[#1e1e1e] rounded border border-neutral-700">
+            <span>--bg: #090C10</span>
+          </div>
+          <div class="flex items-center justify-between p-1.5 bg-[#1e1e1e] rounded border border-neutral-700">
+            <span class="text-[#D8B878]">--accent: #D8B878</span>
+          </div>
+          <div class="flex items-center justify-between p-1.5 bg-[#1e1e1e] rounded border border-neutral-700">
+            <span>--card: #121820</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+</body>
+</html>

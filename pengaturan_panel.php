@@ -11,31 +11,22 @@
  ═══════════════════════════════════════════════════════ -->
 
 <!-- Panel Backdrop -->
-<div id="settingsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:800;backdrop-filter:blur(3px);transition:opacity .3s;" onclick="tutupSettings()"></div>
+<div id="settingsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:850;backdrop-filter:blur(3px);transition:opacity .3s;" onclick="tutupSettings()"></div>
 
 <!-- Panel Utama -->
-<aside id="settingsPanel" style="
-  position:fixed; top:0; right:-420px; bottom:0; width:400px; max-width:95vw;
-  background:var(--card,#121820); z-index:900;
-  box-shadow:-8px 0 40px rgba(0,0,0,.5);
-  display:flex; flex-direction:column;
-  transition:right .35s cubic-bezier(.22,1,.36,1);
-  font-family:var(--font-family,'Outfit',sans-serif);
-  overflow:hidden;
-  border-left:1px solid var(--border-color,rgba(216,184,120,.18));
-">
+<aside id="settingsPanel" class="settings-panel">
 
   <!-- Header panel -->
-  <div style="padding:20px 22px 16px; border-bottom:1px solid var(--border-color,rgba(216,184,120,.18)); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--card,#121820);">
+  <div class="settings-header" style="padding:20px 22px 16px; border-bottom:1px solid var(--border-color,rgba(216,184,120,.18)); display:flex; align-items:center; gap:12px; flex-shrink:0; background:var(--card,#121820);">
     <div style="width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#d8b878,#f0d9a8);display:flex;align-items:center;justify-content:center;">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a1205" stroke-width="2.2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
     </div>
-    <div style="flex:1;">
-      <div style="font-size:.95rem;font-weight:800;color:var(--text,#eef3f4);">Pengaturan Tampilan</div>
-      <div style="font-size:.7rem;color:var(--muted,rgba(238,243,244,.55));margin-top:1px;">Semua perubahan berlaku di seluruh halaman</div>
+    <div style="flex:1; min-width:0; overflow:hidden;">
+      <div style="font-size:.95rem;font-weight:800;color:var(--text,#eef3f4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Pengaturan Tampilan</div>
+      <div style="font-size:.7rem;color:var(--muted,rgba(238,243,244,.55));margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Kustomisasi antarmuka aplikasi</div>
     </div>
-    <button onclick="tutupSettings()" style="width:32px;height:32px;border:none;background:rgba(216,184,120,.1);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted,#aaa);" title="Tutup">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    <button class="settings-close-btn" onclick="tutupSettings()" aria-label="Tutup Pengaturan" title="Tutup">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
     </button>
   </div>
 
@@ -169,7 +160,7 @@
   </div><!-- /scroll body -->
 
   <!-- Footer panel -->
-  <div style="padding:14px 22px;border-top:1px solid var(--border-color,rgba(216,184,120,.18));display:flex;gap:10px;flex-shrink:0;background:var(--card,#121820);">
+  <div class="settings-footer" style="padding:14px 22px;border-top:1px solid var(--border-color,rgba(216,184,120,.18));display:flex;gap:10px;flex-shrink:0;background:var(--card,#121820);">
     <button onclick="resetSettings()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:transparent;color:var(--muted,rgba(238,243,244,.6));font-family:var(--font-family,'Outfit',sans-serif);font-size:.78rem;font-weight:700;cursor:pointer;">
       ↺ Reset Default
     </button>
@@ -184,11 +175,108 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700;800&family=Merriweather:wght@300;400;700&family=Poppins:wght@300;400;600;700&family=Playfair+Display:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
 
+/* Sembunyikan topbar/navbar ketika pengaturan terbuka agar tidak pernah bertabrakan */
+body.settings-open .mobile-topbar {
+  opacity: 0 !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+  transform: translateY(-100%) !important;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 0; right: 0; bottom: 0;
+  width: 400px; max-width: 95vw;
+  background: var(--card, #121820);
+  z-index: 99999;
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .32s cubic-bezier(.22,1,.36,1), box-shadow .32s;
+  font-family: var(--font-family, 'Outfit', sans-serif);
+  overflow: hidden;
+  box-sizing: border-box;
+  border-left: 1px solid var(--border-color, rgba(216,184,120,.18));
+  box-shadow: none;
+}
+.settings-panel.open {
+  transform: translateX(0);
+  box-shadow: -8px 0 40px rgba(0,0,0,.6);
+}
+
 /* Scrollbar settings panel */
 #settingsPanel ::-webkit-scrollbar { width: 4px; }
 #settingsPanel ::-webkit-scrollbar-track { background: transparent; }
 #settingsPanel ::-webkit-scrollbar-thumb { background: rgba(216,184,120,.3); border-radius: 4px; }
 #settingsPanel ::-webkit-scrollbar-thumb:hover { background: rgba(216,184,120,.6); }
+
+/* Tombol Tutup X di Header Panel — Sangat menonjol & kontras */
+.settings-close-btn {
+  width: 40px; height: 40px;
+  min-width: 40px; min-height: 40px;
+  border-radius: 50%;
+  border: 2px solid var(--accent, #d8b878);
+  background: rgba(18, 24, 32, 0.95);
+  color: var(--accent, #d8b878);
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: all .2s ease;
+  box-shadow: 0 4px 14px rgba(0,0,0,.5);
+}
+.settings-close-btn:hover {
+  background: var(--accent, #d8b878);
+  color: #121820;
+  transform: scale(1.08);
+}
+.settings-close-btn:hover svg {
+  stroke: #121820;
+}
+.settings-close-btn:active {
+  transform: scale(0.95);
+}
+.settings-close-btn svg {
+  width: 20px; height: 20px;
+  stroke: var(--accent, #d8b878);
+  stroke-width: 2.5;
+  transition: stroke .2s;
+}
+
+/* Responsive Android / Mobile Mode — Layar penuh di mobile, tidak ada celah navbar */
+@media (max-width: 768px) {
+  #settingsPanel {
+    width: 100% !important;
+    max-width: 100% !important;
+    left: 0 !important;
+    right: 0 !important;
+    height: 100% !important;
+    height: 100dvh !important;
+    border-left: none !important;
+    border-radius: 0 !important;
+  }
+  .settings-header {
+    padding: 16px 18px !important;
+    padding-top: max(22px, calc(env(safe-area-inset-top, 0px) + 16px)) !important;
+    padding-right: max(18px, calc(env(safe-area-inset-right, 0px) + 16px)) !important;
+    gap: 12px !important;
+    box-sizing: border-box !important;
+  }
+  .settings-close-btn {
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+  .settings-close-btn svg {
+    width: 22px !important;
+    height: 22px !important;
+  }
+  .settings-footer {
+    padding-bottom: max(16px, calc(env(safe-area-inset-bottom, 0px) + 14px)) !important;
+    box-sizing: border-box !important;
+  }
+}
 
 .sett-section {
   display:flex; flex-direction:column; gap:10px;
@@ -318,22 +406,46 @@
 
   // ── Buka / Tutup panel ──
   window.bukaSettings = function() {
+    // Jika sidebar sedang terbuka (terutama di mobile/tablet), tutup sidebar agar tidak tertabrak atau terjebak
+    if (typeof window.toggleSidebar === 'function') {
+      window.toggleSidebar(false);
+    } else {
+      var sb = document.getElementById('sidebar');
+      var sbOver = document.querySelector('.sidebar-overlay') || document.getElementById('sidebarOverlay');
+      if (sb) sb.classList.remove('open');
+      if (sbOver) sbOver.classList.remove('open');
+      document.body.classList.remove('sidebar-open');
+    }
+
+    document.body.classList.add('settings-open');
+
     var panel   = document.getElementById('settingsPanel');
     var backdrop= document.getElementById('settingsBackdrop');
     backdrop.style.display = 'block';
     setTimeout(function(){
       backdrop.style.opacity = '1';
-      panel.style.right = '0';
+      panel.classList.add('open');
     }, 10);
     refreshUI();
   };
   window.tutupSettings = function() {
     var panel   = document.getElementById('settingsPanel');
     var backdrop= document.getElementById('settingsBackdrop');
-    panel.style.right = '-420px';
-    backdrop.style.opacity = '0';
-    setTimeout(function(){ backdrop.style.display='none'; }, 350);
+    if (panel) panel.classList.remove('open');
+    if (backdrop) backdrop.style.opacity = '0';
+    document.body.classList.remove('settings-open');
+    setTimeout(function(){ if (backdrop) backdrop.style.display='none'; }, 330);
   };
+
+  // Tutup dengan tombol Escape
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      var p = document.getElementById('settingsPanel');
+      if (p && p.classList.contains('open')) {
+        window.tutupSettings();
+      }
+    }
+  });
 
   // ── Terapkan ke DOM real-time ──
   function applyRoot(key, value) {

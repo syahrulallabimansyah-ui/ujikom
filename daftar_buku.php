@@ -416,7 +416,7 @@ ob_start();
         background:var(--sidebar-bg);
         border-bottom:1px solid var(--border-color, rgba(216,184,120,.15));
         box-shadow:0 2px 18px rgba(0,0,0,.35);
-        z-index:160;
+        z-index:600;
         transition:opacity var(--trans), visibility var(--trans);
       }
       body.sidebar-open .mobile-topbar {
@@ -474,8 +474,9 @@ ob_start();
       .pagination-wrap { flex-direction:column; align-items:flex-start; gap:8px; }
       .page-btn { min-width:40px; min-height:40px; }
 
-      /* Modal full-width on tablet */
+      /* Modal full-width on tablet + padding atas agar tidak nabrak navbar */
       .detail-modal { max-width:100%; margin:8px; border-radius:12px; }
+      .detail-overlay { padding-top:68px; }
     }
 
     /* Mobile portrait (≤480px) */
@@ -490,12 +491,19 @@ ob_start();
       .pagination-info { font-size:.7rem; }
       .page-btn { width:36px; height:36px; font-size:.72rem; }
 
-      /* Modal detail — bottom sheet feel */
+      /* Modal detail — bottom sheet: muncul dari bawah, tidak perlu padding atas */
       .detail-overlay { align-items:flex-end; padding:0; }
       .detail-modal {
-        margin:0; border-radius:16px 16px 0 0;
+        margin:0; border-radius:22px 22px 0 0;
+        border-top:3px solid var(--accent,#d8b878);
         max-height:92dvh;
         position:relative; bottom:auto; left:auto; right:auto; width:100%;
+      }
+      /* Drag handle indicator di atas bottom-sheet */
+      .detail-modal::before {
+        content:''; display:block; width:40px; height:4px;
+        background:rgba(216,184,120,.4); border-radius:10px;
+        margin:10px auto 0; flex-shrink:0;
       }
       .detail-title { font-size:1.15rem; }
       .detail-body { padding:16px 14px 22px; }
@@ -541,18 +549,23 @@ ob_start();
     .btn-like.aktif .like-count-badge { border-color:#e74c3c; color:#e74c3c; }
 
     /* ── MODAL DETAIL BUKU ── */
-    .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); z-index:500; align-items:center; justify-content:center; }
+    .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:800; align-items:center; justify-content:center; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; margin:16px; }
+    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
+    .detail-modal::-webkit-scrollbar { width:4px; }
+    .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
+    .detail-modal::-webkit-scrollbar-track { background:transparent; }
     @keyframes modalIn { from{opacity:0;transform:scale(.94) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
     .detail-cover { width:100%; aspect-ratio:16/9; border-radius:16px 16px 0 0; overflow:hidden; position:relative; background:#10151b; }
     .detail-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+    .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%); pointer-events:none; }
     .detail-cover-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
     .detail-cover-placeholder svg { width:56px; height:56px; color:rgba(216,184,120,.35); }
-    .detail-cover-badge { position:absolute; top:12px; right:12px; background:rgba(0,0,0,.65); color:var(--accent); border:1px solid rgba(216,184,120,.3); font-size:.65rem; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; backdrop-filter:blur(4px); }
-    .detail-close-btn { position:absolute; top:12px; left:12px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.65); border:1px solid rgba(216,184,120,.3); display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(4px); transition:background .2s; }
-    .detail-close-btn:hover { background:rgba(0,0,0,.85); }
-    .detail-close-btn svg { width:16px; height:16px; color:var(--accent); }
+    .detail-cover-badge { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.65); color:var(--accent); border:1px solid rgba(216,184,120,.3); font-size:.65rem; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; backdrop-filter:blur(4px); }
+    .detail-close-btn { position:absolute; top:12px; right:12px; width:40px; height:40px; border-radius:50%; background:rgba(18,24,32,0.92); border:2px solid var(--accent,#d8b878); display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .2s, transform .15s, border-color .2s; box-shadow:0 4px 14px rgba(0,0,0,.6); z-index:10; }
+    .detail-close-btn:hover { background:var(--accent,#d8b878); transform:scale(1.08); }
+    .detail-close-btn:hover svg { color:#121820; }
+    .detail-close-btn svg { width:20px; height:20px; color:var(--accent,#d8b878); transition:color .2s; }
     .detail-body { padding:20px 22px 24px; }
     .detail-genre-chip { display:inline-block; background:rgba(216,184,120,.12); color:var(--accent); border:1px solid rgba(216,184,120,.25); font-size:.65rem; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px; }
     .detail-title { font-family:'Cormorant Garamond',serif; font-size:1.45rem; font-weight:700; color:var(--text); line-height:1.2; margin-bottom:4px; }

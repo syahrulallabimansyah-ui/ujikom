@@ -1,7 +1,7 @@
 # Product Requirements Document (PRD)
 ## Sistem Informasi Perpustakaan Digital — AKSA NOVA
 
-> **Versi:** 2.0 | **Terakhir Diperbarui:** 14 September 2026 | **Sekolah:** SMK Negeri 1 Rongga, Bandung Barat
+> **Versi:** 2.2 | **Terakhir Diperbarui:** 1 Oktober 2026 | **Sekolah:** SMK Negeri 1 Rongga, Bandung Barat
 
 ---
 
@@ -145,13 +145,20 @@ flowchart TD
 
 - **Fase 1 (Selesai)**: Core catalog, membership, direct borrowing, online loan request, fine management, theme obsidian-gold.
 - **Fase 2 (Selesai)**: Penstabilan UI admin, perbaikan kontras teks/tombol pada mode gelap dan terang, pencegahan jitter profil admin, serta notifikasi pop-up besar realtime lintas halaman untuk pengajuan pinjaman baru.
-- **Fase 3 (Selesai — Sesi Ini)**:
+- **Fase 3 (Selesai)**:
   - ✅ Loop musik otomatis saat lagu selesai diputar.
   - ✅ Rename field NIK → NIS di halaman edit profil anggota.
   - ✅ Ekspor laporan Excel 3 sheet dari dashboard admin.
   - ✅ Dukungan GIF animasi & Video (MP4/WEBM) sebagai banner beranda.
   - ✅ Peta lokasi Google Maps mengarah ke SMK Negeri 1 Rongga, Bandung Barat.
   - ✅ Fitur Lokasi Rak Buku — tampil di semua modal detail buku, form pinjam, dan notifikasi admin.
+- **Fase 3.1 (Penyempurnaan & Stabilisasi — Oktober 2026)**:
+  - ✅ Penambahan input wajib NIS (Nomor Induk Siswa) dan validasi keunikan pada halaman registrasi (`sign_up.php`).
+  - ✅ Sinkronisasi audio latar persisten (`AksaAudio`) antar seluruh modul dan landing page (`index.php`) menggunakan storage key terpadu serta pencegahan double-init.
+  - ✅ Proteksi role Admin dari pemberian rating buku di `beranda.php` (rating murni dari pembaca/anggota).
+  - ✅ Integrasi modal notifikasi pengajuan buku realtime di `beranda.php` khusus untuk role Admin.
+  - ✅ Perbaikan konsistensi CSS tombol Ajukan Peminjaman pada modal detail di `buku_simpan.php` di semua resolusi layar (desktop, tablet, mobile).
+  - ✅ Penyusunan & sinkronisasi dokumentasi resmi UKK (Laporan Lengkap, ERD, dan Class Diagram UML).
 - **Fase 4 (Masa Depan / Rekomendasi)**:
   - Integrasi Barcode/QR Scanner fisik berbasis webcam saat siswa mengambil buku fisik.
   - Webhook WhatsApp API resmi (Fonnte / Wablas) untuk auto-blast notifikasi pengingat tanpa klik manual.

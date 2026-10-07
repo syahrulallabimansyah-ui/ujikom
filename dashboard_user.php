@@ -478,13 +478,19 @@ ob_start();
     .shelf-cover svg { width: 22px; height: 22px; color: rgba(255,255,255,.7); }
 
     /* Modal Detail Buku */
-    .detail-overlay { position:fixed; inset:0; z-index:300; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px; }
+    .detail-overlay { position:fixed; inset:0; z-index:800; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:var(--card); border:1px solid var(--card-border); border-radius:16px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; box-shadow:var(--shadow-md); position:relative; }
+    .detail-modal { background:var(--card); border:1px solid var(--card-border); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:var(--shadow-md); position:relative; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
+    .detail-modal::-webkit-scrollbar { width:4px; }
+    .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
+    .detail-modal::-webkit-scrollbar-track { background:transparent; }
     .detail-loading { padding:40px; text-align:center; color:var(--muted); font-size:.85rem; }
-    .detail-close-btn { position:absolute; top:12px; right:12px; width:34px; height:34px; border-radius:50%; border:none; background:rgba(0,0,0,.45); color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+    .detail-close-btn { position:absolute; top:12px; right:12px; width:40px; height:40px; border-radius:50%; border:2px solid var(--accent,#d8b878); background:rgba(18,24,32,0.92); color:var(--accent,#d8b878); font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .2s, transform .15s, border-color .2s; box-shadow:0 4px 14px rgba(0,0,0,.6); z-index:10; }
+    .detail-close-btn:hover { background:var(--accent,#d8b878); color:#121820; transform:scale(1.08); }
+    .detail-close-btn:hover svg { stroke:#121820; }
     .detail-cover { width:100%; height:210px; background:var(--book-card); overflow:hidden; position:relative; }
     .detail-cover img { width:100%; height:100%; object-fit:cover; }
+    .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%); pointer-events:none; }
     .detail-body { padding:20px; }
     .detail-title { font-size:1.15rem; font-weight:800; color:var(--text); line-height:1.3; }
     .detail-author { font-size:.78rem; color:var(--muted); margin-top:4px; }
@@ -511,7 +517,7 @@ ob_start();
         padding:0 14px; padding-top:env(safe-area-inset-top,0);
         background:var(--sidebar-bg);
         border-bottom:1px solid var(--border-color);
-        box-shadow:0 2px 18px rgba(0,0,0,.35); z-index:160;
+        box-shadow:0 2px 18px rgba(0,0,0,.35); z-index:600;
         transition:opacity var(--trans), visibility var(--trans);
       }
       body.sidebar-open .mobile-topbar { opacity:0; visibility:hidden; pointer-events:none; }
@@ -554,16 +560,25 @@ ob_start();
 
       .shelf-mini { grid-template-columns: repeat(4, 1fr); gap:8px; }
 
-      .detail-overlay { align-items:flex-end; padding:0; }
-      .detail-modal {
-        max-width:100%; width:100%; margin:0;
-        border-radius:18px 18px 0 0;
-        max-height:88dvh;
-      }
+      /* Modal detail buku — padding atas agar tidak nabrak navbar mobile */
+      .detail-overlay { padding-top:68px; }
     }
 
     /* Mobile portrait (≤540px) */
     @media (max-width: 540px) {
+      .detail-overlay { align-items:flex-end; padding:0; }
+      .detail-modal {
+        max-width:100%; width:100%; margin:0;
+        border-radius:22px 22px 0 0;
+        border-top:3px solid var(--accent,#d8b878);
+        max-height:88dvh;
+      }
+      /* Drag handle indicator di atas bottom-sheet */
+      .detail-modal::before {
+        content:''; display:block; width:40px; height:4px;
+        background:rgba(216,184,120,.4); border-radius:10px;
+        margin:10px auto 0; flex-shrink:0;
+      }
       .main { padding:74px 10px 28px; }
       .user-hero { padding:14px 12px; }
       .hero-avatar { width:52px; height:52px; }

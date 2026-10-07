@@ -252,7 +252,7 @@ ob_start();
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; }
     .sidebar-overlay.open { display:block; }
     .sidebar-toggle {
-      display:none; position:fixed; top:14px; left:14px; z-index:200;
+      display:none; position:fixed; top:14px; left:14px; z-index:700;
       width:42px; height:42px; border-radius:10px; cursor:pointer;
       align-items:center; justify-content:center;
       background:#161e27; border:1.5px solid var(--accent,#d8b878);
@@ -608,32 +608,39 @@ ob_start();
     /* ── MODAL DETAIL BUKU ── */
     .detail-overlay {
       display:none; position:fixed; inset:0;
-      background:rgba(0,0,0,.55); z-index:600;
+      background:rgba(0,0,0,.65); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+      z-index:800;
       align-items:center; justify-content:center;
     }
     .detail-overlay.open { display:flex; }
     .detail-modal {
       background:var(--card,#121820); border-radius:16px; border:1px solid var(--border-color,rgba(216,184,120,.18));
+      border-top:3px solid var(--accent,#d8b878);
       width:100%; max-width:520px;
-      max-height:92vh; overflow-y:auto;
-      box-shadow:0 24px 70px rgba(0,0,0,.28);
+      max-height:92vh; overflow-y:auto; overflow-x:hidden;
+      overscroll-behavior:contain;
+      box-shadow:0 24px 70px rgba(0,0,0,.5);
       animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
-      margin:16px;
+      margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent;
     }
+    .detail-modal::-webkit-scrollbar { width:4px; }
+    .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
+    .detail-modal::-webkit-scrollbar-track { background:transparent; }
     .detail-cover {
       width:100%; aspect-ratio:16/9;
       border-radius:16px 16px 0 0;
       overflow:hidden; position:relative;
-      background:#2e2e3a;
+      background:#10151b;
     }
     .detail-cover img { width:100%; height:100%; object-fit:cover; display:block; }
+    .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%); pointer-events:none; }
     .detail-cover-placeholder {
       width:100%; height:100%;
       display:flex; align-items:center; justify-content:center;
     }
     .detail-cover-placeholder svg { width:56px; height:56px; color:rgba(255,255,255,.3); }
     .detail-cover-badge {
-      position:absolute; top:12px; right:12px;
+      position:absolute; top:12px; left:12px;
       background:rgba(0,0,0,.55); color:#fff;
       font-size:.65rem; font-weight:800;
       padding:4px 10px; border-radius:20px;
@@ -641,15 +648,17 @@ ob_start();
       backdrop-filter:blur(4px);
     }
     .detail-close-btn {
-      position:absolute; top:12px; left:12px;
-      width:32px; height:32px; border-radius:50%;
-      background:rgba(0,0,0,.5); border:none;
+      position:absolute; top:12px; right:12px;
+      width:40px; height:40px; border-radius:50%;
+      background:rgba(18,24,32,0.92); border:2px solid var(--accent,#d8b878);
       display:flex; align-items:center; justify-content:center;
-      cursor:pointer; backdrop-filter:blur(4px);
-      transition:background .2s;
+      cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+      transition:background .2s, transform .15s, border-color .2s;
+      box-shadow:0 4px 14px rgba(0,0,0,.6); z-index:10;
     }
-    .detail-close-btn:hover { background:rgba(0,0,0,.75); }
-    .detail-close-btn svg { width:16px; height:16px; color:#fff; }
+    .detail-close-btn:hover { background:var(--accent,#d8b878); transform:scale(1.08); }
+    .detail-close-btn:hover svg { color:#121820; }
+    .detail-close-btn svg { width:20px; height:20px; color:var(--accent,#d8b878); transition:color .2s; }
     .detail-body { padding:22px 24px 26px; }
     .detail-genre-chip {
       display:inline-block;
@@ -738,10 +747,44 @@ ob_start();
     @media (max-width:620px) {
       .sidebar { transform:translateX(-100%); width:220px; }
       .sidebar.open { transform:translateX(0); }
-      .sidebar-toggle { display:flex; }
-      .main { margin-left:0; padding:70px 14px 24px; }
+      /* Mobile topbar navbar */
+      .mobile-topbar {
+        display:flex; align-items:center; gap:10px;
+        position:fixed; top:0; left:0; right:0; height:60px;
+        padding:0 14px; padding-top:env(safe-area-inset-top,0);
+        background:var(--sidebar-bg,#10151b);
+        border-bottom:1px solid var(--border-color, rgba(216,184,120,.15));
+        box-shadow:0 2px 18px rgba(0,0,0,.35);
+        z-index:600;
+        transition:opacity var(--trans), visibility var(--trans);
+      }
+      body.sidebar-open .mobile-topbar { opacity:0; visibility:hidden; pointer-events:none; }
+      .mobile-topbar .sidebar-toggle { display:flex; position:static; box-shadow:none; flex-shrink:0; width:38px; height:38px; }
+      .mobile-topbar-divider {
+        display:block; width:1px; height:24px; flex-shrink:0;
+        background:linear-gradient(180deg, transparent, var(--border-color, rgba(216,184,120,.35)) 50%, transparent);
+      }
+      .mobile-topbar-brand { display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden; }
+      .mobile-topbar-brand svg { width:18px; height:18px; color:var(--accent,#d8b878); flex-shrink:0; }
+      .mobile-topbar-brand span {
+        font-family:'Cormorant Garamond',serif; font-weight:700; font-size:.88rem;
+        color:var(--accent,#d8b878); letter-spacing:.03em; white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis;
+      }
+      .mobile-topbar-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+      .mobile-topbar-actions a, .mobile-topbar-actions button {
+        display:inline-flex; align-items:center; justify-content:center;
+        height:34px; border-radius:8px; cursor:pointer; text-decoration:none;
+      }
+      .mobile-topbar-actions a {
+        width:34px; background:rgba(255,255,255,.05); border:1px solid var(--border-color,rgba(216,184,120,.18)); color:var(--accent,#d8b878);
+      }
+      .mobile-topbar-actions a svg { width:16px; height:16px; }
+
+      .main { margin-left:0; padding:78px 14px 24px; }
       .books-grid { grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); gap:10px; }
       .form-row { grid-template-columns:1fr; }
+      .modal-overlay, .detail-overlay { padding-top:68px; }
     }
     @media (max-width:380px) {
       .books-grid { grid-template-columns:repeat(2,1fr); }
@@ -750,14 +793,28 @@ ob_start();
 </head>
 <body>
 
-<!-- Mobile toggle -->
-<button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <line x1="3" y1="6" x2="21" y2="6"/>
-    <line x1="3" y1="12" x2="21" y2="12"/>
-    <line x1="3" y1="18" x2="21" y2="18"/>
-  </svg>
-</button>
+<!-- Mobile Topbar -->
+<header class="mobile-topbar" id="mobileTopbar">
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu" onclick="toggleSidebar()">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <div class="mobile-topbar-divider"></div>
+  <div class="mobile-topbar-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+    <span>AKSA NOVA • Perbarui Buku</span>
+  </div>
+  <div class="mobile-topbar-actions">
+    <button type="button" onclick="openModal('tambah')" title="Tambah Buku Baru" style="width:auto;padding:0 10px;gap:5px;font-size:.76rem;font-weight:700;background:var(--accent,#d8b878);color:#090c10;border:none;border-radius:8px;">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      <span>+ Buku</span>
+    </button>
+    <a href="beranda.php" title="Lihat Beranda">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </a>
+  </div>
+</header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- SIDEBAR -->
@@ -1007,7 +1064,8 @@ ob_start();
           <label class="form-label">ISBN</label>
           <div class="isbn-input-row">
             <input class="form-input" type="text" name="isbn" id="formIsbn" placeholder="978-x-xxx-xxxxx-x"
-                   autocomplete="off" oninput="onIsbnInput(this.value)"/>
+                   autocomplete="off" oninput="onIsbnInput(this.value)"
+                   onkeydown="if(event.key==='Enter'){event.preventDefault();cariISBN();}"/>
             <button type="button" class="btn-cari-isbn" id="btnCariIsbn" onclick="cariISBN()"
                     title="Cari data buku otomatis dari ISBN">
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
@@ -1218,10 +1276,20 @@ function closeProfilModal() {
   document.getElementById('profilModalOverlay').classList.remove('open');
   document.getElementById('inputFotoAdmin').value = '';
 }
-document.getElementById('profilModalOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeProfilModal();
-});
-document.getElementById('inputFotoAdmin').addEventListener('change', function(e) {
+// NOTE: elemen 'profilModalOverlay' & 'inputFotoAdmin' berada di
+// modal_profil_admin.php, yang baru di-include SETELAH blok <script> ini
+// dijalankan. Kalau langsung dipanggil getElementById(...).addEventListener,
+// elemen itu belum ada di DOM -> null -> error -> SISA SCRIPT DI BAWAHNYA
+// (termasuk fitur cari ISBN) ikut berhenti total. Makanya di-guard null dulu.
+const elProfilOverlay = document.getElementById('profilModalOverlay');
+if (elProfilOverlay) {
+  elProfilOverlay.addEventListener('click', function(e) {
+    if (e.target === this) closeProfilModal();
+  });
+}
+const elInputFotoAdmin = document.getElementById('inputFotoAdmin');
+if (elInputFotoAdmin) {
+  elInputFotoAdmin.addEventListener('change', function(e) {
   const file = e.target.files[0];
   if (!file) return;
   const reader = new FileReader();
@@ -1232,7 +1300,8 @@ document.getElementById('inputFotoAdmin').addEventListener('change', function(e)
     document.getElementById('profilUploadPlaceholder').style.display = 'none';
   };
   reader.readAsDataURL(file);
-});
+  });
+}
 
 // ─── Sidebar toggle ───
 // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
@@ -1450,15 +1519,35 @@ function cariISBN() {
   statusEl.textContent = '⏳ Mencari data buku…';
 
   fetch('cari_isbn.php?isbn=' + encodeURIComponent(digits))
-    .then(r => r.json())
-    .then(data => {
+    // Ambil dulu sebagai teks mentah (bukan langsung .json()). Kalau
+    // servernya menyelipkan warning/HTML sebelum JSON, JSON.parse akan
+    // gagal di sini dan kita masih bisa menampilkan potongan respons
+    // aslinya ke admin — daripada cuma diam tanpa pesan sama sekali.
+    .then(r => r.text())
+    .then(text => {
       btn.disabled = false;
+
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        statusEl.style.color = '#e74c3c';
+        statusEl.textContent = '⚠️ Server mengirim respons yang bukan JSON valid. '
+          + 'Kemungkinan ada error PHP di cari_isbn.php atau db.php. '
+          + 'Cek console browser (F12) untuk respons mentahnya.';
+        console.error('cari_isbn.php respons mentah:', text);
+        return;
+      }
 
       if (!data.ok) {
         statusEl.style.color = '#e74c3c';
         statusEl.textContent = '⚠️ ' + data.message;
         if (data.duplikat) {
           statusEl.textContent += ' (Sudah terdaftar sebagai "' + data.duplikat.judul + '".)';
+        }
+        if (data.debug_errors) {
+          statusEl.textContent += ' — Detail: ' + JSON.stringify(data.debug_errors);
+          console.error('cari_isbn.php debug_errors:', data.debug_errors);
         }
         return;
       }

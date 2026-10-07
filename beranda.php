@@ -144,6 +144,155 @@ if ($mgt) {
     }
 }
 $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_file));
+
+// ─── Buku acak untuk kartu "Bingung Mau Baca Apa?" (hanya buku yang tersedia) ───
+$acak_buku = [];
+$res_acak = mysqli_query($conn, "SELECT id, judul, penulis, genre, stok, gambar FROM buku WHERE stok > 0 ORDER BY RAND() LIMIT 20");
+if ($res_acak) {
+    while ($row = mysqli_fetch_assoc($res_acak)) {
+        $row["id"]     = (int)$row["id"];
+        $row["stok"]   = (int)$row["stok"];
+        $row["gambar"] = ($row["gambar"] && file_exists($row["gambar"])) ? $row["gambar"] : "";
+        $acak_buku[]   = $row;
+    }
+}
+
+// ─── Berita terkini (RSS detikcom & CNN Indonesia, di-cache supaya halaman tetap cepat) ───
+// Ganti / tambah sumber di array ini. Tiap sumber butuh nama tampilan + alamat feed RSS-nya.
+$berita_feeds = [
+    ["sumber" => "detikcom",      "url" => "https://rss.detik.com/index.php/detikcom"],
+    ["sumber" => "CNN Indonesia", "url" => "https://www.cnnindonesia.com/rss"],
+];
+$berita_jumlah    = 9;     // total berita yang dimuat (ditampilkan 3 per halaman, geser untuk lihat lainnya)
+$berita_cache_ttl = 1800;  // detik (30 menit) sebelum feed diambil ulang
+
+function berita_http_get($url, $timeout = 4) {
+    $body = false;
+    if (function_exists("curl_init")) {
+        $ch = curl_init($url);
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_MAXREDIRS      => 3,
+            CURLOPT_CONNECTTIMEOUT => 3,
+            CURLOPT_TIMEOUT        => $timeout,
+            CURLOPT_ENCODING       => "",
+            CURLOPT_USERAGENT      => "Mozilla/5.0 (compatible; AksaNovaRSS/1.0)",
+        ]);
+        $body = @curl_exec($ch);
+        $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+        if ($code >= 400) $body = false;
+    } elseif (ini_get("allow_url_fopen")) {
+        $ctx  = stream_context_create(["http" => ["timeout" => $timeout, "header" => "User-Agent: Mozilla/5.0 (compatible; AksaNovaRSS/1.0)\r\n"]]);
+        $body = @file_get_contents($url, false, $ctx);
+    }
+    return $body ?: false;
+}
+
+function berita_img_url($u) {
+    $u = trim((string)$u);
+    if ($u === "") return "";
+    if (strpos($u, "//") === 0) $u = "https:" . $u;
+    if (!preg_match('~^https?://~i', $u)) return "";
+    return preg_replace('~^http://~i', 'https://', $u);
+}
+
+function berita_parse_feed($xml_str, $sumber, $limit) {
+    $out = [];
+    if (!$xml_str) return $out;
+    $prev = libxml_use_internal_errors(true);
+    $xml  = simplexml_load_string($xml_str, "SimpleXMLElement", LIBXML_NOCDATA);
+    libxml_clear_errors();
+    libxml_use_internal_errors($prev);
+    if (!$xml || !isset($xml->channel->item)) return $out;
+
+    foreach ($xml->channel->item as $it) {
+        $judul = trim(html_entity_decode((string)$it->title, ENT_QUOTES | ENT_HTML5, "UTF-8"));
+        $link  = trim((string)$it->link);
+        if ($judul === "" || !preg_match('~^https?://~i', $link)) continue;
+
+        // Cari gambar: enclosure → media:thumbnail → media:content → <img> di deskripsi
+        $img = "";
+        foreach ($it->enclosure as $enc) {
+            $t = (string)$enc["type"];
+            if ((string)$enc["url"] !== "" && ($t === "" || stripos($t, "image") === 0)) { $img = (string)$enc["url"]; break; }
+        }
+        if ($img === "") {
+            $media = $it->children("http://search.yahoo.com/mrss/");
+            if (isset($media->thumbnail)) {
+                $img = (string)$media->thumbnail->attributes()->url;
+            } elseif (isset($media->content)) {
+                $mu = (string)$media->content->attributes()->url;
+                if (preg_match('~\.(jpe?g|png|webp|gif)(\?|$)~i', $mu)) $img = $mu;
+            }
+        }
+        if ($img === "") {
+            $enc_html = (string)$it->children("http://purl.org/rss/1.0/modules/content/")->encoded;
+            $blob = $enc_html . " " . (string)$it->description;
+            if (preg_match('~<img[^>]+src=["\']([^"\']+)["\']~i', $blob, $m)) $img = $m[1];
+        }
+
+        $out[] = [
+            "judul"  => $judul,
+            "link"   => $link,
+            "img"    => berita_img_url($img),
+            "sumber" => $sumber,
+            "ts"     => (int)strtotime((string)$it->pubDate),
+        ];
+        if (count($out) >= $limit) break;
+    }
+    return $out;
+}
+
+function berita_ambil($feeds, $jumlah, $ttl) {
+    $dir = __DIR__ . "/cache";
+    if (!is_dir($dir)) @mkdir($dir, 0755, true);
+    if (!is_dir($dir) || !is_writable($dir)) $dir = sys_get_temp_dir();
+    $file = $dir . "/berita_cache_v2.json";
+
+    $cached = []; $fresh = false;
+    if (is_file($file)) {
+        $j = json_decode((string)@file_get_contents($file), true);
+        if (is_array($j) && isset($j["items"])) {
+            $cached = $j["items"];
+            $fresh  = (time() - (int)($j["at"] ?? 0)) < $ttl;
+        }
+    }
+    if ($fresh) return $cached;
+
+    // Ambil tiap feed, lalu gabungkan selang-seling (detik, CNN, detik, CNN, ...)
+    $per = [];
+    foreach ($feeds as $f) $per[] = berita_parse_feed(berita_http_get($f["url"]), $f["sumber"], $jumlah);
+    $items = [];
+    for ($i = 0; count($items) < $jumlah; $i++) {
+        $ada = false;
+        foreach ($per as $list) {
+            if (isset($list[$i]) && count($items) < $jumlah) { $items[] = $list[$i]; $ada = true; }
+        }
+        if (!$ada) break;
+    }
+
+    if (!empty($items)) {
+        @file_put_contents($file, json_encode(["at" => time(), "items" => $items], JSON_UNESCAPED_UNICODE), LOCK_EX);
+        return $items;
+    }
+    // Gagal: pakai cache lama (jika ada) dan coba lagi sekitar 5 menit kemudian
+    @file_put_contents($file, json_encode(["at" => time() - $ttl + 300, "items" => $cached], JSON_UNESCAPED_UNICODE), LOCK_EX);
+    return $cached;
+}
+
+function berita_waktu($ts) {
+    if (!$ts) return "";
+    $d = time() - $ts;
+    if ($d < 60)     return "baru saja";
+    if ($d < 3600)   return floor($d / 60) . " menit lalu";
+    if ($d < 86400)  return floor($d / 3600) . " jam lalu";
+    if ($d < 604800) return floor($d / 86400) . " hari lalu";
+    return date("d/m/Y", $ts);
+}
+
+$berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -1072,6 +1221,127 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     .admin-pic img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .admin-pic svg { width: 24px; height: 24px; color: var(--accent); }
 
+    /* ─── Kolom kanan: kartu tambahan & pengisi tinggi ─── */
+    /* ─── Kartu "Bingung Mau Baca Apa?" ─── */
+    .pick-card { background: linear-gradient(145deg, rgba(216,184,120,.10), var(--card) 75%); }
+    .pick-body {
+      display: flex; gap: 14px; align-items: center; cursor: pointer;
+      padding: 10px; border-radius: 12px;
+      background: var(--book-card, #161e27); border: 1px solid var(--card-border);
+      transition: all var(--trans), opacity .18s ease, transform .18s ease; min-width: 0;
+    }
+    .pick-body:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+    .pick-body.swap { opacity: 0; transform: translateY(6px); }
+    .pick-cover {
+      width: 64px; height: 92px; flex-shrink: 0; border-radius: 7px; overflow: hidden;
+      box-shadow: 0 5px 14px rgba(0,0,0,.4);
+    }
+    .pick-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .pick-info { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; }
+    .pick-genre {
+      font-size: .58rem; font-weight: 800; color: var(--accent); letter-spacing: .03em;
+      background: rgba(216,184,120,.12); border: 1px solid rgba(216,184,120,.22);
+      padding: 2px 8px; border-radius: 50px; max-width: 100%;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pick-title {
+      font-family: 'Cormorant Garamond', serif; font-size: 1.02rem; font-weight: 700; line-height: 1.2; color: var(--text);
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+    }
+    .pick-author { font-size: .68rem; color: var(--muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+    .pick-btn {
+      width: 100%; margin-top: 12px; padding: 9px 12px; border-radius: 10px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; gap: 7px;
+      font-family: inherit; font-size: .76rem; font-weight: 800;
+      background: linear-gradient(135deg, #d8b878, #f0d9a8); color: #090c10; border: none;
+      transition: all var(--trans);
+    }
+    .pick-btn svg { width: 14px; height: 14px; transition: transform .45s ease; }
+    .pick-btn:hover { filter: brightness(1.06); transform: translateY(-1px); }
+    .pick-btn.spin svg { transform: rotate(360deg); }
+
+    /* ─── Trending: bintang rating & ketersediaan ─── */
+    .bk-rating-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+    .star-rating { position: relative; display: inline-block; font-size: .8rem; line-height: 1; letter-spacing: 1px; white-space: nowrap; }
+    .star-base { color: rgba(216,184,120,.28); }
+    .star-fill { position: absolute; left: 0; top: 0; overflow: hidden; white-space: nowrap; color: #f5a623; }
+    .bk-rating-val { font-size: .66rem; font-weight: 800; color: var(--accent); }
+    .bk-rating-val em { font-style: normal; font-weight: 500; color: var(--muted); }
+    .bk-stock {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: .62rem; font-weight: 800; letter-spacing: .02em;
+      padding: 2px 8px; border-radius: 50px; border: 1px solid transparent;
+    }
+    .bk-stock .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .bk-stock.stok-tersedia { color: #2ecc71; background: rgba(46,204,113,.10); border-color: rgba(46,204,113,.28); }
+    .bk-stock.stok-terbatas { color: #f39c12; background: rgba(243,156,18,.10); border-color: rgba(243,156,18,.28); }
+    .bk-stock.stok-habis    { color: #f87171; background: rgba(248,113,113,.10); border-color: rgba(248,113,113,.28); }
+
+    /* ─── Berita Terkini (mengisi sisa tinggi kolom kanan) ─── */
+    .news-card {
+      /* flex-basis 0 → tinggi kartu ditentukan sisa ruang kolom, bukan isinya,
+         sehingga dasar kartu ini selalu sejajar dengan dasar kolom kiri */
+      flex: 1 1 0; min-height: 276px;
+      display: flex; flex-direction: column; padding: 14px 16px;
+    }
+    .news-card .section-header { margin-bottom: 10px; }
+    /* kolom kiri: kartu terakhir ikut melar bila kolom kanan lebih tinggi */
+    .col-left > .section-card:last-child { flex: 1 1 auto; }
+    .news-pages {
+      flex: 1; display: flex; overflow-x: auto; overflow-y: hidden;
+      scroll-snap-type: x mandatory; scroll-behavior: smooth;
+      overscroll-behavior-x: contain;      /* geser di kartu tidak ikut menggeser halaman */
+      scrollbar-width: none; -ms-overflow-style: none;
+      -webkit-overflow-scrolling: touch;
+    }
+    .news-pages::-webkit-scrollbar { display: none; }
+    .news-page {
+      flex: 0 0 100%; min-width: 0; scroll-snap-align: start; scroll-snap-stop: always;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    .news-nav { display: flex; gap: 6px; }
+    .news-nav-btn {
+      width: 26px; height: 26px; border-radius: 50%; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(216,184,120,.10); color: var(--accent);
+      border: 1px solid rgba(216,184,120,.28); transition: all var(--trans);
+    }
+    .news-nav-btn svg { width: 13px; height: 13px; }
+    .news-nav-btn:hover:not(:disabled) { background: var(--accent); color: #090c10; }
+    .news-nav-btn:disabled { opacity: .35; cursor: default; }
+    .news-foot { margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 7px; }
+    .news-dots { display: flex; gap: 6px; }
+    .news-dot {
+      width: 7px; height: 7px; padding: 0; border: none; border-radius: 50%; cursor: pointer;
+      background: rgba(216,184,120,.3); transition: all var(--trans);
+    }
+    .news-dot.active { width: 18px; border-radius: 4px; background: var(--accent); }
+    .news-item {
+      flex: 1 1 auto;
+      display: flex; align-items: center; gap: 12px;
+      padding: 6px 8px; border-radius: 12px; min-height: 0;
+      background: var(--book-card, #161e27);
+      border: 1px solid var(--card-border);
+      text-decoration: none; color: inherit;
+      transition: all var(--trans); min-width: 0;
+    }
+    .news-item:hover { border-color: var(--accent); box-shadow: var(--shadow-md); transform: translateY(-2px); }
+    .news-thumb {
+      width: 68px; height: 48px; flex-shrink: 0; border-radius: 8px; overflow: hidden;
+      background: linear-gradient(135deg, rgba(216,184,120,.25), rgba(216,184,120,.06));
+      position: relative;
+    }
+    .news-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .news-body { flex: 1; min-width: 0; }
+    .news-title {
+      font-size: .74rem; font-weight: 700; line-height: 1.35; color: var(--text);
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden;
+    }
+    .news-item:hover .news-title { color: var(--accent); }
+    .news-meta { margin-top: 3px; font-size: .62rem; color: var(--muted); display: flex; gap: 4px; flex-wrap: wrap; }
+    .news-src { font-weight: 800; color: var(--accent); }
+    .news-empty { padding: 18px 0; text-align: center; font-size: .75rem; color: var(--muted); }
+
     /* Fallback Cover Colors */
     .c1 { background:linear-gradient(135deg,#f5a623,#d4820a); }
     .c2 { background:linear-gradient(135deg,#9b59b6,#6c3483); }
@@ -1151,7 +1421,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       background: rgba(0,0,0,.7);
       backdrop-filter: blur(5px);
       -webkit-backdrop-filter: blur(5px);
-      z-index: 500;
+      z-index: 800;
       align-items: center;
       justify-content: center;
       padding: 12px;
@@ -1161,15 +1431,23 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     .detail-modal {
       background: var(--card, #121820);
       border: 1px solid var(--border-color);
+      border-top: 3px solid var(--accent, #d8b878);
       border-radius: 16px;
       width: 100%;
       max-width: 480px;
       max-height: 90vh;
       overflow-y: auto;
+      overflow-x: hidden;
+      overscroll-behavior: contain;
       box-shadow: 0 24px 70px rgba(0,0,0,.6);
       animation: modalIn .25s cubic-bezier(.22,1,.36,1) both;
       box-sizing: border-box;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(216,184,120,.25) transparent;
     }
+    .detail-modal::-webkit-scrollbar { width: 4px; }
+    .detail-modal::-webkit-scrollbar-thumb { background: rgba(216,184,120,.3); border-radius: 10px; }
+    .detail-modal::-webkit-scrollbar-track { background: transparent; }
     @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
     .detail-cover {
       width: 100%;
@@ -1180,10 +1458,16 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       background: #10151b;
     }
     .detail-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .detail-cover::after {
+      content: '';
+      position: absolute; inset: 0;
+      background: linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%);
+      pointer-events: none;
+    }
     .detail-cover-placeholder { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; }
     .detail-cover-placeholder svg { width: 48px; height: 48px; color: rgba(216,184,120,.35); }
     .detail-cover-badge {
-      position: absolute; top: 10px; right: 10px;
+      position: absolute; top: 10px; left: 10px;
       background: rgba(0,0,0,.75); color: var(--accent);
       border: 1px solid rgba(216,184,120,.3);
       font-size: .62rem; font-weight: 800;
@@ -1191,14 +1475,18 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       text-transform: uppercase; backdrop-filter: blur(4px);
     }
     .detail-close-btn {
-      position: absolute; top: 10px; left: 10px;
-      width: 30px; height: 30px; border-radius: 50%;
-      background: rgba(0,0,0,.75); border: 1px solid rgba(216,184,120,.3);
+      position: absolute; top: 12px; right: 12px;
+      width: 40px; height: 40px; border-radius: 50%;
+      background: rgba(18, 24, 32, 0.92); border: 2px solid var(--accent, #d8b878);
       display: flex; align-items: center; justify-content: center;
-      cursor: pointer; backdrop-filter: blur(4px); transition: background .2s;
+      cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+      transition: background .2s, transform .15s, border-color .2s;
+      box-shadow: 0 4px 14px rgba(0,0,0,.6);
+      z-index: 10;
     }
-    .detail-close-btn:hover { background: rgba(0,0,0,.9); }
-    .detail-close-btn svg { width: 15px; height: 15px; color: var(--accent); }
+    .detail-close-btn:hover { background: var(--accent, #d8b878); transform: scale(1.08); }
+    .detail-close-btn:hover svg { color: #121820; }
+    .detail-close-btn svg { width: 20px; height: 20px; color: var(--accent, #d8b878); transition: color .2s; }
     .detail-body { padding: 18px 20px 22px; }
     .detail-genre-chip {
       display: inline-block;
@@ -1292,10 +1580,16 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       }
       .col-right {
         display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+        grid-template-columns: 1fr;
         gap: 16px;
       }
-      .col-right .admin-profile-box { grid-column: 1 / -1; }
+      .col-right .news-card { flex: none; min-height: 0; }
+      /* Urutan mobile (setelah Buku Terbaru): Kategori → Bingung Mau Baca Apa → Berita → Profil Admin → Info Layanan */
+      .col-right .kategori-card      { order: 1; }
+      .col-right .pick-card          { order: 2; }
+      .col-right .news-card          { order: 3; }
+      .col-right .admin-profile-box  { order: 4; }
+      .col-right .info-card          { order: 5; }
     }
 
     @media (max-width: 768px) {
@@ -1304,7 +1598,9 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         width: min(calc(var(--sidebar-w) + 60px), 260px);
         padding-bottom: max(20px, env(safe-area-inset-bottom));
       }
-      .sidebar.open { transform: translateX(0); }
+      .sidebar.open {
+        transform: translateX(0);
+      }
       .main {
         margin-left: 0;
         padding: 78px 14px 28px;
@@ -1324,7 +1620,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         background: var(--sidebar-bg);
         border-bottom: 1px solid var(--border-color, rgba(216,184,120,.15));
         box-shadow: 0 2px 18px rgba(0,0,0,.35);
-        z-index: 160;
+        z-index: 600;
         transition: opacity var(--trans), visibility var(--trans);
       }
       body.sidebar-open .mobile-topbar {
@@ -1434,12 +1730,31 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         gap: 8px;
       }
 
+      /* Modal detail buku — padding atas untuk menghindari nabrak navbar mobile */
+      .detail-overlay { padding-top: 68px; }
+
       /* Modal detail buku — bottom-sheet, konsisten */
+      /* (override padding-top di atas saat layar sangat sempit) */
+    }
+
+    @media (max-width: 540px) {
+      /* Bottom-sheet: modal muncul dari bawah, tidak perlu padding atas */
       .detail-overlay { align-items: flex-end; padding: 0; }
       .detail-modal {
         max-width: 100%; width: 100%; margin: 0;
-        border-radius: 16px 16px 0 0;
+        border-radius: 22px 22px 0 0;
+        border-top: 3px solid var(--accent, #d8b878);
         max-height: 92dvh;
+      }
+      /* Drag handle indicator di atas bottom-sheet */
+      .detail-modal::before {
+        content: '';
+        display: block;
+        width: 40px; height: 4px;
+        background: rgba(216,184,120,.4);
+        border-radius: 10px;
+        margin: 10px auto 0;
+        flex-shrink: 0;
       }
     }
 
@@ -1696,12 +2011,23 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
             <div class="book-info-box">
               <div class="bk-title"><?= htmlspecialchars($buku["judul"]) ?></div>
               <div class="bk-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></div>
-              <?php $rat = $rating_avg[$buku["id"]] ?? null; if ($rat && $rat["total"] > 0): ?>
-              <div class="bk-rating-mini">
-                <svg viewBox="0 0 24 24" fill="#f5a623" stroke="#f5a623" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                <?= $rat["avg"] ?> <span style="color:var(--muted);font-weight:400;">(<?= $rat["total"] ?>)</span>
+              <?php
+                $rat   = $rating_avg[$buku["id"]] ?? null;
+                $r_avg = $rat ? (float)$rat["avg"] : 0.0;
+                $r_tot = $rat ? (int)$rat["total"] : 0;
+                $r_pct = max(0, min(100, $r_avg / 5 * 100));
+                $stok_i = (int)$buku["stok"];
+                if ($stok_i <= 0)      { $st_cls = "habis";    $st_txt = "Habis"; }
+                elseif ($stok_i <= 3)  { $st_cls = "terbatas"; $st_txt = "Terbatas · " . $stok_i; }
+                else                   { $st_cls = "tersedia"; $st_txt = "Tersedia · " . $stok_i; }
+              ?>
+              <div class="bk-rating-row">
+                <span class="star-rating" title="<?= $r_tot > 0 ? number_format($r_avg, 1) . ' dari 5' : 'Belum ada rating' ?>">
+                  <span class="star-base">★★★★★</span><span class="star-fill" style="width:<?= round($r_pct, 1) ?>%">★★★★★</span>
+                </span>
+                <span class="bk-rating-val"><?= $r_tot > 0 ? number_format($r_avg, 1) . " <em>(" . $r_tot . ")</em>" : "Belum ada rating" ?></span>
               </div>
-              <?php endif; ?>
+              <div class="bk-stock stok-<?= $st_cls ?>"><span class="dot"></span><?= htmlspecialchars($st_txt) ?></div>
             </div>
             <div class="bk-badge-row">
               <?php if ($buku["genre"]): ?>
@@ -1756,25 +2082,6 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         <?php endif; ?>
       </div>
 
-      <!-- Kategori Populer -->
-      <?php if (!empty($genre_populer)): ?>
-      <div class="section-card">
-        <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>
-            Kategori Populer
-          </div>
-        </div>
-        <div class="genre-cloud">
-          <?php foreach ($genre_populer as $g): ?>
-            <span class="genre-pill">
-              <?= htmlspecialchars($g["genre"]) ?>
-              <span class="pill-count">· <?= (int)$g["jumlah"] ?></span>
-            </span>
-          <?php endforeach; ?>
-        </div>
-      </div>
-      <?php endif; ?>
 
     </div><!-- /col-left -->
 
@@ -1830,8 +2137,36 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       </div>
       <?php endif; ?>
 
+      <!-- Bingung Mau Baca Apa? (acak buku tersedia) — tampil untuk tamu -->
+      <?php if ($is_guest && !empty($acak_buku)): $pk = $acak_buku[0]; ?>
+      <div class="section-card pick-card" id="pickCard">
+        <div class="section-header">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="8.5" r="1.2" fill="currentColor"/><circle cx="12" cy="12" r="1.2" fill="currentColor"/><circle cx="8.5" cy="15.5" r="1.2" fill="currentColor"/><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"/></svg>
+            Bingung Mau Baca Apa?
+          </div>
+        </div>
+        <div class="pick-body" id="pickBody" onclick="bukaDetailBuku(<?= $pk['id'] ?>)">
+          <div class="pick-cover <?= $pk['gambar'] === '' ? 'c1' : '' ?>">
+            <?php if ($pk['gambar'] !== ''): ?><img src="<?= htmlspecialchars($pk['gambar']) ?>" alt="" draggable="false"><?php endif; ?>
+          </div>
+          <div class="pick-info">
+            <?php if ($pk['genre'] !== ''): ?><span class="pick-genre"><?= htmlspecialchars($pk['genre']) ?></span><?php endif; ?>
+            <div class="pick-title"><?= htmlspecialchars($pk['judul']) ?></div>
+            <div class="pick-author"><?= htmlspecialchars($pk['penulis'] ?: 'Penulis tidak diketahui') ?></div>
+            <div class="bk-stock <?= $pk['stok'] <= 3 ? 'stok-terbatas' : 'stok-tersedia' ?>"><span class="dot"></span><?= $pk['stok'] <= 3 ? 'Terbatas' : 'Tersedia' ?> · <?= $pk['stok'] ?></div>
+          </div>
+        </div>
+        <button type="button" class="pick-btn" id="pickBtn" onclick="acakBuku()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+          Acak buku lain
+        </button>
+      </div>
+      <script>window.AKSA_PICK = <?= json_encode($acak_buku, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
+      <?php endif; ?>
+
       <!-- Informasi Perpustakaan & Jam Layanan -->
-      <div class="section-card">
+      <div class="section-card info-card">
         <div class="section-header">
           <div class="section-title">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -1867,6 +2202,81 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
           <div style="font-size:.92rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= htmlspecialchars($profil_nama) ?></div>
           <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">Administrator Perpustakaan</div>
         </div>
+      </div>
+
+
+      <!-- Kategori Populer -->
+      <?php if (!empty($genre_populer)): ?>
+      <div class="section-card kategori-card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>
+            Kategori Populer
+          </div>
+        </div>
+        <div class="genre-cloud">
+          <?php foreach ($genre_populer as $g): ?>
+            <span class="genre-pill">
+              <?= htmlspecialchars($g["genre"]) ?>
+              <span class="pill-count">· <?= (int)$g["jumlah"] ?></span>
+            </span>
+          <?php endforeach; ?>
+        </div>
+      </div>
+      <?php endif; ?>
+
+      <!-- Berita Terkini: 3 berita per halaman, bisa digeser -->
+      <?php $berita_hal = array_chunk($berita, 3); $berita_n = count($berita_hal); ?>
+      <div class="section-card news-card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/></svg>
+            Berita Terkini
+          </div>
+          <?php if ($berita_n > 1): ?>
+          <div class="news-nav">
+            <button type="button" class="news-nav-btn" id="newsPrev" onclick="newsGo(-1)" aria-label="Berita sebelumnya">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
+            <button type="button" class="news-nav-btn" id="newsNext" onclick="newsGo(1)" aria-label="Berita berikutnya">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          </div>
+          <?php endif; ?>
+        </div>
+        <?php if (empty($berita)): ?>
+          <div class="news-empty">Berita belum dapat dimuat. Coba lagi beberapa saat.</div>
+        <?php else: ?>
+        <div class="news-pages" id="newsPages">
+          <?php foreach ($berita_hal as $hal): ?>
+          <div class="news-page">
+            <?php foreach ($hal as $n): ?>
+            <a class="news-item" href="<?= htmlspecialchars($n["link"]) ?>" target="_blank" rel="noopener noreferrer" draggable="false">
+              <div class="news-thumb">
+                <?php if ($n["img"] !== ""): ?>
+                  <img src="<?= htmlspecialchars($n["img"]) ?>" alt="" loading="lazy" draggable="false" referrerpolicy="no-referrer" onerror="this.remove()">
+                <?php endif; ?>
+              </div>
+              <div class="news-body">
+                <div class="news-title"><?= htmlspecialchars($n["judul"]) ?></div>
+                <div class="news-meta">
+                  <span class="news-src"><?= htmlspecialchars($n["sumber"]) ?></span>
+                  <?php if ($n["ts"]): ?><span class="news-time">· <?= htmlspecialchars(berita_waktu($n["ts"])) ?></span><?php endif; ?>
+                </div>
+              </div>
+            </a>
+            <?php endforeach; ?>
+          </div>
+          <?php endforeach; ?>
+        </div>
+        <div class="news-foot">
+          <?php if ($berita_n > 1): ?>
+          <div class="news-dots" id="newsDots">
+            <?php for ($d = 0; $d < $berita_n; $d++): ?><button type="button" class="news-dot<?= $d === 0 ? ' active' : '' ?>" aria-label="Halaman berita <?= $d + 1 ?>"></button><?php endfor; ?>
+          </div>
+          <?php endif; ?>
+        </div>
+        <?php endif; ?>
       </div>
 
     </div><!-- /col-right -->
@@ -2000,9 +2410,11 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         </div>
         <div class="detail-rating-row" id="ratingRow_${b.id}">
           ${renderStarsDisplay(b.rating_avg, b.rating_total)}
+          ${IS_ADMIN ? '' : `
           <div style="border-left:1px solid var(--border-color, rgba(216,184,120,.2));height:16px;"></div>
           <span style="font-size:.72rem;font-weight:700;color:var(--muted);">Nilai kamu:</span>
           ${renderStarsInput(b.id, b.user_rating)}
+          `}
         </div>
         <div class="detail-meta-row">
           ${b.isbn ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>ISBN: <span>${escHTML(b.isbn)}</span></div>` : ''}
@@ -2092,6 +2504,68 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     restartAutoplay();
   })();
 
+  // ─── Berita Terkini: geser (scroll-snap native) + tombol panah + titik halaman ───
+  (function () {
+    const sc = document.getElementById('newsPages');
+    if (!sc) return;
+    const pages = sc.children.length;
+    const dots  = document.querySelectorAll('#newsDots .news-dot');
+    const prev  = document.getElementById('newsPrev');
+    const next  = document.getElementById('newsNext');
+
+    function idx() { return Math.max(0, Math.min(pages - 1, Math.round(sc.scrollLeft / (sc.clientWidth || 1)))); }
+    function upd() {
+      const i = idx();
+      dots.forEach((d, k) => d.classList.toggle('active', k === i));
+      if (prev) prev.disabled = i <= 0;
+      if (next) next.disabled = i >= pages - 1;
+    }
+    window.newsGo = function (dir) { sc.scrollTo({ left: (idx() + dir) * sc.clientWidth, behavior: 'smooth' }); };
+    dots.forEach((d, k) => d.addEventListener('click', () => sc.scrollTo({ left: k * sc.clientWidth, behavior: 'smooth' })));
+    sc.addEventListener('scroll', () => requestAnimationFrame(upd), { passive: true });
+    window.addEventListener('resize', upd);
+    upd();
+  })();
+
+  // ─── Kartu "Bingung Mau Baca Apa?": acak buku tersedia tanpa reload ───
+  (function () {
+    const data = window.AKSA_PICK;
+    if (!Array.isArray(data) || data.length === 0) return;
+    const body = document.getElementById('pickBody');
+    const btn  = document.getElementById('pickBtn');
+    if (!body || !btn) return;
+
+    let queue = [];
+    let currentId = data[0].id;
+    function refill() {
+      queue = data.filter(b => b.id !== currentId);
+      for (let i = queue.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [queue[i], queue[j]] = [queue[j], queue[i]]; }
+    }
+    function render(b) {
+      currentId = b.id;
+      const sisa = parseInt(b.stok, 10) || 0;
+      const terbatas = sisa <= 3;
+      body.setAttribute('onclick', 'bukaDetailBuku(' + b.id + ')');
+      body.innerHTML =
+        '<div class="pick-cover' + (b.gambar ? '' : ' c1') + '">' + (b.gambar ? '<img src="' + escHTML(b.gambar) + '" alt="" draggable="false">' : '') + '</div>' +
+        '<div class="pick-info">' +
+          (b.genre ? '<span class="pick-genre">' + escHTML(b.genre) + '</span>' : '') +
+          '<div class="pick-title">' + escHTML(b.judul) + '</div>' +
+          '<div class="pick-author">' + escHTML(b.penulis || 'Penulis tidak diketahui') + '</div>' +
+          '<div class="bk-stock ' + (terbatas ? 'stok-terbatas' : 'stok-tersedia') + '"><span class="dot"></span>' + (terbatas ? 'Terbatas' : 'Tersedia') + ' · ' + sisa + '</div>' +
+        '</div>';
+    }
+    window.acakBuku = function () {
+      if (data.length < 2) return;
+      if (queue.length === 0) refill();
+      const next = queue.pop();
+      btn.classList.remove('spin'); void btn.offsetWidth; btn.classList.add('spin');
+      body.classList.add('swap');
+      setTimeout(() => { render(next); body.classList.remove('swap'); }, 180);
+    };
+    refill();
+  })();
+
   function escHTML(str) {
     if (!str) return '';
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -2118,6 +2592,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     document.querySelectorAll(`#starsInput_${bukuId} svg`).forEach(s => { s.classList.remove('hover'); s.setAttribute('fill', s.classList.contains('aktif')?'#f5a623':'none'); });
   }
   function submitRating(bukuId, rating) {
+    if (IS_ADMIN) return;
     if (IS_GUEST) return butuhLogin();
     const fd = new FormData();
     fd.append('buku_id', bukuId); fd.append('rating', rating);
@@ -2136,5 +2611,6 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
 </script>
 
 <?php require_once "pengaturan_panel.php"; ?>
+<?php if ($is_admin) require_once __DIR__ . '/notifikasi_pengajuan_admin.php'; ?>
 </body>
 </html>

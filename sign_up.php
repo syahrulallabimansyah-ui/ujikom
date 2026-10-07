@@ -16,6 +16,7 @@ if (isset($_SESSION["user_id"])) {
 $errors = [];
 $old = [
     "full_name" => "",
+    "nik"       => "",
     "kelas"     => "",
     "no_hp"     => "",
     "email"     => "",
@@ -37,6 +38,7 @@ $foto_web_dir = "uploads/anggota"; // path relatif yang disimpan ke DB & dipakai
 if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
 
     $old["full_name"] = trim($_POST["full_name"] ?? "");
+    $old["nik"]       = trim($_POST["nik"] ?? "");
     $old["kelas"]     = trim($_POST["kelas"] ?? "");
     $old["no_hp"]     = trim($_POST["no_hp"] ?? "");
     $old["email"]     = strtolower(trim($_POST["email"] ?? ""));
@@ -46,6 +48,11 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     // ── Validasi ──
     if ($old["full_name"] === "") {
         $errors[] = "Nama lengkap wajib diisi.";
+    }
+    if ($old["nik"] === "") {
+        $errors[] = "Nomor Induk Siswa (NIS) wajib diisi.";
+    } elseif (!preg_match('/^[0-9]{3,20}$/', $old["nik"])) {
+        $errors[] = "NIS harus berupa angka (minimal 3 digit).";
     }
     if ($old["kelas"] === "") {
         $errors[] = "Pilihan kelas wajib dipilih.";
@@ -90,7 +97,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
         $errors[] = $foto_error;
     }
 
-    // Cek email belum terdaftar
+    // Cek email dan NIS belum terdaftar
     if (empty($errors)) {
         $stmt = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ?");
         mysqli_stmt_bind_param($stmt, "s", $old["email"]);
@@ -100,6 +107,17 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
             $errors[] = "Email tersebut sudah terdaftar sebagai anggota.";
         }
         mysqli_stmt_close($stmt);
+
+        if ($old["nik"] !== "") {
+            $stmt_nik = mysqli_prepare($conn, "SELECT id FROM users WHERE nik = ?");
+            mysqli_stmt_bind_param($stmt_nik, "s", $old["nik"]);
+            mysqli_stmt_execute($stmt_nik);
+            mysqli_stmt_store_result($stmt_nik);
+            if (mysqli_stmt_num_rows($stmt_nik) > 0) {
+                $errors[] = "Nomor Induk Siswa (NIS) tersebut sudah terdaftar.";
+            }
+            mysqli_stmt_close($stmt_nik);
+        }
     }
 
     if (empty($errors)) {
@@ -154,14 +172,13 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
         }
 
         // ── Simpan ke database (langsung approved, tanpa perlu approval admin) ──
-        $empty_nik = "";
         $stmt = mysqli_prepare($conn,
             "INSERT INTO users (full_name, nik, kelas, no_hp, no_anggota, username, email, password, foto, role, status)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', 'approved')"
         );
         mysqli_stmt_bind_param(
             $stmt, "sssssssss",
-            $old["full_name"], $empty_nik, $old["kelas"], $old["no_hp"],
+            $old["full_name"], $old["nik"], $old["kelas"], $old["no_hp"],
             $no_anggota, $username, $old["email"], $hashed, $foto_relative_path
         );
 
@@ -174,7 +191,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
             $_SESSION["kartu_data"] = [
                 "id"         => $new_id,
                 "full_name"  => $old["full_name"],
-                "nik"        => "",
+                "nik"        => $old["nik"],
                 "kelas"      => $old["kelas"],
                 "no_hp"      => $old["no_hp"],
                 "email"      => $old["email"],
@@ -941,6 +958,12 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
       <div class="row2">
         <div class="field">
+          <label>Nomor Induk Siswa (NIS)</label>
+          <input type="text" name="nik" placeholder="Contoh: 212210045"
+                 pattern="[0-9]{3,20}" title="NIS harus berupa angka (minimal 3 digit)"
+                 value="<?= htmlspecialchars($old['nik']) ?>" required>
+        </div>
+        <div class="field">
           <label>Pilihan Kelas</label>
           <div class="select-wrap">
             <select name="kelas" required>
@@ -956,11 +979,12 @@ $page_title = "Daftar Anggota – AKSA NOVA";
             </svg>
           </div>
         </div>
-        <div class="field">
-          <label>Nomor HP <span style="font-size:.72rem;font-weight:400;color:var(--dim,#9c9489);">(Opsional)</span></label>
-          <input type="text" name="no_hp" placeholder="08xxxxxxxxxx"
-                 value="<?= htmlspecialchars($old['no_hp']) ?>">
-        </div>
+      </div>
+
+      <div class="field">
+        <label>Nomor HP <span style="font-size:.72rem;font-weight:400;color:var(--dim,#9c9489);">(Opsional)</span></label>
+        <input type="text" name="no_hp" placeholder="08xxxxxxxxxx"
+               value="<?= htmlspecialchars($old['no_hp']) ?>">
       </div>
 
       <div class="field">

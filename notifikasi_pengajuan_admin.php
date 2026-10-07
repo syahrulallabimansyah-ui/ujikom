@@ -467,7 +467,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   }
 
   function updateSidebarBadge(count) {
-    var links = document.querySelectorAll('a.sidebar-btn[href*="pengajuan_buku.php"], .sidebar a[href*="pengajuan_buku.php"]');
+    var links = document.querySelectorAll('a.sidebar-btn[href*="pengajuan_buku.php"], .sidebar a[href*="pengajuan_buku.php"], a.nav-item[href*="halaman_admin.php"]');
     links.forEach(function(link) {
       var existingBadge = link.querySelector('span');
       if (count > 0) {

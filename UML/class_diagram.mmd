@@ -1,0 +1,200 @@
+classDiagram
+    direction TB
+
+    class User {
+        -int id
+        -String fullName
+        -String nik
+        -String kelas
+        -String noHp
+        -String noAnggota
+        -String username
+        -String email
+        -String password
+        -String foto
+        -String role
+        -String status
+        -String cardStatus
+        -DateTime createdAt
+        +register(data) bool
+        +login(username, password) bool
+        +logout() void
+        +updateProfile(data) bool
+        +generateNoAnggota() String
+        +freezeCard() bool
+    }
+
+    class Admin {
+        +verifyMember(userId, status) bool
+        +resetMemberPassword(userId, newPass) bool
+        +approveLoanRequest(requestId) bool
+        +rejectLoanRequest(requestId, reason) bool
+        +manageBook(action, bookData) bool
+        +processReturn(loanId) bool
+        +updateFinePayment(loanId, status) bool
+        +exportReportToExcel() file
+        +configureSystem(key, value) bool
+    }
+
+    class Member {
+        +requestLoan(bookId, duration, cardFile) bool
+        +toggleFavorite(bookId) bool
+        +toggleLike(bookId) bool
+        +giveRating(bookId, stars) bool
+        +downloadDigitalCard() file
+        +reportLostCard(reason) bool
+    }
+
+    class AdminProfile {
+        -int id
+        -int userId
+        -String displayName
+        -String foto
+        -DateTime updatedAt
+        +getProfile(userId) AdminProfile
+        +updateProfile(data) bool
+    }
+
+    class Buku {
+        -int id
+        -String judul
+        -String penulis
+        -String isbn
+        -String genre
+        -String sinopsis
+        -int stok
+        -String rak
+        -String gambar
+        -DateTime createdAt
+        -DateTime updatedAt
+        +createBook(data) bool
+        +updateBook(id, data) bool
+        +deleteBook(id) bool
+        +fetchIsbnData(isbn) JSON
+        +reduceStock(id, qty) bool
+        +restoreStock(id, qty) bool
+        +getDetail(id) Buku
+    }
+
+    class PengajuanPeminjaman {
+        -int id
+        -int userId
+        -int bukuId
+        -String namaPeminjam
+        -String fileKartu
+        -int totalBuku
+        -Date batasKembali
+        -String waktuPengambilan
+        -String catatanPengambilan
+        -String status
+        -String alasanPenolakan
+        -DateTime approvedAt
+        -DateTime createdAt
+        +createRequest(data) bool
+        +checkPendingRequests() int
+        +approve(adminId) bool
+        +reject(adminId, reason) bool
+    }
+
+    class Peminjaman {
+        -int id
+        -int bukuId
+        -int userId
+        -String namaPeminjam
+        -DateTime waktuPinjam
+        -DateTime batasKembali
+        -DateTime waktuKembali
+        -int terlambatHari
+        -decimal denda
+        -String statusDenda
+        -String status
+        -DateTime createdAt
+        +createDirectLoan(data) bool
+        +returnBook(loanId) bool
+        +calculateFine(loanId) decimal
+        +markFinePaid(loanId) bool
+        +sendWhatsAppReminder(loanId) void
+    }
+
+    class ReminderLog {
+        -int id
+        -int peminjamanId
+        -int sentByAdminId
+        -String noHpTujuan
+        -String templatePesan
+        -DateTime sentAt
+        +logReminder(loanId, adminId) bool
+    }
+
+    class BukuFavorite {
+        -int id
+        -int bukuId
+        -int userId
+        -DateTime createdAt
+        +addFavorite(userId, bookId) bool
+        +removeFavorite(userId, bookId) bool
+    }
+
+    class BukuLike {
+        -int id
+        -int bukuId
+        -int userId
+        -DateTime createdAt
+        +toggleLike(userId, bookId) bool
+    }
+
+    class BukuRating {
+        -int id
+        -int userId
+        -int bukuId
+        -int rating
+        -DateTime createdAt
+        +submitRating(userId, bookId, stars) bool
+        +getAverageRating(bookId) float
+    }
+
+    class Banner {
+        -int id
+        -String judul
+        -String subjudul
+        -String gambar
+        -String linkUrl
+        -int urutan
+        -bool aktif
+        +addBanner(data) bool
+        +updateBanner(id, data) bool
+        +deleteBanner(id) bool
+    }
+
+    class Pengaturan {
+        -int id
+        -String kunci
+        -String nilai
+        -String keterangan
+        +getSetting(key) String
+        +setSetting(key, val) bool
+    }
+
+    User <|-- Admin : inherits
+    User <|-- Member : inherits
+    User "1" *-- "0..1" AdminProfile : has
+
+    User "1" --> "0..*" PengajuanPeminjaman : creates
+    Buku "1" --> "0..*" PengajuanPeminjaman : requested
+
+    User "1" --> "0..*" Peminjaman : borrows
+    Buku "1" --> "0..*" Peminjaman : borrowed
+    Peminjaman "1" *-- "0..*" ReminderLog : logs
+
+    User "1" --> "0..*" BukuFavorite : favorites
+    Buku "1" --> "0..*" BukuFavorite : in
+
+    User "1" --> "0..*" BukuLike : likes
+    Buku "1" --> "0..*" BukuLike : in
+
+    User "1" --> "0..*" BukuRating : rates
+    Buku "1" --> "0..*" BukuRating : in
+
+    Admin ..> Banner : manages
+    Admin ..> Pengaturan : configures
+    Admin ..> Buku : manages

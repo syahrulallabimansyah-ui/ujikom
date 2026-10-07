@@ -2606,41 +2606,146 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     });
   })();
 
-  // Musik latar — otomatis diputar saat halaman dibuka, sumbernya diatur admin
+  // Musik latar — sinkron persisten dengan seluruh halaman aplikasi (AksaAudio)
   (function () {
     const audio  = document.getElementById('audioLatar');
     const btn    = document.getElementById('btnMusik');
     if (!audio || !btn) return;
 
+    const TIME_KEY   = 'aksanova_audio_time';
+    const STATUS_KEY = 'aksanova_audio_status';
+    const SRC_KEY    = 'aksanova_audio_src';
+
     audio.volume = 0.55;
 
-    let userPaused        = false; // true kalau pengguna SENGAJA menekan tombol musik untuk mematikan
-    let pausedByHidden     = false; // true kalau musik dihentikan otomatis karena tab/halaman sedang tidak aktif
-    let autoplaySucceeded  = false; // true kalau autoplay awal sudah berhasil (jaring pengaman tidak diperlukan lagi)
+    function getSongKey(src) {
+      if (!src) return '';
+      try {
+        const clean = src.split('?')[0].split('#')[0];
+        return clean.substring(clean.lastIndexOf('/') + 1).toLowerCase();
+      } catch(e) { return src.toLowerCase(); }
+    }
+
+    function saveState() {
+      try {
+        if (!isNaN(audio.currentTime) && audio.currentTime > 0) {
+          localStorage.setItem(TIME_KEY, audio.currentTime.toString());
+        }
+        localStorage.setItem(STATUS_KEY, audio.paused ? 'paused' : 'playing');
+      } catch(e) {}
+    }
 
     function setPlaying(isPlaying) {
       btn.classList.toggle('playing', isPlaying);
       btn.setAttribute('aria-pressed', isPlaying ? 'true' : 'false');
     }
 
-    function removeAutoplayFallback() {
-      document.removeEventListener('click', autoplayFallback);
-      document.removeEventListener('touchstart', autoplayFallback);
-      document.removeEventListener('keydown', autoplayFallback);
-      document.removeEventListener('scroll', autoplayFallback);
+    const srcTag = audio.querySelector('source');
+    const currentSrc = srcTag ? srcTag.getAttribute('src') : (audio.src || '');
+    let savedSrc = '';
+    try { savedSrc = localStorage.getItem(SRC_KEY) || ''; } catch(e) {}
+
+    let savedTime = 0;
+    try { savedTime = parseFloat(localStorage.getItem(TIME_KEY) || '0'); } catch(e) {}
+
+    let userPaused = false;
+    try { userPaused = (localStorage.getItem(STATUS_KEY) === 'paused'); } catch(e) {}
+
+    const curKey = getSongKey(currentSrc);
+    const savedKey = getSongKey(savedSrc);
+    if (curKey && savedKey && curKey !== savedKey) {
+      savedTime = 0;
+      try {
+        localStorage.setItem(SRC_KEY, currentSrc);
+        localStorage.setItem(TIME_KEY, '0');
+      } catch(e) {}
+    } else if (currentSrc && !savedSrc) {
+      try { localStorage.setItem(SRC_KEY, currentSrc); } catch(e) {}
     }
 
-    // Browser hanya mengizinkan audio autoplay bersuara jika dimulai dalam kondisi "muted".
-    // Trik: putar dalam keadaan muted (selalu diizinkan tanpa interaksi), lalu langsung
-    // nyalakan suaranya (unmute) setelah berhasil — hasilnya musik terdengar otomatis
-    // begitu halaman dibuka, tanpa perlu pengunjung mengklik apa pun dulu.
-    function play() {
-      audio.play().then(() => {
+    function applySavedTime() {
+      if (savedTime > 0 && isFinite(savedTime)) {
+        try {
+          if (!audio.duration || savedTime < audio.duration) {
+            if (Math.abs(audio.currentTime - savedTime) > 0.3) {
+              audio.currentTime = savedTime;
+            }
+          }
+        } catch(e) {}
+      }
+    }
+
+    applySavedTime();
+    audio.addEventListener('loadedmetadata', applySavedTime);
+    audio.addEventListener('canplay', function() {
+      if (savedTime > 0 && Math.abs(audio.currentTime - savedTime) > 0.5) {
+        applySavedTime();
+      }
+    });
+
+    audio.addEventListener('timeupdate', function() {
+      if (!audio.paused && audio.currentTime > 0) {
+        try { localStorage.setItem(TIME_KEY, audio.currentTime.toString()); } catch(e) {}
+      }
+    });
+
+    audio.addEventListener('play', () => { if (!audio.muted) setPlaying(true); });
+    audio.addEventListener('pause', () => { if (!pausedByHidden) setPlaying(false); });
+    audio.addEventListener('ended', () => {
+      try { localStorage.setItem(TIME_KEY, '0'); } catch(e) {}
+      if (!userPaused) {
+        audio.currentTime = 0;
+        audio.play().then(() => { audio.muted = false; setPlaying(true); }).catch(() => setPlaying(false));
+      }
+    });
+
+    window.addEventListener('beforeunload', saveState);
+    window.addEventListener('pagehide', saveState);
+
+    let gestureBound = false;
+    function removeGestureListeners() {
+      if (!gestureBound) return;
+      gestureBound = false;
+      ['click', 'keydown', 'touchstart'].forEach(ev => {
+        document.removeEventListener(ev, onUserGesture);
+      });
+    }
+
+    function onUserGesture(ev) {
+      if (ev && ev.target && (ev.target === btn || btn.contains(ev.target))) return;
+      if (!userPaused) {
         audio.muted = false;
-        autoplaySucceeded = true;
-        removeAutoplayFallback(); // autoplay sudah jalan, jaring pengaman tidak diperlukan lagi
-        setPlaying(true);
-      }).catch(() => setPlaying(false));
+        applySavedTime();
+        audio.play().then(() => {
+          setPlaying(true);
+          try { localStorage.setItem(STATUS_KEY, 'playing'); } catch(e) {}
+        }).catch(() => {});
+      }
+      removeGestureListeners();
+    }
+
+    function attachGestureListeners() {
+      if (gestureBound) return;
+      gestureBound = true;
+      ['click', 'keydown', 'touchstart'].forEach(ev => {
+        document.addEventListener(ev, onUserGesture, { once: false, passive: true });
+      });
+    }
+
+    function play() {
+      applySavedTime();
+      const p = audio.play();
+      if (p !== undefined) {
+        p.then(() => {
+          audio.muted = false;
+          setPlaying(true);
+          removeGestureListeners();
+        }).catch(() => {
+          audio.muted = true;
+          audio.play().then(() => setPlaying(false)).catch(() => setPlaying(false));
+          attachGestureListeners();
+        });
+      }
     }
 
     function pause() {
@@ -2648,46 +2753,31 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
       setPlaying(false);
     }
 
-    btn.addEventListener('click', () => {
-      if (audio.paused) {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (audio.paused || audio.muted) {
         userPaused = false;
         pausedByHidden = false;
+        audio.muted = false;
+        try { localStorage.setItem(STATUS_KEY, 'playing'); } catch(e) {}
         play();
       } else {
-        userPaused = true; // tandai bahwa pengguna sendiri yang mematikan musiknya
+        userPaused = true;
         pause();
+        try {
+          localStorage.setItem(STATUS_KEY, 'paused');
+          saveState();
+        } catch(e) {}
       }
     });
 
-    // Putar otomatis begitu halaman dimuat
-    play();
-
-    // Jaring pengaman: pada browser yang tetap memblokir autoplay meski sudah di-mute,
-    // musik akan langsung menyala begitu pengunjung berinteraksi apa pun dengan halaman.
-    // Fungsi ini HANYA boleh menyalakan musik selama autoplay awal belum berhasil DAN
-    // pengguna belum pernah mematikannya sendiri — supaya menekan tombol lain setelah
-    // musik dimatikan manual tidak menyalakannya kembali.
-    function autoplayFallback() {
-      if (!autoplaySucceeded && !userPaused && (audio.paused || audio.muted)) {
-        audio.muted = false;
-        play();
-      }
-      removeAutoplayFallback();
-    }
-    document.addEventListener('click', autoplayFallback, { once: true, passive: true });
-    document.addEventListener('touchstart', autoplayFallback, { once: true, passive: true });
-    document.addEventListener('keydown', autoplayFallback, { once: true });
-    document.addEventListener('scroll', autoplayFallback, { once: true, passive: true });
-
-    // Musik otomatis berhenti saat pengunjung pindah tab / minimize jendela / keluar dari web ini,
-    // dan otomatis lanjut lagi saat kembali ke tab ini — kecuali pengguna sendiri yang
-    // mematikannya lewat tombol musik (userPaused tetap dihormati).
+    let pausedByHidden = false;
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) {
         if (!audio.paused) {
           pausedByHidden = true;
-          audio.pause();
-          setPlaying(false);
+          pause();
         }
       } else if (pausedByHidden && !userPaused) {
         pausedByHidden = false;
@@ -2695,10 +2785,13 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
       }
     });
 
-    // Pastikan musik benar-benar berhenti saat halaman ditinggalkan (pindah halaman/menutup tab)
-    window.addEventListener('pagehide', () => {
+    if (userPaused) {
       audio.pause();
-    });
+      audio.removeAttribute('autoplay');
+      setPlaying(false);
+    } else {
+      play();
+    }
   })();
 
   // Animasi scroll-reveal untuk konten tiap slide — diputar ulang setiap kali

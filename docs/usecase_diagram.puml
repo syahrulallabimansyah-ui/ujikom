@@ -1,0 +1,185 @@
+@startuml AKSA_NOVA_Use_Case_Diagram
+!theme plain
+title DIAGRAM USE CASE - SISTEM INFORMASI PERPUSTAKAAN AKSA NOVA (SMKN 1 RONGGA)
+
+top to bottom direction
+
+' ==========================================
+' PENGATURAN STILING (CLEAN & PROFESSIONAL)
+' ==========================================
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+skinparam defaultFontSize 12
+skinparam shadowing false
+skinparam roundCorner 10
+
+skinparam package {
+    BackgroundColor #F8FAFC
+    BorderColor #94A3B8
+    BorderThickness 1.2
+    FontColor #0F172A
+    FontStyle bold
+    FontSize 13
+}
+
+skinparam actor {
+    BackgroundColor #FEF08A
+    BorderColor #CA8A04
+    BorderThickness 1.5
+    FontColor #1E293B
+    FontStyle bold
+    FontSize 13
+}
+
+skinparam usecase {
+    BackgroundColor #F1F5F9
+    BorderColor #64748B
+    BorderThickness 1.2
+    FontColor #0F172A
+    ArrowColor #334155
+    ArrowThickness 1.2
+}
+
+skinparam arrow {
+    Color #334155
+    FontColor #475569
+    FontSize 11
+}
+
+' ==========================================
+' DEFINISI 3 AKTOR
+' ==========================================
+actor "Tamu\n(Pengunjung/Guest)" as Tamu
+actor "Anggota\n(Siswa/Member)" as Anggota
+actor "Admin\n(Pustakawan)" as Admin
+
+' ==========================================
+' BATAS SISTEM & MODUL
+' ==========================================
+rectangle "Sistem Informasi Perpustakaan Digital AKSA NOVA" as SystemBoundary {
+
+    ' Paket 1: Autentikasi & Akun
+    package "Modul 1: Autentikasi & Keanggotaan" {
+        usecase "UC-01\nRegistrasi Akun (NIS)" as UC01
+        usecase "UC-02\nLogin Multi-Role" as UC02
+        usecase "UC-03\nKelola & Cetak\nKartu Digital NIS" as UC03
+        usecase "UC-04\nLapor Lupa Kartu\n& Freeze" as UC04
+        usecase "UC-05\nVerifikasi Akun Siswa" as UC05
+        usecase "UC-06\nEdit Profil & Sandi Admin" as UC06
+    }
+
+    ' Paket 2: Katalog & Rak Buku
+    package "Modul 2: Katalog & Rak Buku Fisik" {
+        usecase "UC-07\nCari & Filter Buku" as UC07
+        usecase "UC-08\nCek Lokasi Rak Fisik Buku" as UC08
+        usecase "UC-09\nAuto-Fetch ISBN" as UC09
+        usecase "UC-10\nCRUD Buku, Stok\n& Lokasi Rak" as UC10
+    }
+
+    ' Paket 3: Sirkulasi Peminjaman
+    package "Modul 3: Sirkulasi Peminjaman" {
+        usecase "UC-11\nAjukan Pinjaman Online\n(+ Info Lokasi Rak)" as UC11
+        usecase "UC-12\nNotifikasi Pop-up Realtime" as UC12
+        usecase "UC-13\nValidasi / Approval\nPengajuan Pinjaman" as UC13
+        usecase "UC-14\nInput Pinjam Langsung\ndi Meja Sirkulasi" as UC14
+    }
+
+    ' Paket 4: Pengembalian & Denda
+    package "Modul 4: Pengembalian & Denda" {
+        usecase "UC-15\nProses Pengembalian Buku" as UC15
+        usecase "UC-16\nHitung Denda Otomatis" as UC16
+        usecase "UC-17\nKirim Pengingat WhatsApp" as UC17
+        usecase "UC-18\nPelunasan Denda" as UC18
+    }
+
+    ' Paket 5: Interaksi Literasi
+    package "Modul 5: Interaksi Literasi" {
+        usecase "UC-19\nSimpan Buku Favorit\n(Bookmark)" as UC19
+        usecase "UC-20\nBeri Suka (Like) Buku" as UC20
+        usecase "UC-21\nBeri Rating Bintang (1-5)" as UC21
+    }
+
+    ' Paket 6: Konten, Pengaturan & Laporan
+    package "Modul 6: Konten, Pengaturan & Laporan" {
+        usecase "UC-22\nKelola Banner Multimedia\n(Gambar, GIF, Video)" as UC22
+        usecase "UC-23\nNavigasi Peta Lokasi\nSMKN 1 Rongga" as UC23
+        usecase "UC-24\nKelola Musik Latar\n& Auto-Loop" as UC24
+        usecase "UC-25\nKustomisasi Tema & Font\n(Dark/Light/Accent)" as UC25
+        usecase "UC-26\nAtur Tarif Denda & Aturan" as UC26
+        usecase "UC-27\nEkspor Laporan Excel\nDashboard 3-Sheet" as UC27
+    }
+}
+
+' ==========================================
+' RELASI ANTAR USE CASE (INCLUDE / EXTEND)
+' ==========================================
+UC07 ..> UC08 : <<include>>
+UC11 ..> UC12 : <<trigger realtime>>
+UC15 ..> UC16 : <<include>>
+UC16 ..> UC17 : <<extend>>\n(jika terlambat)
+UC16 ..> UC18 : <<extend>>\n(jika ada denda)
+UC10 ..> UC09 : <<extend>>\n(opsional via API)
+
+' ==========================================
+' ASOSIASI AKTOR: TAMU
+' ==========================================
+Tamu --> UC01
+Tamu --> UC02
+Tamu --> UC07
+Tamu --> UC23
+
+' ==========================================
+' ASOSIASI AKTOR: ANGGOTA (SISWA)
+' ==========================================
+Anggota --> UC02
+Anggota --> UC03
+Anggota --> UC04
+Anggota --> UC07
+Anggota --> UC11
+Anggota --> UC19
+Anggota --> UC20
+Anggota --> UC21
+Anggota --> UC23
+Anggota --> UC25
+
+' ==========================================
+' ASOSIASI AKTOR: ADMIN (PUSTAKAWAN)
+' ==========================================
+Admin --> UC02
+Admin --> UC05
+Admin --> UC06
+Admin --> UC07
+Admin --> UC10
+Admin --> UC12
+Admin --> UC13
+Admin --> UC14
+Admin --> UC15
+Admin --> UC17
+Admin --> UC18
+Admin --> UC22
+Admin --> UC24
+Admin --> UC25
+Admin --> UC26
+Admin --> UC27
+
+note right of UC21
+  <b>Aturan Bisnis:</b>
+  Role Admin diblokir
+  dari memberi rating demi
+  objektivitas ulasan.
+end note
+
+note bottom of UC22
+  <b>Format Didukung:</b>
+  - Gambar (JPG/PNG/WEBP)
+  - GIF Animasi (Bypass Crop)
+  - Video MP4/WEBM (Maks 50MB)
+end note
+
+note bottom of UC08
+  <b>Fitur Baru:</b>
+  Menampilkan lokasi rak fisik
+  di seluruh modal detail buku.
+end note
+
+@enduml
