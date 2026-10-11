@@ -204,7 +204,7 @@ ob_start();
       --border-color:rgba(216,184,120,.18);
       --card-border: rgba(216,184,120,.12);
       --radius:      10px;
-      --sidebar-w:   204px;
+      --sidebar-w:   220px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
       --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
@@ -260,12 +260,12 @@ ob_start();
       transition:all .2s;
     }
     .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
-    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
-    .sidebar-toggle:active { transform:scale(0.92); }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); }
+    .sidebar-toggle:active { transform:scale(0.96); }
 
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      width:72px; height:72px; max-width:72px; max-height:72px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
@@ -290,23 +290,22 @@ ob_start();
       border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:20px; text-align:center;
+      margin-bottom:10px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:11px;
-      padding:10px 14px; border-radius:9px;
+      width:100%; display:flex; align-items:center; gap:9px; padding:7.5px 12px; border-radius:8px;
       border:1px solid rgba(216,184,120,.16);
       background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
-      font-family:inherit; font-size:.83rem; font-weight:700;
-      cursor:pointer; margin-bottom:7px;
+      font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; margin-bottom:4px;
       transition:all var(--trans);
       text-align:left; text-decoration:none;
       flex-shrink:0; box-sizing:border-box;
+      line-height:1.25;
     }
-    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
-    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
-    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
       border-color:var(--accent,#d8b878);
@@ -344,13 +343,19 @@ ob_start();
     #searchResultArea { transition: opacity .15s ease; }
     #searchResultArea.loading-search { opacity: .55; }
     .btn-search {
-      background:var(--btn-primary); color:#fff;
-      border:none; border-radius:20px;
-      padding:6px 16px; font-family:'Nunito',sans-serif;
-      font-size:.78rem; font-weight:700; cursor:pointer;
-      transition:background var(--trans);
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      color:#121820; font-family:'Nunito',sans-serif;
+      font-size:.78rem; font-weight:800; cursor:pointer;
+      border:none; border-radius:20px; padding:7px 18px;
+      transition:all .18s ease;
+      box-shadow:0 2px 8px rgba(216,184,120,.22);
     }
-    .btn-search:hover { background:#222; }
+    .btn-search:hover {
+      background:linear-gradient(135deg,#e4c585,#d2aa6b);
+      box-shadow:0 4px 14px rgba(216,184,120,.38);
+      color:#121820;
+    }
+    .btn-search:active { transform:scale(.96); }
 
     /* Header */
     .content-header {
@@ -360,15 +365,21 @@ ob_start();
     }
     .content-title { font-family:'Cormorant Garamond',serif; font-size:1.6rem; font-weight:700; color:var(--text); }
     .btn-add {
-      display:flex; align-items:center; gap:6px;
-      padding:9px 18px; border-radius:8px; border:none;
-      background:var(--btn-primary); color:#fff;
-      font-family:'Nunito',sans-serif; font-size:.82rem;
-      font-weight:700; cursor:pointer;
-      transition:background var(--trans), box-shadow var(--trans);
+      display:flex; align-items:center; gap:7px;
+      padding:10px 20px; border-radius:10px; border:1px solid rgba(180,140,60,.4);
+      background:linear-gradient(135deg, #d8b878, #c8a060);
+      color:#121820; font-family:'Nunito',sans-serif; font-size:.84rem;
+      font-weight:800; cursor:pointer;
+      box-shadow:0 3px 12px rgba(216,184,120,.28);
+      transition:all .18s ease; text-decoration:none;
     }
-    .btn-add:hover { background:#222; box-shadow:0 4px 14px rgba(0,0,0,.2); }
-    .btn-add svg { width:15px; height:15px; }
+    .btn-add:hover {
+      background:linear-gradient(135deg,#e4c585,#d2aa6b);
+      box-shadow:0 5px 18px rgba(216,184,120,.42);
+      color:#121820;
+    }
+    .btn-add:active { transform:scale(0.97); }
+    .btn-add svg { width:15px; height:15px; stroke:#121820; }
 
     /* Books grid */
     .books-grid {
@@ -379,8 +390,10 @@ ob_start();
     .book-card {
       background:var(--card); border-radius:10px;
       overflow:hidden; box-shadow:var(--shadow);
+      border:1px solid var(--card-border, rgba(216,184,120,.12));
       transition:box-shadow var(--trans), transform var(--trans);
       animation:fadeUp .4s both;
+      display:flex; flex-direction:column;
     }
     .book-card:hover { box-shadow:0 6px 18px rgba(0,0,0,.13); transform:translateY(-3px); }
 
@@ -400,20 +413,53 @@ ob_start();
     .col-g { background:linear-gradient(135deg,#ff5722,#bf360c); }
     .col-h { background:linear-gradient(135deg,#607d8b,#263238); }
 
-    .book-info { padding:10px; }
+    .book-info { padding:10px; display:flex; flex-direction:column; flex:1; }
     .book-title { font-size:.75rem; font-weight:800; color:var(--text); margin-bottom:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
     .book-isbn  { font-size:.6rem; color:var(--muted); margin-bottom:8px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .book-actions { display:flex; gap:6px; }
+    .book-actions { display:flex; gap:6px; margin-top:auto; }
     .btn-detail, .btn-hapus {
-      flex:1; padding:5px 0; border-radius:6px; border:none;
-      font-family:'Nunito',sans-serif; font-size:.65rem;
-      font-weight:700; cursor:pointer;
-      transition:opacity var(--trans), transform .12s;
+      flex:1; padding:7px 4px; border-radius:7px;
+      font-family:'Nunito',sans-serif; font-size:.72rem;
+      font-weight:800; cursor:pointer;
+      display:flex; align-items:center; justify-content:center;
+      transition:all .18s ease; box-sizing:border-box;
+      min-height:28px;
     }
-    .btn-detail { background:var(--btn-primary); color:#fff; }
-    .btn-hapus  { background:#e74c3c; color:#fff; }
-    .btn-detail:hover, .btn-hapus:hover { opacity:.85; }
-    .btn-detail:active, .btn-hapus:active { transform:scale(.96); }
+    .btn-detail {
+      background:rgba(216,184,120,.18);
+      border:1px solid rgba(216,184,120,.45);
+      color:var(--text);
+    }
+    html.light .btn-detail, html:not(.dark) .btn-detail {
+      color:#5a3e04;
+      background:rgba(180,140,60,.14);
+      border-color:rgba(180,140,60,.38);
+    }
+    .btn-detail:hover {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820;
+      box-shadow:0 3px 10px rgba(216,184,120,.3);
+    }
+    .btn-detail:active { transform:scale(.95); }
+
+    .btn-hapus {
+      background:rgba(231,76,60,.12);
+      border:1px solid rgba(231,76,60,.35);
+      color:#e74c3c;
+    }
+    html.light .btn-hapus, html:not(.dark) .btn-hapus {
+      color:#c0392b;
+      background:rgba(231,76,60,.10);
+      border-color:rgba(231,76,60,.3);
+    }
+    .btn-hapus:hover {
+      background:#e74c3c;
+      border-color:#e74c3c;
+      color:#ffffff;
+      box-shadow:0 3px 10px rgba(231,76,60,.35);
+    }
+    .btn-hapus:active { transform:scale(.95); }
 
     /* Empty state */
     .empty-state {
@@ -426,8 +472,10 @@ ob_start();
     /* ── MODAL ── */
     .modal-overlay {
       display:none; position:fixed; inset:0;
-      background:rgba(0,0,0,.5); z-index:500;
+      background:rgba(0,0,0,.65); z-index:850;
+      backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
       align-items:center; justify-content:center;
+      padding:16px;
     }
     .modal-overlay.open { display:flex; }
 
@@ -498,7 +546,7 @@ ob_start();
     /* ── MODAL KAMERA ── */
     .camera-overlay {
       display:none; position:fixed; inset:0;
-      background:rgba(0,0,0,.75); z-index:700;
+      background:rgba(0,0,0,.75); z-index:950;
       align-items:center; justify-content:center;
     }
     .camera-overlay.open { display:flex; }
@@ -620,17 +668,20 @@ ob_start();
       max-height:92vh; overflow-y:auto; overflow-x:hidden;
       overscroll-behavior:contain;
       box-shadow:0 24px 70px rgba(0,0,0,.5);
-      animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
+      animation:modalIn .3s cubic-bezier(.16,1,.3,1) both;
       margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent;
     }
     .detail-modal::-webkit-scrollbar { width:4px; }
     .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
     .detail-modal::-webkit-scrollbar-track { background:transparent; }
+    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
     .detail-cover {
       width:100%; aspect-ratio:16/9;
       border-radius:16px 16px 0 0;
       overflow:hidden; position:relative;
       background:#10151b;
+      margin-top:0;
     }
     .detail-cover img { width:100%; height:100%; object-fit:cover; display:block; }
     .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%); pointer-events:none; }
@@ -758,7 +809,10 @@ ob_start();
         z-index:600;
         transition:opacity var(--trans), visibility var(--trans);
       }
-      body.sidebar-open .mobile-topbar { opacity:0; visibility:hidden; pointer-events:none; }
+      body.sidebar-open .mobile-topbar,
+      body.modal-open .mobile-topbar {
+        opacity:0; visibility:hidden; pointer-events:none;
+      }
       .mobile-topbar .sidebar-toggle { display:flex; position:static; box-shadow:none; flex-shrink:0; width:38px; height:38px; }
       .mobile-topbar-divider {
         display:block; width:1px; height:24px; flex-shrink:0;
@@ -784,7 +838,45 @@ ob_start();
       .main { margin-left:0; padding:78px 14px 24px; }
       .books-grid { grid-template-columns:repeat(auto-fill, minmax(130px,1fr)); gap:10px; }
       .form-row { grid-template-columns:1fr; }
-      .modal-overlay, .detail-overlay { padding-top:68px; }
+
+      /* Modal Tambah / Edit Buku di Mobile: tidak terhalang navbar */
+      .modal-overlay {
+        z-index:850;
+        align-items:flex-start;
+        padding-top:max(16px, calc(env(safe-area-inset-top,0px) + 16px));
+        padding-left:12px;
+        padding-right:12px;
+        padding-bottom:max(20px, calc(env(safe-area-inset-bottom,0px) + 20px));
+        overflow-y:auto;
+        -webkit-overflow-scrolling:touch;
+      }
+      .modal {
+        max-height:calc(100dvh - 36px);
+        margin:0 auto;
+        width:100%;
+        padding:22px 16px 20px;
+        border-radius:16px;
+      }
+
+      /* Modal detail buku — posisi tengah (sedikit ke atas) di mobile */
+      .detail-overlay { align-items:center; justify-content:center; padding:16px 12px; }
+      .detail-modal {
+        margin:auto 0; border-radius:18px;
+        border:1px solid var(--border-color,rgba(216,184,120,.18));
+        border-top:3px solid var(--accent,#d8b878);
+        max-height:86dvh; width:100%;
+        animation:modalSlideUp .35s cubic-bezier(.16,1,.3,1) both !important;
+      }
+      .detail-modal::before {
+        display:none !important;
+      }
+      .detail-body {
+        padding:16px 14px 22px;
+        padding-bottom:24px !important;
+      }
+      .detail-footer-btns {
+        margin-bottom:4px;
+      }
     }
     @media (max-width:380px) {
       .books-grid { grid-template-columns:repeat(2,1fr); }
@@ -805,15 +897,6 @@ ob_start();
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
     <span>AKSA NOVA • Perbarui Buku</span>
   </div>
-  <div class="mobile-topbar-actions">
-    <button type="button" onclick="openModal('tambah')" title="Tambah Buku Baru" style="width:auto;padding:0 10px;gap:5px;font-size:.76rem;font-weight:700;background:var(--accent,#d8b878);color:#090c10;border:none;border-radius:8px;">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-      <span>+ Buku</span>
-    </button>
-    <a href="beranda.php" title="Lihat Beranda">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </a>
-  </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -825,7 +908,7 @@ ob_start();
     <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
       <div class="avatar-circle">
         <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
+          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="72" height="72" loading="eager" decoding="sync"/>
         <?php else: ?>
           <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -1191,7 +1274,7 @@ document.addEventListener('keydown', function(e) {
 
 function renderDetail(b) {
   const content = document.getElementById('detailContent');
-  const stokLabel = b.stok == 0 ? 'Habis' : (b.stok <= 3 ? 'Terbatas' : 'Tersedia');
+  const stokLabel = b.stok == 0 ? 'Kosong' : (b.stok <= 3 ? 'Terbatas' : 'Tersedia');
   const stokColor = b.stok == 0 ? '#e74c3c' : (b.stok <= 3 ? '#f39c12' : '#2ecc71');
   const tglInput = b.created_at
     ? new Date(b.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric', hour:'2-digit', minute:'2-digit'})
@@ -1250,7 +1333,7 @@ function renderDetail(b) {
 
       <div class="detail-section-label">Sinopsis / Ringkasan</div>
       ${b.sinopsis
-        ? `<div class="detail-sinopsis">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>`
+        ? `<div class="detail-sinopsis${b.sinopsis.length > 300 ? ' sinopsis-collapsed' : ''}" id="sinopsis_${b.id}">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>${b.sinopsis.length > 300 ? `<button class="sinopsis-toggle-btn" onclick="toggleSinopsis('sinopsis_${b.id}',this)">Lihat Selengkapnya ▾</button>` : ''}`
         : `<div class="detail-sinopsis"><span class="detail-sinopsis-empty">Belum ada sinopsis untuk buku ini. Edit buku untuk menambahkan ringkasan.</span></div>`}
 
       <div class="detail-footer-btns">
@@ -1308,6 +1391,7 @@ if (elInputFotoAdmin) {
 
 // ─── Modal ───
 function openModal(mode, buku = null) {
+  document.body.classList.add('modal-open');
   document.getElementById('modalOverlay').classList.add('open');
   const previewImg       = document.getElementById('previewImg');
   const uploadPlaceholder = document.getElementById('uploadPlaceholder');
@@ -1357,6 +1441,7 @@ function openModal(mode, buku = null) {
 }
 
 function closeModal() {
+  document.body.classList.remove('modal-open');
   document.getElementById('modalOverlay').classList.remove('open');
   document.getElementById('inputGambar').value = '';
 }

@@ -173,13 +173,13 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
 
         // ── Simpan ke database (langsung approved, tanpa perlu approval admin) ──
         $stmt = mysqli_prepare($conn,
-            "INSERT INTO users (full_name, nik, kelas, no_hp, no_anggota, username, email, password, foto, role, status)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', 'approved')"
+            "INSERT INTO users (full_name, nik, kelas, no_hp, no_anggota, username, email, password, plain_password, foto, role, status)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', 'approved')"
         );
         mysqli_stmt_bind_param(
-            $stmt, "sssssssss",
+            $stmt, "ssssssssss",
             $old["full_name"], $old["nik"], $old["kelas"], $old["no_hp"],
-            $no_anggota, $username, $old["email"], $hashed, $foto_relative_path
+            $no_anggota, $username, $old["email"], $hashed, $password, $foto_relative_path
         );
 
         if (mysqli_stmt_execute($stmt)) {

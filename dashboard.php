@@ -279,7 +279,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       --border-color:rgba(216,184,120,.18);
       --card-border: rgba(216,184,120,.12);
       --radius:      10px;
-      --sidebar-w:   204px;
+      --sidebar-w:   220px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
       --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
@@ -336,12 +336,12 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       transition:all .2s;
     }
     .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
-    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
-    .sidebar-toggle:active { transform:scale(0.92); }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); }
+    .sidebar-toggle:active { transform:scale(0.96); }
 
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      width:72px; height:72px; max-width:72px; max-height:72px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
@@ -404,23 +404,22 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:20px; text-align:center;
+      margin-bottom:10px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:11px;
-      padding:10px 14px; border-radius:9px;
+      width:100%; display:flex; align-items:center; gap:9px; padding:7.5px 12px; border-radius:8px;
       border:1px solid rgba(216,184,120,.16);
       background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
-      font-family:inherit; font-size:.83rem; font-weight:700;
-      cursor:pointer; margin-bottom:7px;
+      font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; margin-bottom:4px;
       transition:all var(--trans);
       text-align:left; text-decoration:none;
       flex-shrink:0; box-sizing:border-box;
+      line-height:1.25;
     }
-    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
-    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
-    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
       border-color:var(--accent,#d8b878);
@@ -565,28 +564,37 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     .year-nav .year-reset:hover { color:var(--text); }
     .btn-print {
       display:flex; align-items:center; gap:6px;
-      background:var(--btn-primary); color:#fff; border:none;
+      background:linear-gradient(135deg,#d8b878,#c8a060); color:#121820; border:none;
       padding:7px 16px; border-radius:20px; cursor:pointer;
       font-family:'Nunito',sans-serif; font-size:.76rem; font-weight:800;
-      transition:background var(--trans);
+      transition:all .18s ease; box-shadow:0 2px 8px rgba(216,184,120,.22);
     }
-    .btn-print:hover { background:#222; }
+    .btn-print:hover {
+      background:linear-gradient(135deg,#e4c585,#d2aa6b);
+      box-shadow:0 4px 14px rgba(216,184,120,.38);
+      color:#121820;
+    }
+    .btn-print:active { transform:scale(.96); }
     .btn-whatsapp {
       display:flex; align-items:center; gap:6px;
       background:#25D366; color:#fff; border:none;
       padding:7px 16px; border-radius:20px; cursor:pointer;
       font-family:'Nunito',sans-serif; font-size:.76rem; font-weight:800;
-      text-decoration:none; transition:background var(--trans);
+      text-decoration:none; transition:all .18s ease;
+      box-shadow:0 2px 8px rgba(37,211,102,.25);
     }
-    .btn-whatsapp:hover { background:#1ebc59; }
+    .btn-whatsapp:hover { background:#1ebc59; box-shadow:0 4px 14px rgba(37,211,102,.4); }
+    .btn-whatsapp:active { transform:scale(.96); }
     .btn-excel {
       display:flex; align-items:center; gap:6px;
       background:linear-gradient(135deg,#1d6f42,#19593a); color:#fff; border:none;
       padding:7px 16px; border-radius:20px; cursor:pointer;
       font-family:'Nunito',sans-serif; font-size:.76rem; font-weight:800;
-      text-decoration:none; transition:background var(--trans);
+      text-decoration:none; transition:all .18s ease;
+      box-shadow:0 2px 8px rgba(29,111,66,.25);
     }
-    .btn-excel:hover { background:linear-gradient(135deg,#155432,#0f3f24); }
+    .btn-excel:hover { background:linear-gradient(135deg,#155432,#0f3f24); box-shadow:0 4px 14px rgba(29,111,66,.4); }
+    .btn-excel:active { transform:scale(.96); }
 
     tfoot td {
       padding:12px 16px; font-size:.8rem; font-weight:800; color:var(--text);
@@ -682,14 +690,6 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/></svg>
     <span>AKSA NOVA • Dashboard</span>
   </div>
-  <div class="mobile-topbar-actions">
-    <a href="halaman_admin.php" title="Kelola Buku">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    </a>
-    <a href="beranda.php" title="Lihat Beranda">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </a>
-  </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -705,7 +705,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
   <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
     <div class="avatar-circle">
       <?php if ($admin_foto && file_exists($admin_foto)): ?>
-        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
+        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="72" height="72" loading="eager" decoding="sync"/>
       <?php else: ?>
         <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>

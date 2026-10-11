@@ -103,7 +103,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (!$buku_cek) {
         $error_msg = 'Buku yang dipilih tidak ditemukan dalam katalog.';
     } elseif ((int)$buku_cek['stok'] <= 0) {
-        $error_msg = 'Maaf, stok buku "' . htmlspecialchars($buku_cek['judul']) . '" saat ini sedang habis.';
+        $error_msg = 'Maaf, stok buku "' . htmlspecialchars($buku_cek['judul']) . '" saat ini sedang kosong.';
     } elseif ($total_buku > (int)$buku_cek['stok']) {
         $error_msg = 'Jumlah buku yang diajukan (' . $total_buku . ') melebihi stok yang tersedia (' . $buku_cek['stok'] . ').';
     } elseif ($total_buku > 3) {
@@ -193,11 +193,11 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title><?= htmlspecialchars($page_title) ?></title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+  <?php require_once 'settings_include.php'; ?>
+
   <style>
     :root {
       --bg:           #090c10;
@@ -212,7 +212,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
       --card-border:  rgba(216,184,120,.12);
       --book-card:    #161e27;
       --radius:       14px;
-      --sidebar-w:    204px;
+      --sidebar-w:   220px;
       --trans:        .2s cubic-bezier(.22,1,.36,1);
       --shadow:       0 8px 32px rgba(0,0,0,.45);
     }
@@ -237,10 +237,10 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
       box-shadow:2px 0 24px rgba(0,0,0,.35);
     }
     .logo-wrap { display:flex; flex-direction:column; align-items:center; padding:0 18px 24px; border-bottom:1px solid var(--border-color); }
-    .logo-icon { width:50px; height:50px; background:linear-gradient(135deg, rgba(216,184,120,.2) 0%, rgba(216,184,120,.05) 100%); border:1px solid rgba(216,184,120,.3); border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; }
-    .logo-icon svg { width:26px; height:26px; color:var(--accent); }
-    .logo-name { font-family:'Cormorant Garamond',serif; font-size:1.1rem; font-weight:700; color:var(--accent); letter-spacing:.1em; text-align:center; }
-    .logo-sub  { font-size:.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; text-align:center; margin-top:2px; }
+    .logo-icon { width:52px; height:52px; background:linear-gradient(135deg, rgba(216,184,120,.18) 0%, rgba(216,184,120,.05) 100%); border:1px solid rgba(216,184,120,.3); border-radius:14px; display:flex; align-items:center; justify-content:center; margin-bottom:8px; box-shadow:0 4px 16px rgba(0,0,0,.3); }
+    .logo-icon svg { width:28px; height:28px; color:var(--accent); }
+    .logo-name { font-family:'Cormorant Garamond',serif; font-size:1.05rem; font-weight:700; color:var(--accent); letter-spacing:.1em; text-align:center; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .logo-sub  { font-size:.58rem; color:var(--muted); letter-spacing:.12em; text-transform:uppercase; text-align:center; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
     .nav { flex:1; display:flex; flex-direction:column; gap:2px; padding:16px 10px; }
     .nav-item { position:relative; display:flex; align-items:center; gap:10px; padding:11px 14px; border-radius:10px; font-size:.82rem; font-weight:600; color:var(--muted); cursor:pointer; text-decoration:none; transition:background var(--trans), color var(--trans); }
@@ -490,16 +490,48 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     .btn-action-pri { padding:10px 20px; border-radius:10px; border:none; background:var(--accent); color:#090c10; font-weight:700; font-size:.82rem; text-decoration:none; transition:all var(--trans); }
     .btn-action-pri:hover { opacity:.9; transform:translateY(-1px); }
 
+    /* Mobile Topbar */
+    .mobile-topbar { display: contents; }
+    .mobile-topbar-divider,
+    .mobile-topbar-brand { display: none; }
+
     /* Responsive */
     @media (max-width:880px) {
       .form-grid { grid-template-columns:1fr; }
       .book-preview { flex-direction:row; text-align:left; gap:16px; align-items:center; }
       .book-cover-box { width:90px; margin-bottom:0; flex-shrink:0; }
       .book-meta-chips { justify-content:flex-start; }
-      .main { margin-left:0; padding:70px 16px 40px; }
-      .sidebar { transform:translateX(-100%); }
+      .main { margin-left:0; padding:78px 16px 40px; }
+      .sidebar { transform:translateX(-100%); width:min(calc(var(--sidebar-w) + 60px),270px); max-width:85vw; }
       .sidebar.open { transform:translateX(0); }
-      .sidebar-toggle { display:flex; }
+      .nav-item { padding:13px 14px; font-size:.86rem; }
+      .nav-item svg { width:18px; height:18px; }
+
+      .mobile-topbar {
+        display:flex; align-items:center; gap:12px;
+        position:fixed; top:0; left:0; right:0; height:60px;
+        padding:0 14px; padding-top:env(safe-area-inset-top,0);
+        background:var(--sidebar-bg);
+        border-bottom:1px solid var(--border-color);
+        box-shadow:0 2px 18px rgba(0,0,0,.35);
+        z-index:600;
+      }
+      body.sidebar-open .mobile-topbar { opacity:0; visibility:hidden; pointer-events:none; }
+      .mobile-topbar .sidebar-toggle { display:flex; position:static; box-shadow:none; flex-shrink:0; }
+      .mobile-topbar-divider {
+        display:block; width:1px; height:26px; flex-shrink:0;
+        background:linear-gradient(180deg, transparent, var(--border-color) 50%, transparent);
+      }
+      .mobile-topbar-brand {
+        display:flex; align-items:center; gap:7px; min-width:0; overflow:hidden;
+      }
+      .mobile-topbar-brand svg { width:19px; height:19px; color:var(--accent); flex-shrink:0; }
+      .mobile-topbar-brand span {
+        font-family:'Cormorant Garamond',serif; font-weight:700;
+        font-size:clamp(.82rem, 3.8vw, 1.02rem);
+        color:var(--accent); letter-spacing:.04em; white-space:nowrap;
+        overflow:hidden; text-overflow:ellipsis;
+      }
     }
     @media (max-width:520px) {
       .pickup-grid { grid-template-columns:1fr; }
@@ -508,18 +540,39 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
       .book-cover-box { width:120px; margin-bottom:12px; }
       .book-meta-chips { justify-content:center; }
     }
+    @media (max-width:480px) {
+      .sidebar { width:min(250px, 82vw); }
+      .nav-item { padding:10px 14px; font-size:.82rem; }
+      .nav-item svg { width:16px; height:16px; }
+      .mobile-topbar { padding:0 10px; gap:8px; }
+      .mobile-topbar .sidebar-toggle { width:38px; height:38px; }
+    }
+    @media (max-width:360px) {
+      .sidebar { width:230px; }
+      .nav-item { padding:9px 12px; font-size:.8rem; }
+      .mobile-topbar-brand span { font-size:.78rem; }
+    }
   </style>
-  <?php require_once 'settings_include.php'; ?>
 </head>
 <body>
 
-<button class="sidebar-toggle" id="sidebarToggle" aria-label="Buka Menu">
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-    <line x1="3" y1="6" x2="21" y2="6"/>
-    <line x1="3" y1="12" x2="21" y2="12"/>
-    <line x1="3" y1="18" x2="21" y2="18"/>
-  </svg>
-</button>
+<header class="mobile-topbar" id="mobileTopbar">
+  <button class="sidebar-toggle" id="sidebarToggle" aria-label="Buka Menu">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <line x1="3" y1="6" x2="21" y2="6"/>
+      <line x1="3" y1="12" x2="21" y2="12"/>
+      <line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <span class="mobile-topbar-divider" aria-hidden="true"></span>
+  <div class="mobile-topbar-brand">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+      <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+    </svg>
+    <span>AKSA NOVA</span>
+  </div>
+</header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
 <!-- Sidebar Navigasi -->
@@ -576,17 +629,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
 
 <main class="main">
   <div class="container">
-    
-    <div class="header-nav">
-      <a href="daftar_buku.php" class="back-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-        Kembali ke Katalog Buku
-      </a>
-      <a href="dashboard_user.php" class="back-link">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-        Lihat Riwayat di Dashboard
-      </a>
-    </div>
+
 
     <div class="page-title-wrap">
       <div class="page-badge">

@@ -109,7 +109,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $msg = 'Gagal memproses penolakan pengajuan.';
             $msg_type = 'error';
         }
-        mysqli_stmt_close($t_stmt);
+    } elseif ($action === 'hapus_riwayat' && $pengajuan_id > 0) {
+        $del_stmt = mysqli_prepare($conn, "SELECT file_kartu, nama_peminjam FROM pengajuan_peminjaman WHERE id = ? LIMIT 1");
+        mysqli_stmt_bind_param($del_stmt, "i", $pengajuan_id);
+        mysqli_stmt_execute($del_stmt);
+        $del_res = mysqli_stmt_get_result($del_stmt);
+        $del_row = mysqli_fetch_assoc($del_res);
+        mysqli_stmt_close($del_stmt);
+
+        if ($del_row) {
+            if (!empty($del_row['file_kartu']) && file_exists(__DIR__ . '/' . $del_row['file_kartu'])) {
+                @unlink(__DIR__ . '/' . $del_row['file_kartu']);
+            }
+            mysqli_query($conn, "DELETE FROM pengajuan_peminjaman WHERE id = $pengajuan_id LIMIT 1");
+            $msg = 'Riwayat pengajuan peminjaman oleh "' . htmlspecialchars($del_row['nama_peminjam']) . '" berhasil dihapus.';
+            $msg_type = 'success';
+        } else {
+            $msg = 'Data pengajuan tidak ditemukan atau sudah dihapus.';
+            $msg_type = 'error';
+        }
+    } elseif ($action === 'bersihkan_riwayat') {
+        $filter_target = $_POST['filter_target'] ?? 'semua_selesai';
+        $where_del = "WHERE status IN ('disetujui', 'ditolak')";
+        $label_target = 'seluruh riwayat selesai (disetujui & ditolak)';
+
+        if ($filter_target === 'disetujui') {
+            $where_del = "WHERE status = 'disetujui'";
+            $label_target = 'seluruh riwayat pengajuan yang disetujui';
+        } elseif ($filter_target === 'ditolak') {
+            $where_del = "WHERE status = 'ditolak'";
+            $label_target = 'seluruh riwayat pengajuan yang ditolak';
+        }
+
+        $files_q = mysqli_query($conn, "SELECT file_kartu FROM pengajuan_peminjaman $where_del");
+        if ($files_q) {
+            while ($fr = mysqli_fetch_assoc($files_q)) {
+                if (!empty($fr['file_kartu']) && file_exists(__DIR__ . '/' . $fr['file_kartu'])) {
+                    @unlink(__DIR__ . '/' . $fr['file_kartu']);
+                }
+            }
+        }
+
+        mysqli_query($conn, "DELETE FROM pengajuan_peminjaman $where_del");
+        $affected = mysqli_affected_rows($conn);
+        $msg = "Sebanyak $affected data $label_target berhasil dibersihkan dari sistem.";
+        $msg_type = 'success';
     }
 }
 
@@ -178,7 +222,7 @@ if ($q_res) {
       --border-color:rgba(216,184,120,.18);
       --card-border: rgba(216,184,120,.12);
       --radius:      10px;
-      --sidebar-w:   204px;
+      --sidebar-w:   220px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
       --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
@@ -225,7 +269,7 @@ if ($q_res) {
 
     .avatar-wrap { position:relative; margin-bottom:14px; }
     .avatar-circle {
-      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      width:72px; height:72px; max-width:72px; max-height:72px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
@@ -239,23 +283,22 @@ if ($q_res) {
       border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:20px; text-align:center;
+      margin-bottom:10px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:11px;
-      padding:10px 14px; border-radius:9px;
+      width:100%; display:flex; align-items:center; gap:9px; padding:7.5px 12px; border-radius:8px;
       border:1px solid rgba(216,184,120,.16);
       background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
-      font-family:inherit; font-size:.83rem; font-weight:700;
-      cursor:pointer; margin-bottom:7px;
+      font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; margin-bottom:4px;
       transition:all var(--trans);
       text-align:left; text-decoration:none;
       flex-shrink:0; box-sizing:border-box;
+      line-height:1.25;
     }
-    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
-    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
-    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
       border-color:var(--accent,#d8b878);
@@ -376,6 +419,24 @@ if ($q_res) {
     }
     .btn-action-reject:hover { background:rgba(220,38,38,.25); border-color:rgba(220,38,38,.5); }
 
+    .btn-action-delete {
+      padding:6px 12px; border-radius:6px; border:none;
+      background:rgba(220,38,38,.12); color:#f87171; border:1px solid rgba(220,38,38,.28);
+      font-family:inherit; font-size:.72rem; font-weight:700; cursor:pointer;
+      display:inline-flex; align-items:center; gap:5px; transition:all var(--trans);
+    }
+    .btn-action-delete:hover { background:rgba(220,38,38,.25); border-color:rgba(220,38,38,.5); color:#fca5a5; }
+
+    .btn-clear-history {
+      padding:7px 13px; border-radius:8px; border:1px solid rgba(220,38,38,.3);
+      background:rgba(220,38,38,.1); color:#f87171; font-family:inherit; font-size:.75rem;
+      font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;
+      transition:all var(--trans); text-decoration:none;
+    }
+    .btn-clear-history:hover {
+      background:rgba(220,38,38,.22); border-color:rgba(220,38,38,.5); color:#fca5a5;
+    }
+
     /* Modals */
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.75); backdrop-filter:blur(4px); z-index:300; align-items:center; justify-content:center; padding:20px; }
     .modal-overlay.open { display:flex; }
@@ -403,8 +464,8 @@ if ($q_res) {
       transition:all .2s;
     }
     .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
-    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
-    .sidebar-toggle:active { transform:scale(0.92); }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); }
+    .sidebar-toggle:active { transform:scale(0.96); }
 
     .sidebar-overlay {
       position:fixed; inset:0; background:rgba(9,12,16,.65);
@@ -418,19 +479,100 @@ if ($q_res) {
       .stats-grid { grid-template-columns:repeat(2, 1fr); }
     }
     @media (max-width:768px) {
-      .main { margin-left:0; padding:20px 16px; padding-top:68px; }
+      html, body { overflow-x:hidden; max-width:100vw; }
+      .main { margin-left:0; padding:16px 12px 28px; padding-top:72px; max-width:100vw; overflow-x:hidden; }
       .sidebar {
         transform:translateX(-100%);
+        width:min(calc(var(--sidebar-w) + 60px), 250px);
         z-index:170;
       }
       .sidebar.open { transform:translateX(0); }
       .sidebar-toggle { display:flex; }
-      .stats-grid { grid-template-columns:1fr; }
-      .table-card { overflow-x:auto; }
+      .stats-grid { grid-template-columns:1fr; gap:10px; }
+      .page-header { margin-bottom:18px; }
+      .page-title { font-size:1.4rem; }
+
+      /* Filter bar & tabs */
+      .filter-bar { flex-direction:column; align-items:stretch; gap:10px; }
+      .tabs-wrap {
+        display:flex; flex-wrap:nowrap; overflow-x:auto; -webkit-overflow-scrolling:touch;
+        padding:4px; max-width:100%; scrollbar-width:none;
+      }
+      .tabs-wrap::-webkit-scrollbar { display:none; }
+      .tab-btn { flex-shrink:0; font-size:.74rem; padding:6px 12px; }
+      .filter-bar form { width:100%; }
+      .search-box { width:100%; }
+      .search-box input { width:100%; }
+
+      /* Tabel pengajuan diubah menjadi card-view bertumpuk sehingga pas 100% di layar hp tanpa scroll samping */
+      .table-card {
+        background:transparent; border:none; box-shadow:none; overflow:visible; border-radius:0;
+      }
+      table {
+        min-width:0; width:100%; border-collapse:separate; border-spacing:0 14px;
+      }
+      thead { display:none; }
+      tbody tr {
+        display:block; background:var(--card); border:1px solid var(--card-border);
+        border-radius:14px; box-shadow:var(--shadow); overflow:hidden; margin-bottom:14px;
+      }
+      tbody tr:hover { background:var(--card); }
+      tbody td {
+        display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+        padding:11px 14px; border-bottom:1px solid rgba(216,184,120,.08); text-align:right;
+        font-size:.78rem;
+      }
+      tbody td:last-child { border-bottom:none; }
+      tbody td::before {
+        content:attr(data-label);
+        font-size:.68rem; font-weight:800; color:var(--muted);
+        text-transform:uppercase; letter-spacing:.05em; text-align:left; flex-shrink:0;
+        padding-top:2px;
+      }
+
+      /* Baris Peminjam */
+      tbody td[data-label="Peminjam"] {
+        flex-direction:column; align-items:flex-start; text-align:left;
+        background:rgba(216,184,120,.04); border-bottom:1px solid var(--card-border);
+      }
+      tbody td[data-label="Peminjam"]::before { display:none; }
+      .borrower-wrap { width:100%; }
+      .borrower-wrap > div { min-width:0; }
+      .borrower-name { word-break:break-word; }
+
+      /* Baris Buku */
+      tbody td[data-label="Buku Diajukan"] {
+        flex-direction:column; align-items:flex-start; text-align:left;
+      }
+      tbody td[data-label="Buku Diajukan"]::before { margin-bottom:6px; }
+      .book-cell { max-width:100%; width:100%; }
+      .book-cell > div { min-width:0; }
+      .book-title-cell { word-break:break-word; }
+
+      /* Kartu, Pengambilan, Batas Kembali & Status */
+      tbody td[data-label="Kartu Anggota"],
+      tbody td[data-label="Pengambilan"],
+      tbody td[data-label="Batas Kembali"],
+      tbody td[data-label="Status"] {
+        align-items:center;
+      }
+
+      /* Baris Aksi */
+      tbody td[data-label="Aksi"] {
+        flex-direction:column; align-items:stretch; text-align:center;
+        background:rgba(255,255,255,.02); border-top:1px solid var(--card-border);
+      }
+      tbody td[data-label="Aksi"]::before { display:none; }
+      .action-group { width:100%; flex-direction:column; gap:8px; }
+      .action-group form { width:100%; }
+      .btn-action-approve, .btn-action-reject, .btn-action-delete {
+        width:100%; justify-content:center; padding:10px 14px; font-size:.8rem; min-height:40px;
+      }
+      .btn-clear-history { width:100%; justify-content:center; }
     }
       .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      width:72px; height:72px; max-width:72px; max-height:72px; border-radius:50%;
       background:#161e27; overflow:hidden;
       border:3px solid rgba(216,184,120,.25);
       display:flex; align-items:center; justify-content:center;
@@ -464,14 +606,6 @@ if ($q_res) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     <span>AKSA NOVA • Pengajuan Buku</span>
   </div>
-  <div class="mobile-topbar-actions">
-    <a href="halaman_admin.php" title="Kelola Buku">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    </a>
-    <a href="beranda.php" title="Lihat Beranda">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </a>
-  </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -482,7 +616,7 @@ if ($q_res) {
     <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
       <div class="avatar-circle">
         <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
+          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="72" height="72" loading="eager" decoding="sync"/>
         <?php else: ?>
           <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -636,16 +770,47 @@ if ($q_res) {
       </a>
     </div>
 
-    <form method="GET" action="pengajuan_buku.php" style="display:flex;gap:8px;">
-      <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
-      <div class="search-box">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" name="q" placeholder="Cari nama, buku, kelas…" value="<?= htmlspecialchars($search) ?>">
-      </div>
-      <?php if ($search): ?>
-        <a href="pengajuan_buku.php?tab=<?= $tab ?>" style="display:flex;align-items:center;padding:0 10px;color:var(--muted);text-decoration:none;font-size:.8rem;">✕</a>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <form method="GET" action="pengajuan_buku.php" style="display:flex;gap:8px;">
+        <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
+        <div class="search-box">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" name="q" placeholder="Cari nama, buku, kelas…" value="<?= htmlspecialchars($search) ?>">
+        </div>
+        <?php if ($search): ?>
+          <a href="pengajuan_buku.php?tab=<?= $tab ?>" style="display:flex;align-items:center;padding:0 10px;color:var(--muted);text-decoration:none;font-size:.8rem;">✕</a>
+        <?php endif; ?>
+      </form>
+
+      <?php
+      $can_clear = false;
+      $clear_target = '';
+      $clear_label = '';
+      if ($tab === 'disetujui' && $cnt_disetujui > 0) {
+          $can_clear = true;
+          $clear_target = 'disetujui';
+          $clear_label = 'Bersihkan Disetujui (' . $cnt_disetujui . ')';
+      } elseif ($tab === 'ditolak' && $cnt_ditolak > 0) {
+          $can_clear = true;
+          $clear_target = 'ditolak';
+          $clear_label = 'Bersihkan Ditolak (' . $cnt_ditolak . ')';
+      } elseif ($tab === 'semua' && ($cnt_disetujui + $cnt_ditolak) > 0) {
+          $can_clear = true;
+          $clear_target = 'semua_selesai';
+          $clear_label = 'Bersihkan Selesai (' . ($cnt_disetujui + $cnt_ditolak) . ')';
+      }
+      ?>
+      <?php if ($can_clear): ?>
+        <form method="POST" action="pengajuan_buku.php?tab=<?= htmlspecialchars($tab) ?>" onsubmit="return confirm('PERINGATAN: Apakah Anda yakin ingin membersihkan <?= $clear_label ?>? Data riwayat pengajuan dan file kartu yang tersimpan akan dihapus secara permanen.');">
+          <input type="hidden" name="action" value="bersihkan_riwayat">
+          <input type="hidden" name="filter_target" value="<?= htmlspecialchars($clear_target) ?>">
+          <button type="submit" class="btn-clear-history" title="<?= htmlspecialchars($clear_label) ?>">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
+            <span><?= $clear_label ?></span>
+          </button>
+        </form>
       <?php endif; ?>
-    </form>
+    </div>
   </div>
 
   <!-- Data Table -->
@@ -679,7 +844,7 @@ if ($q_res) {
           ?>
             <tr>
               <!-- Tanggal & Peminjam -->
-              <td>
+              <td data-label="Peminjam">
                 <div class="borrower-wrap">
                   <?php if (!empty($row['user_foto']) && file_exists(__DIR__ . '/' . $row['user_foto'])): ?>
                     <img src="<?= htmlspecialchars($row['user_foto']) ?>" class="borrower-avatar" alt="Avatar">
@@ -699,7 +864,7 @@ if ($q_res) {
               </td>
 
               <!-- Kartu Anggota (Trigger Modal Preview) -->
-              <td>
+              <td data-label="Kartu Anggota">
                 <?php if ($kartu_ada): ?>
                   <button type="button" class="card-thumb-btn" onclick="previewKartu('<?= htmlspecialchars($kartu_url) ?>', '<?= htmlspecialchars($row['nama_peminjam'], ENT_QUOTES) ?>')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="13" y2="12"/></svg>
@@ -711,7 +876,7 @@ if ($q_res) {
               </td>
 
               <!-- Buku -->
-              <td>
+              <td data-label="Buku Diajukan">
                 <div class="book-cell">
                   <?php if (!empty($row['buku_gambar']) && file_exists(__DIR__ . '/' . $row['buku_gambar'])): ?>
                     <img src="<?= htmlspecialchars($row['buku_gambar']) ?>" class="book-thumb" alt="Cover">
@@ -736,7 +901,7 @@ if ($q_res) {
               </td>
 
               <!-- Jumlah & Waktu Ambil -->
-              <td>
+              <td data-label="Pengambilan">
                 <div style="font-weight:700;font-size:.82rem;color:var(--text);">
                   <?= (int)$row['total_buku'] ?> Eksemplar
                 </div>
@@ -755,13 +920,13 @@ if ($q_res) {
               </td>
 
               <!-- Batas Pengembalian -->
-              <td>
+              <td data-label="Batas Kembali">
                 <div style="font-weight:700;font-size:.8rem;color:var(--text);"><?= $batas_k ?></div>
                 <div style="font-size:.68rem;color:var(--muted);">Maks. 23:59 WIB</div>
               </td>
 
               <!-- Status -->
-              <td>
+              <td data-label="Status">
                 <?php if ($status === 'menunggu'): ?>
                   <span class="badge badge-menunggu">
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><circle cx="12" cy="12" r="10"/></svg>
@@ -786,7 +951,7 @@ if ($q_res) {
               </td>
 
               <!-- Aksi -->
-              <td style="text-align:center;">
+              <td data-label="Aksi" style="text-align:center;">
                 <?php if ($status === 'menunggu'): ?>
                   <div class="action-group" style="justify-content:center;">
                     <!-- Setujui Form -->
@@ -806,9 +971,28 @@ if ($q_res) {
                     </button>
                   </div>
                 <?php elseif ($status === 'disetujui'): ?>
-                  <span style="font-size:.72rem;color:#1a8a4a;font-weight:600;">✓ Masuk Peminjaman</span>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+                    <span style="font-size:.72rem;color:#1a8a4a;font-weight:600;">✓ Masuk Peminjaman</span>
+                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="return confirm('Hapus riwayat pengajuan oleh <?= htmlspecialchars($row['nama_peminjam'], ENT_QUOTES) ?>? (Catatan: ini hanya menghapus log pengajuan, tidak membatalkan peminjaman yang sedang berjalan).');">
+                      <input type="hidden" name="action" value="hapus_riwayat">
+                      <input type="hidden" name="pengajuan_id" value="<?= (int)$row['id'] ?>">
+                      <button type="submit" class="btn-action-delete" title="Hapus Riwayat Pengajuan">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                        Hapus
+                      </button>
+                    </form>
+                  </div>
                 <?php else: ?>
-                  <span style="font-size:.72rem;color:var(--muted);">Ditolak</span>
+                  <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="return confirm('Hapus riwayat penolakan pengajuan oleh <?= htmlspecialchars($row['nama_peminjam'], ENT_QUOTES) ?>?');">
+                      <input type="hidden" name="action" value="hapus_riwayat">
+                      <input type="hidden" name="pengajuan_id" value="<?= (int)$row['id'] ?>">
+                      <button type="submit" class="btn-action-delete" title="Hapus Riwayat Pengajuan">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                        Hapus
+                      </button>
+                    </form>
+                  </div>
                 <?php endif; ?>
               </td>
             </tr>

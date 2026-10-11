@@ -9,9 +9,27 @@ if (isset($_GET["id"]) && isset($_SESSION["user_id"]) && ($_SESSION["role"] ?? "
     // ── Mode admin: lihat kartu milik anggota lain, tanpa menyentuh sesi kartu milik anggota ──
     require_once "db.php";
     $vid = (int)$_GET["id"];
-    $rq = mysqli_query($conn, "SELECT full_name, nik, kelas, no_hp, email, no_anggota, username, foto, status FROM users WHERE id = $vid AND role = 'member'");
+    $rq = mysqli_query($conn, "SELECT full_name, nik, kelas, no_hp, email, no_anggota, username, foto, status, plain_password FROM users WHERE id = $vid AND role = 'member'");
     if ($rq && ($u = mysqli_fetch_assoc($rq))) {
         $admin_view = true;
+        $member_pw  = trim($u["plain_password"] ?? "");
+        // Jika plain_password belum terisi (akun lama), generate sandi awal otomatis agar kartu tidak kosong
+        if ($member_pw === "") {
+            $chars_upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+            $chars_lower = "abcdefghijkmnpqrstuvwxyz";
+            $chars_num   = "23456789";
+            $all_chars   = $chars_upper . $chars_lower . $chars_num;
+            $member_pw   = $chars_upper[random_int(0, strlen($chars_upper) - 1)]
+                         . $chars_lower[random_int(0, strlen($chars_lower) - 1)]
+                         . $chars_num[random_int(0, strlen($chars_num) - 1)];
+            for ($i = 0; $i < 5; $i++) {
+                $member_pw .= $all_chars[random_int(0, strlen($all_chars) - 1)];
+            }
+            $member_pw = str_shuffle($member_pw);
+            $new_hash  = password_hash($member_pw, PASSWORD_DEFAULT);
+            $esc_pw    = mysqli_real_escape_string($conn, $member_pw);
+            mysqli_query($conn, "UPDATE users SET password = '$new_hash', plain_password = '$esc_pw' WHERE id = $vid");
+        }
         $d = [
             "full_name"         => $u["full_name"],
             "nik"               => $u["nik"],
@@ -23,9 +41,9 @@ if (isset($_GET["id"]) && isset($_SESSION["user_id"]) && ($_SESSION["role"] ?? "
             "foto"              => $u["foto"] ?? "",
             "status"            => $u["status"] ?? "pending",
             "reissued"          => false,
-            "data_updated_only" => true,
-            "password_changed"  => false,
-            "password"          => "",
+            "data_updated_only" => false,
+            "password_changed"  => true,
+            "password"          => $member_pw,
         ];
     } else {
         header("Location: daftar_anggota.php");
@@ -35,7 +53,7 @@ if (isset($_GET["id"]) && isset($_SESSION["user_id"]) && ($_SESSION["role"] ?? "
     if (isset($_SESSION["user_id"])) {
         require_once "db.php";
         $uid = (int)$_SESSION["user_id"];
-        $rq = mysqli_query($conn, "SELECT full_name, nik, kelas, no_hp, email, no_anggota, username, foto, status FROM users WHERE id = $uid");
+        $rq = mysqli_query($conn, "SELECT full_name, nik, kelas, no_hp, email, no_anggota, username, foto, status, plain_password FROM users WHERE id = $uid");
         if ($rq && ($u = mysqli_fetch_assoc($rq))) {
             $_SESSION["kartu_data"] = [
                 "full_name"         => $u["full_name"],
@@ -45,6 +63,7 @@ if (isset($_GET["id"]) && isset($_SESSION["user_id"]) && ($_SESSION["role"] ?? "
                 "email"             => $u["email"],
                 "no_anggota"        => $u["no_anggota"],
                 "username"          => $u["username"],
+                "password"          => $u["plain_password"] ?? "",
                 "foto"              => $u["foto"] ?? "",
                 "status"            => $u["status"] ?? "approved",
                 "reissued"          => false,
@@ -442,7 +461,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     <?php endif; ?>
   <?php elseif ($d["data_updated_only"] && $d["password_changed"]): ?>
   <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
-    ✅ Data &amp; kata sandi berhasil diperbarui. Kata sandi baru kamu ditampilkan <b>satu kali</b> di kartu ini — catat baik-baik sebelum meninggalkan halaman.
+    ✅ Data &amp; kata sandi berhasil diperbarui. Kata sandi akun kamu telah tersimpan dengan aman.
   </div>
   <?php elseif ($d["data_updated_only"]): ?>
   <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
@@ -450,7 +469,7 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   </div>
   <?php else: ?>
   <div class="warning">
-    ⚠️ Password hanya ditampilkan <b>satu kali</b> di halaman ini. Setelah kamu keluar dari halaman ini, password tidak bisa dilihat lagi (hanya admin yang bisa mereset).
+    ⚠️ Simpan kartu anggota ini baik-baik. Pastikan kamu selalu mengingat username dan kata sandi akunmu.
   </div>
   <?php endif; ?>
 
@@ -505,17 +524,10 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
           <span class="cred-label">Username</span>
           <span class="cred-value"><?= htmlspecialchars($d["username"]) ?></span>
         </div>
-        <?php if (!empty($d["password"])): ?>
         <div class="cred-row">
           <span class="cred-label">Password</span>
-          <span class="cred-value"><?= htmlspecialchars($d["password"]) ?></span>
+          <span class="cred-value" style="letter-spacing:3px;font-size:.85rem;color:rgba(216,184,120,.75);">••••••••</span>
         </div>
-        <?php else: ?>
-        <div class="cred-row">
-          <span class="cred-label">Password</span>
-          <span class="cred-value" style="color:#e0ac78;font-size:.74rem;font-weight:500;">Tidak berubah</span>
-        </div>
-        <?php endif; ?>
       </div>
       <div>
         <div class="qr-box">

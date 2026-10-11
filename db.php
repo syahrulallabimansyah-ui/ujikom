@@ -22,4 +22,10 @@ mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `kelas` (
   `nama_kelas` VARCHAR(50) NOT NULL UNIQUE,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Pastikan kolom plain_password ada di tabel users (untuk melihat sandi anggota di card admin)
+$cek_col = @mysqli_query($conn, "SHOW COLUMNS FROM `users` LIKE 'plain_password'");
+if ($cek_col && mysqli_num_rows($cek_col) === 0) {
+    @mysqli_query($conn, "ALTER TABLE `users` ADD COLUMN `plain_password` VARCHAR(255) NOT NULL DEFAULT '' AFTER `password`");
+}
 ?>

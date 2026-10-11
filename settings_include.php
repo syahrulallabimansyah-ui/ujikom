@@ -1,7 +1,9 @@
 <?php
 // settings_include.php — Sertakan di <head> semua halaman (sebelum </head>)
-// Terapkan preferensi tema dari localStorage via inline script agar tidak flash
 ?>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
 <script>
 (function(){
   // Baca settings dari localStorage
@@ -59,12 +61,13 @@
   var modeKey = mode === 'dark' ? 'dark' : 'light';
   var colors  = uiVars[uiKey][modeKey];
 
-  // Apply background (gradient atau solid)
+  // Apply background (gradient atau solid) langsung ke root agar tidak pernah glitch putih
   if (colors.bg.startsWith('linear')) {
     root.style.setProperty('--bg', colors.bg);
-    document.documentElement.style.background = colors.bg;
+    root.style.background = colors.bg;
   } else {
     root.style.setProperty('--bg', colors.bg);
+    root.style.backgroundColor = colors.bg;
   }
   root.style.setProperty('--sidebar-bg', colors.sidebarBg);
   root.style.setProperty('--card', colors.card);
@@ -91,14 +94,49 @@
   };
   root.style.setProperty('--font-family', fontMap[fontFam] || fontMap['Outfit']);
 
-  // Animation
+  // Animation & Mode Lite
   root.style.setProperty('--trans-speed', animation ? '.2s' : '0s');
 
   // Class pada html
-  root.className = [mode, 'ui-' + uiKey].join(' ');
+  var classList = [mode, 'ui-' + uiKey];
+  if (!animation) classList.push('mode-lite');
+  root.className = classList.join(' ');
 })();
 </script>
 <style>
+  /* ── Mode Lite (Saat Animasi & Transisi Dimatikan) — Performa Ringan & Bebas Glitch ── */
+  html.mode-lite,
+  html.mode-lite body {
+    view-transition-name: none !important;
+    animation: none !important;
+    background-color: var(--bg, #090c10) !important;
+  }
+  html.mode-lite *,
+  html.mode-lite *::before,
+  html.mode-lite *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    animation-delay: 0s !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+    scroll-behavior: auto !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  html.mode-lite ::view-transition,
+  html.mode-lite ::view-transition-group(*),
+  html.mode-lite ::view-transition-image-pair(*),
+  html.mode-lite ::view-transition-old(*),
+  html.mode-lite ::view-transition-new(*) {
+    display: none !important;
+    animation: none !important;
+    animation-duration: 0s !important;
+  }
+  html.mode-lite .main,
+  html.mode-lite body {
+    animation: none !important;
+  }
+
   /* ── Variabel dasar yang selalu ada (fallback) ── */
   :root {
     --font-family:      'Outfit', sans-serif;
@@ -118,6 +156,10 @@
     --border-color:     rgba(216,184,120,.18);
     --card-border:      rgba(216,184,120,.12);
     --book-card:        #161e27;
+  }
+  /* Cegah glitch putih saat memuat halaman / navigasi */
+  html, body {
+    background-color: var(--bg, #090c10) !important;
   }
   /* Paksa font & size ke body */
   body {
@@ -143,6 +185,28 @@
   html.dark .book-card   { background: var(--book-card) !important; border-color: var(--card-border) !important; }
   html.dark .detail-modal{ background: var(--card) !important; }
   html.dark .detail-sinopsis { background: rgba(255,255,255,.05) !important; color: var(--text) !important; }
+
+  /* ── Batasi panjang sinopsis ── */
+  .detail-sinopsis.sinopsis-collapsed {
+    display: -webkit-box;
+    -webkit-line-clamp: 5;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .sinopsis-toggle-btn {
+    display: inline-block;
+    margin-top: 6px;
+    background: none;
+    border: none;
+    color: var(--accent, #d8b878);
+    font-size: .78rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+    text-decoration: underline dotted;
+    letter-spacing: .02em;
+  }
+  .sinopsis-toggle-btn:hover { opacity: .8; }
   html.dark .detail-meta-chip{ background: rgba(255,255,255,.07) !important; border-color: var(--card-border) !important; color: var(--muted) !important; }
   html.dark .stat-box    { background: rgba(255,255,255,.08) !important; }
   html.dark .nav-item    { color: var(--muted) !important; }
@@ -229,21 +293,61 @@
     overflow-y: scroll;
   }
 
+  /* ── Desain Scrollbar Global Konsisten di Seluruh Halaman ── */
+  html, body, * {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(255, 255, 255, 0.22) transparent !important;
+  }
+  html.theme-light, html.theme-light body, html.theme-light * {
+    scrollbar-color: rgba(0, 0, 0, 0.22) transparent !important;
+  }
+  ::-webkit-scrollbar {
+    width: 6px !important;
+    height: 6px !important;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border-radius: 10px !important;
+    transition: background .2s ease !important;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--accent, #d8b878) !important;
+  }
+  html.theme-light ::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.22) !important;
+  }
+  html.theme-light ::-webkit-scrollbar-thumb:hover {
+    background: var(--accent, #b8860b) !important;
+  }
+  ::-webkit-scrollbar-corner {
+    background: transparent !important;
+  }
+
   /* ── Native Cross-Document View Transitions (Chromium 126+) ── */
   @view-transition {
     navigation: auto;
+  }
+  html.mode-lite {
+    view-transition-name: none !important;
+  }
+  html.mode-lite,
+  html.mode-lite * {
+    view-transition-name: none !important;
+  }
+  html:not(.mode-lite) .sidebar {
+    view-transition-name: app-sidebar;
+  }
+  html:not(.mode-lite) .main {
+    view-transition-name: app-main;
   }
   ::view-transition-group(app-sidebar),
   ::view-transition-old(app-sidebar),
   ::view-transition-new(app-sidebar) {
     animation: none !important;
     animation-duration: 0s !important;
-  }
-  .sidebar {
-    view-transition-name: app-sidebar;
-  }
-  .main {
-    view-transition-name: app-main;
   }
   ::view-transition-old(app-main) {
     animation: 0.12s cubic-bezier(0.4, 0, 1, 1) both pageFadeOut;
@@ -340,25 +444,28 @@
     width: 100% !important;
     display: flex !important;
     align-items: center !important;
-    gap: 11px !important;
-    padding: 10px 14px !important;
-    border-radius: 9px !important;
+    gap: 9px !important;
+    padding: 7.5px 12px !important;
+    border-radius: 8px !important;
     border: 1px solid rgba(216, 184, 120, 0.16) !important;
     background: rgba(255, 255, 255, 0.05) !important;
     color: var(--text, #eef3f4) !important;
-    font-size: .83rem !important;
+    font-size: .82rem !important;
     font-weight: 700 !important;
     cursor: pointer !important;
-    margin-bottom: 7px !important;
+    margin-bottom: 4px !important;
     transition: border-color .2s ease, box-shadow .2s ease !important;
     text-align: left !important;
     text-decoration: none !important;
     flex-shrink: 0 !important;
     box-sizing: border-box !important;
+    font-family: var(--font-family, 'Outfit', sans-serif) !important;
+    letter-spacing: normal !important;
+    line-height: 1.25 !important;
   }
   .sidebar .sidebar-btn svg {
-    width: 17px !important;
-    height: 17px !important;
+    width: 16px !important;
+    height: 16px !important;
     flex-shrink: 0 !important;
     color: var(--accent, #d8b878) !important;
     stroke: var(--accent, #d8b878) !important;
@@ -369,12 +476,12 @@
     background: rgba(216, 184, 120, 0.16) !important;
     border-color: var(--accent, #d8b878) !important;
     color: #ffffff !important;
-    transform: translateX(3px) !important;
+    transform: none !important;
   }
   .sidebar .sidebar-btn:hover svg {
     stroke: #ffffff !important;
     color: #ffffff !important;
-    transform: scale(1.1) !important;
+    transform: none !important;
   }
   .sidebar .sidebar-btn.active {
     background: linear-gradient(135deg, #d8b878, #c8a060) !important;
@@ -463,6 +570,9 @@
     color: var(--text, #eef3f4) !important;
     font-weight: 600 !important;
     transition: all .2s ease !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
   .sidebar .nav-item svg {
     color: var(--accent, #d8b878) !important;
@@ -473,15 +583,15 @@
   .sidebar .nav-item:hover {
     background: rgba(216, 184, 120, 0.15) !important;
     color: var(--accent, #d8b878) !important;
-    transform: translateX(3px) !important;
+    transform: none !important;
   }
   .sidebar .nav-item:hover svg {
-    transform: scale(1.1) !important;
+    transform: none !important;
   }
   .sidebar .nav-item.active {
     background: rgba(216, 184, 120, 0.22) !important;
     color: var(--accent2, #f0d9a8) !important;
-    font-weight: 800 !important;
+    font-weight: 600 !important;
   }
   .sidebar .nav-item.active svg {
     color: var(--accent2, #f0d9a8) !important;
@@ -512,7 +622,7 @@
   html.light .sidebar .nav-item.active {
     background: rgba(216, 184, 120, 0.26) !important;
     color: #5c4100 !important;
-    font-weight: 800 !important;
+    font-weight: 600 !important;
   }
   html:not(.dark) .sidebar .nav-item.active svg,
   html.light .sidebar .nav-item.active svg {
@@ -523,10 +633,11 @@
   /* ── 4. Label Nama & Badge Sidebar ── */
   .sidebar .admin-name-label {
     color: var(--text, #eef3f4) !important;
-    font-size: .95rem !important;
+    font-size: .88rem !important;
     font-weight: 700 !important;
-    margin-bottom: 8px !important;
+    margin-bottom: 6px !important;
     text-align: center !important;
+    line-height: 1.2 !important;
   }
   html:not(.dark) .sidebar .admin-name-label,
   html.light .sidebar .admin-name-label {
@@ -538,6 +649,7 @@
     border: 1px solid rgba(216, 184, 120, 0.3) !important;
     color: var(--accent, #d8b878) !important;
     font-weight: 700 !important;
+    margin-bottom: 10px !important;
   }
   html:not(.dark) .sidebar .total-badge,
   html.light .sidebar .total-badge {
@@ -571,20 +683,20 @@
   }
   .sidebar .avatar-wrap {
     position: relative !important;
-    width: 80px !important;
-    height: 80px !important;
-    max-width: 80px !important;
-    max-height: 80px !important;
-    margin: 0 auto 10px auto !important;
+    width: 72px !important;
+    height: 72px !important;
+    max-width: 72px !important;
+    max-height: 72px !important;
+    margin: 0 auto 6px auto !important;
     cursor: pointer !important;
     display: block !important;
     flex-shrink: 0 !important;
   }
   .sidebar .avatar-circle {
-    width: 80px !important;
-    height: 80px !important;
-    max-width: 80px !important;
-    max-height: 80px !important;
+    width: 72px !important;
+    height: 72px !important;
+    max-width: 72px !important;
+    max-height: 72px !important;
     border-radius: 50% !important;
     background: #161e27 !important;
     overflow: hidden !important;
@@ -646,13 +758,23 @@
 
   /* ── Kunci Sidebar Statis Sempurna (Cegah Geser/Jumping) ── */
   .sidebar {
-    width: var(--sidebar-w, 204px) !important;
-    padding: 28px 20px 16px !important;
+    width: var(--sidebar-w, 220px) !important;
     box-sizing: border-box !important;
     display: flex !important;
     flex-direction: column !important;
-    align-items: center !important;
     overflow: hidden !important;
+  }
+  /* Admin Sidebar */
+  .sidebar:has(.sidebar-header),
+  .sidebar:has(.sidebar-nav) {
+    padding: 14px 14px 10px !important;
+    align-items: center !important;
+  }
+  /* User Sidebar (Beranda, Dashboard User, Daftar Buku, Ajukan Pinjam, Buku Simpan, Edit Profil) */
+  .sidebar:has(.logo-wrap),
+  .sidebar:has(.nav) {
+    padding: 24px 0 20px !important;
+    align-items: stretch !important;
   }
   .sidebar .sidebar-header {
     flex-shrink: 0 !important;
@@ -672,53 +794,86 @@
     display: flex !important;
     flex-direction: column !important;
     padding-right: 2px !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(216, 184, 120, 0.35) transparent !important;
   }
-  .sidebar .avatar-wrap {
-    position: relative !important;
-    width: 80px !important;
-    height: 80px !important;
-    max-width: 80px !important;
-    max-height: 80px !important;
-    margin: 0 auto 10px auto !important;
-    cursor: pointer !important;
-    display: block !important;
+  /* Sama untuk halaman user yang pakai .nav (bukan .sidebar-nav) */
+  .sidebar .nav {
+    width: 100% !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
+    padding: 16px 10px !important;
+    box-sizing: border-box !important;
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(216, 184, 120, 0.35) transparent !important;
+  }
+  .sidebar .nav-bottom {
+    width: 100% !important;
     flex-shrink: 0 !important;
-    transition: none !important;
+    box-sizing: border-box !important;
+    padding: 10px 10px 0 !important;
+    border-top: 1px solid var(--border-color, rgba(216,184,120,.18)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 2px !important;
   }
-  .sidebar .avatar-circle {
-    width: 80px !important;
-    height: 80px !important;
-    max-width: 80px !important;
-    max-height: 80px !important;
-    border-radius: 50% !important;
-    background: #161e27 !important;
-    overflow: hidden !important;
-    border: 2.5px solid rgba(216, 184, 120, 0.35) !important;
+  .sidebar .nav .nav-item,
+  .sidebar .nav-bottom .nav-item {
+    width: 100% !important;
+    box-sizing: border-box !important;
+    font-family: var(--font-family, 'Outfit', sans-serif) !important;
+    font-size: .82rem !important;
+    font-weight: 600 !important;
+    letter-spacing: normal !important;
+    line-height: 1.3 !important;
+    padding: 11px 14px !important;
+    border-radius: 10px !important;
     display: flex !important;
     align-items: center !important;
-    justify-content: center !important;
-    transition: border-color .2s ease, box-shadow .2s ease !important;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, .45) !important;
-    position: relative !important;
+    gap: 10px !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
   }
-  .sidebar .avatar-circle img {
-    width: 80px !important;
-    height: 80px !important;
-    max-width: 80px !important;
-    max-height: 80px !important;
-    object-fit: cover !important;
-    object-position: center !important;
-    display: block !important;
-    border-radius: 50% !important;
-    transition: none !important;
+  .sidebar .nav .nav-item svg,
+  .sidebar .nav-bottom .nav-item svg {
+    width: 17px !important;
+    height: 17px !important;
+    flex-shrink: 0 !important;
   }
-  .sidebar .admin-name-label {
-    margin-top: 0 !important;
-    margin-bottom: 14px !important;
-    font-size: .92rem !important;
-    text-align: center !important;
-    line-height: 1.3 !important;
-    transition: none !important;
+  /* Logo wrap untuk halaman user */
+  .sidebar .logo-wrap {
+    width: 100% !important;
+    flex-shrink: 0 !important;
+    box-sizing: border-box !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    padding: 0 18px 24px !important;
+    border-bottom: 1px solid var(--border-color, rgba(216,184,120,.15)) !important;
+  }
+  .sidebar::-webkit-scrollbar,
+  .sidebar-nav::-webkit-scrollbar {
+    width: 4px !important;
+    height: 4px !important;
+  }
+  .sidebar::-webkit-scrollbar-track,
+  .sidebar-nav::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+  .sidebar::-webkit-scrollbar-thumb,
+  .sidebar-nav::-webkit-scrollbar-thumb {
+    background: rgba(216, 184, 120, 0.3) !important;
+    border-radius: 10px !important;
+  }
+  .sidebar::-webkit-scrollbar-thumb:hover,
+  .sidebar-nav::-webkit-scrollbar-thumb:hover {
+    background: var(--accent, #d8b878) !important;
   }
 
   /* ═══════════════════════════════════════════════════════════════════
@@ -813,7 +968,113 @@
     color: var(--accent, #d8b878) !important;
   }
 
-  /* --- Icon Buttons (kelola_banner.php) --- */
+  /* --- Tombol Utama Admin (.btn-add, .btn-save form admin, .btn-submit) --- */
+  html:not(.dark) .btn-add,
+  html.light .btn-add,
+  html:not(.dark) .modal-box .btn-save,
+  html.light .modal-box .btn-save,
+  html:not(.dark) .modal-footer .btn-save,
+  html.light .modal-footer .btn-save,
+  html:not(.dark) .card .btn-save,
+  html.light .card .btn-save,
+  html:not(.dark) form .btn-save:not(.bk-actions .btn-save),
+  html.light form .btn-save:not(.bk-actions .btn-save),
+  html:not(.dark) .btn-submit,
+  html.light .btn-submit {
+    background: linear-gradient(135deg, #d8b878, #c8a060) !important;
+    color: #121820 !important;
+    font-weight: 800 !important;
+    border: 1px solid rgba(180, 140, 60, 0.4) !important;
+    box-shadow: 0 3px 12px rgba(180, 140, 60, 0.28) !important;
+  }
+  html:not(.dark) .btn-add svg,
+  html.light .btn-add svg,
+  html:not(.dark) .modal-box .btn-save svg,
+  html.light .modal-box .btn-save svg,
+  html:not(.dark) .modal-footer .btn-save svg,
+  html.light .modal-footer .btn-save svg,
+  html:not(.dark) .card .btn-save svg,
+  html.light .card .btn-save svg,
+  html:not(.dark) form .btn-save:not(.bk-actions .btn-save) svg,
+  html.light form .btn-save:not(.bk-actions .btn-save) svg,
+  html:not(.dark) .btn-submit svg,
+  html.light .btn-submit svg {
+    stroke: #121820 !important;
+    color: #121820 !important;
+  }
+  html:not(.dark) .btn-add:hover,
+  html.light .btn-add:hover,
+  html:not(.dark) .modal-box .btn-save:hover,
+  html.light .modal-box .btn-save:hover,
+  html:not(.dark) .modal-footer .btn-save:hover,
+  html.light .modal-footer .btn-save:hover,
+  html:not(.dark) .card .btn-save:hover,
+  html.light .card .btn-save:hover,
+  html:not(.dark) form .btn-save:not(.bk-actions .btn-save):hover,
+  html.light form .btn-save:not(.bk-actions .btn-save):hover,
+  html:not(.dark) .btn-submit:hover,
+  html.light .btn-submit:hover {
+    background: linear-gradient(135deg, #e4c585, #d2aa6b) !important;
+    box-shadow: 0 5px 18px rgba(180, 140, 60, 0.42) !important;
+    color: #121820 !important;
+  }
+
+  /* --- Feedback Klik Responsif (Tactile Active) untuk Semua Tombol --- */
+  .btn-add:active,
+  .btn-save:active,
+  .btn-submit:active,
+  .btn-search:active,
+  .btn-detail:active,
+  .btn-hapus:active,
+  .btn-print:active,
+  .btn-whatsapp:active,
+  .btn-excel:active,
+  .icon-btn:active,
+  .act-btn:active,
+  .tab-btn:active,
+  .status-btn:active,
+  .sidebar-btn:active {
+    transform: scale(0.96) !important;
+    transition: transform 0.08s ease !important;
+  }
+
+  /* --- Icon Buttons (kelola_banner.php) Light & Dark --- */
+  html:not(.dark) .icon-btn,
+  html.light .icon-btn {
+    background: #ffffff !important;
+    border: 1px solid rgba(180, 140, 60, 0.25) !important;
+    color: #4a3b22 !important;
+    box-shadow: 0 1px 4px rgba(0,0,0,.04) !important;
+  }
+  html:not(.dark) .icon-btn:hover,
+  html.light .icon-btn:hover {
+    background: rgba(216, 184, 120, 0.25) !important;
+    border-color: #8a6100 !important;
+    color: #000000 !important;
+  }
+  html:not(.dark) .icon-btn.danger,
+  html.light .icon-btn.danger {
+    color: #dc2626 !important;
+    border-color: rgba(220, 38, 38, 0.3) !important;
+  }
+  html:not(.dark) .icon-btn.danger:hover,
+  html.light .icon-btn.danger:hover {
+    background: #dc2626 !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.35) !important;
+  }
+  html:not(.dark) .icon-btn.grow,
+  html.light .icon-btn.grow {
+    background: rgba(180, 140, 60, 0.12) !important;
+    border-color: rgba(180, 140, 60, 0.32) !important;
+    color: #5a3e04 !important;
+  }
+  html:not(.dark) .icon-btn.grow:hover,
+  html.light .icon-btn.grow:hover {
+    background: linear-gradient(135deg, #d8b878, #c8a060) !important;
+    border-color: #d8b878 !important;
+    color: #121820 !important;
+  }
   html.dark .icon-btn {
     background: var(--book-card, #161e27) !important;
     border: 1px solid var(--border-color, rgba(216,184,120,.18)) !important;
@@ -1640,4 +1901,13 @@ window.AksaAudio = (function() {
     startModules();
   }
 })();
+
+/* ── Helper toggle sinopsis modal ── */
+window.toggleSinopsis = function(elId, btn) {
+  var el = document.getElementById(elId);
+  if (!el) return;
+  var collapsed = el.classList.toggle('sinopsis-collapsed');
+  btn.textContent = collapsed ? 'Lihat Selengkapnya ▾' : 'Sembunyikan ▴';
+};
+
 </script>

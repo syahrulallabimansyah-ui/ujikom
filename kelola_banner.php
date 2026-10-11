@@ -194,7 +194,7 @@ $total = count($banner_list);
       --border-color:rgba(216,184,120,.18);
       --card-border: rgba(216,184,120,.12);
       --radius:      10px;
-      --sidebar-w:   204px;
+      --sidebar-w:   220px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
       --shadow:      0 2px 12px rgba(0,0,0,.3);
     }
@@ -215,8 +215,24 @@ $total = count($banner_list);
       padding: 28px 20px 16px;
       position: fixed; top: 0; left: 0; bottom: 0; z-index: 100;
       transition: transform var(--trans);
-      overflow-y: auto;
+      overflow: hidden;
     }
+    .sidebar-header { flex-shrink: 0; display:flex; flex-direction:column; align-items:center; width:100%; }
+    .sidebar-nav {
+      width: 100%;
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      padding-right: 2px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(216,184,120,.35) transparent;
+    }
+    .sidebar-nav::-webkit-scrollbar { width: 4px; }
+    .sidebar-nav::-webkit-scrollbar-thumb { background: rgba(216,184,120,.3); border-radius: 10px; }
+    .sidebar-nav::-webkit-scrollbar-track { background: transparent; }
     .sidebar-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:90; }
     .sidebar-overlay.open { display:block; }
     .sidebar-toggle {
@@ -228,10 +244,10 @@ $total = count($banner_list);
       transition:all .2s;
     }
     .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
-    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); }
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      width:72px; height:72px; max-width:72px; max-height:72px; border-radius:50%;
       background:#161e27; overflow:hidden;
       border:2.5px solid rgba(216,184,120,.35);
       display:flex; align-items:center; justify-content:center;
@@ -258,23 +274,22 @@ $total = count($banner_list);
       border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:20px; text-align:center;
+      margin-bottom:10px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:11px;
-      padding:10px 14px; border-radius:9px;
+      width:100%; display:flex; align-items:center; gap:9px; padding:7.5px 12px; border-radius:8px;
       border:1px solid rgba(216,184,120,.16);
       background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
-      font-family:inherit; font-size:.83rem; font-weight:700;
-      cursor:pointer; margin-bottom:7px;
+      font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; margin-bottom:4px;
       transition:all var(--trans);
       text-align:left; text-decoration:none;
       flex-shrink:0; box-sizing:border-box;
+      line-height:1.25;
     }
-    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
-    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
-    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
       border-color:var(--accent,#d8b878);
@@ -288,21 +303,26 @@ $total = count($banner_list);
     .page-title { font-family:'Cormorant Garamond',serif; font-size:1.7rem; font-weight:700; color:var(--text); }
     .page-sub { color:var(--muted); font-size:.85rem; margin-top:2px; }
     .btn-add {
-      background:var(--accent); color:#fff; border:none; padding:11px 20px; border-radius:10px;
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      color:#121820; border:1px solid rgba(180,140,60,.4); padding:10px 20px; border-radius:10px;
       font-weight:800; font-size:.85rem; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px;
-      box-shadow:0 4px 14px rgba(43,79,255,.3); transition:transform var(--trans);
-      white-space:nowrap;
+      box-shadow:0 3px 12px rgba(216,184,120,.28); transition:all .18s ease;
+      white-space:nowrap; text-decoration:none;
     }
-    .btn-add:hover { transform:translateY(-2px); }
-    .btn-add:active { transform:translateY(0); }
-    .btn-add svg { width:16px; height:16px; flex-shrink:0; }
+    .btn-add:hover {
+      background:linear-gradient(135deg,#e4c585,#d2aa6b);
+      box-shadow:0 5px 18px rgba(216,184,120,.42);
+      color:#121820;
+    }
+    .btn-add:active { transform:scale(0.97); }
+    .btn-add svg { width:16px; height:16px; flex-shrink:0; stroke:#121820; }
 
     .alert { padding:12px 16px; border-radius:10px; font-size:.85rem; font-weight:600; margin-bottom:18px; }
     .alert.success { background:#e6f9ee; color:#1c7a4c; border:1px solid #b6ecce; }
     .alert.error   { background:#fdecec; color:#c0392b; border:1px solid #f5b7b1; }
 
     .banner-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:18px; }
-    .banner-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column; }
+    .banner-card { background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column; border:1px solid var(--card-border, rgba(216,184,120,.12)); }
     .banner-thumb { width:100%; aspect-ratio:16/7; background:#e4e4ee; position:relative; overflow:hidden; }
     .banner-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
     .banner-status { position:absolute; top:8px; left:8px; font-size:.65rem; font-weight:800; padding:3px 10px; border-radius:20px; text-transform:uppercase; letter-spacing:.03em; }
@@ -313,15 +333,66 @@ $total = count($banner_list);
     .banner-judul { font-weight:800; font-size:.92rem; color:var(--text); }
     .banner-sub { font-size:.78rem; color:var(--muted); line-height:1.4; }
     .banner-link { font-size:.72rem; color:var(--accent); word-break:break-all; }
-    .banner-actions { display:flex; gap:6px; padding:12px 16px; border-top:1px solid #f0f0f5; flex-wrap:wrap; }
+    .banner-actions { display:flex; align-items:center; gap:6px; padding:12px 14px; border-top:1px solid var(--border-color, rgba(216,184,120,.15)); }
     .icon-btn {
-      border:none; background:var(--book-card,#161e27); color:var(--text); width:32px; height:32px; border-radius:8px;
-      display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background var(--trans);
+      border:1px solid var(--border-color, rgba(216,184,120,.22));
+      background:rgba(216,184,120,.08); color:var(--text); width:32px; height:32px; border-radius:8px;
+      display:flex; align-items:center; justify-content:center; cursor:pointer;
+      transition:all .18s ease; flex-shrink:0;
     }
+    html.light .icon-btn, html:not(.dark) .icon-btn {
+      background:#ffffff;
+      border-color:rgba(180,140,60,.25);
+      color:#4a3b22;
+      box-shadow:0 1px 4px rgba(0,0,0,.04);
+    }
+    .icon-btn:hover {
+      background:rgba(216,184,120,.22);
+      border-color:var(--accent,#d8b878);
+      color:var(--accent2,#f0d9a8);
+    }
+    html.light .icon-btn:hover, html:not(.dark) .icon-btn:hover {
+      background:rgba(216,184,120,.25);
+      border-color:#8a6100;
+      color:#000000;
+    }
+    .icon-btn:active { transform:scale(.94); }
     .icon-btn svg { width:15px; height:15px; }
-    .icon-btn:hover { background:rgba(216,184,120,.12); color:var(--accent,#d8b878); }
-    .icon-btn.danger:hover { background:#fdecec; color:#c0392b; }
-    .icon-btn.grow { flex:1; width:auto; gap:6px; font-size:.75rem; font-weight:700; }
+    .icon-btn.danger {
+      border-color:rgba(231,76,60,.3);
+      color:#e74c3c;
+    }
+    .icon-btn.danger:hover {
+      background:#e74c3c;
+      border-color:#e74c3c;
+      color:#ffffff;
+      box-shadow:0 2px 8px rgba(231,76,60,.35);
+    }
+    .icon-btn.star-active {
+      background:rgba(216,184,120,.25) !important;
+      border-color:var(--accent,#d8b878) !important;
+      color:var(--accent,#d8b878) !important;
+    }
+    html.light .icon-btn.star-active, html:not(.dark) .icon-btn.star-active {
+      background:#fdf3db !important;
+      border-color:#d4a034 !important;
+      color:#b27b0a !important;
+    }
+    .icon-btn.grow {
+      flex:1; width:auto; gap:6px; font-size:.78rem; font-weight:800;
+      background:rgba(216,184,120,.14);
+      border-color:rgba(216,184,120,.35);
+    }
+    html.light .icon-btn.grow, html:not(.dark) .icon-btn.grow {
+      background:rgba(180,140,60,.12);
+      border-color:rgba(180,140,60,.32);
+      color:#5a3e04;
+    }
+    .icon-btn.grow:hover {
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      border-color:var(--accent,#d8b878);
+      color:#121820;
+    }
 
     .empty-state { text-align:center; padding:60px 20px; color:var(--muted); }
     .empty-state svg { width:48px; height:48px; opacity:.4; margin-bottom:12px; }
@@ -395,14 +466,6 @@ $total = count($banner_list);
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10.5" r="1.5"/><path d="M21 15l-5-5L5 19"/></svg>
     <span>AKSA NOVA • Kelola Banner</span>
   </div>
-  <div class="mobile-topbar-actions">
-    <a href="halaman_admin.php" title="Kelola Buku">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    </a>
-    <a href="beranda.php" title="Lihat Beranda">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </a>
-  </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -411,7 +474,7 @@ $total = count($banner_list);
     <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
       <div class="avatar-circle">
         <?php if ($admin_foto && file_exists($admin_foto)): ?>
-          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
+          <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="72" height="72" loading="eager" decoding="sync"/>
         <?php else: ?>
           <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
             <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -553,7 +616,7 @@ $total = count($banner_list);
           <form method="post" style="display:contents;">
             <input type="hidden" name="action" value="set_background">
             <input type="hidden" name="id" value="<?= $b["id"] ?>">
-            <button type="submit" class="icon-btn" title="Jadikan gambar latar Slide 1 di halaman depan" style="<?= $banner_background_id === (int)$b["id"] ? 'background:#e0e7ff;color:#3730a3;' : '' ?>">
+            <button type="submit" class="icon-btn <?= $banner_background_id === (int)$b["id"] ? 'star-active' : '' ?>" title="Jadikan gambar latar Slide 1 di halaman depan">
               <svg viewBox="0 0 24 24" fill="<?= $banner_background_id === (int)$b["id"] ? 'currentColor' : 'none' ?>" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
             </button>
           </form>

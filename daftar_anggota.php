@@ -94,28 +94,33 @@ if ($action === "hapus") {
 
 if ($action === "reset_password") {
     $id = (int)($_POST["id"] ?? 0);
+    $custom_pw = trim($_POST["custom_password"] ?? "");
     if ($id > 0) {
         $r = mysqli_query($conn, "SELECT full_name, username FROM users WHERE id=$id AND role='member'");
         $u = $r ? mysqli_fetch_assoc($r) : null;
 
         if ($u) {
-            // ── Generate password baru (sama seperti saat pendaftaran) ──
-            $chars_upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-            $chars_lower = "abcdefghijkmnpqrstuvwxyz";
-            $chars_num   = "23456789";
-            $all_chars   = $chars_upper . $chars_lower . $chars_num;
+            if ($custom_pw !== "") {
+                $new_password = $custom_pw;
+            } else {
+                // ── Generate password baru acak ──
+                $chars_upper = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+                $chars_lower = "abcdefghijkmnpqrstuvwxyz";
+                $chars_num   = "23456789";
+                $all_chars   = $chars_upper . $chars_lower . $chars_num;
 
-            $new_password = $chars_upper[random_int(0, strlen($chars_upper) - 1)]
-                           . $chars_lower[random_int(0, strlen($chars_lower) - 1)]
-                           . $chars_num[random_int(0, strlen($chars_num) - 1)];
-            for ($i = 0; $i < 5; $i++) {
-                $new_password .= $all_chars[random_int(0, strlen($all_chars) - 1)];
+                $new_password = $chars_upper[random_int(0, strlen($chars_upper) - 1)]
+                               . $chars_lower[random_int(0, strlen($chars_lower) - 1)]
+                               . $chars_num[random_int(0, strlen($chars_num) - 1)];
+                for ($i = 0; $i < 5; $i++) {
+                    $new_password .= $all_chars[random_int(0, strlen($all_chars) - 1)];
+                }
+                $new_password = str_shuffle($new_password);
             }
-            $new_password = str_shuffle($new_password);
             $hashed = password_hash($new_password, PASSWORD_DEFAULT);
 
-            $stmt = mysqli_prepare($conn, "UPDATE users SET password=? WHERE id=? AND role='member'");
-            mysqli_stmt_bind_param($stmt, "si", $hashed, $id);
+            $stmt = mysqli_prepare($conn, "UPDATE users SET password=?, plain_password=? WHERE id=? AND role='member'");
+            mysqli_stmt_bind_param($stmt, "ssi", $hashed, $new_password, $id);
             mysqli_stmt_execute($stmt);
             mysqli_stmt_close($stmt);
 
@@ -395,7 +400,7 @@ if (in_array($filter, ["pending", "approved", "rejected"], true)) {
 }
 if ($kelas_filter !== "") {
     $kf = mysqli_real_escape_string($conn, $kelas_filter);
-    $where[] = "kelas = '$kf'";
+    $where[] = "TRIM(kelas) = '$kf'";
 }
 $where_sql = "WHERE " . implode(" AND ", $where);
 
@@ -406,7 +411,18 @@ while ($row = mysqli_fetch_assoc($res)) {
 }
 $total_anggota = count($anggota_list);
 
-$count_res = mysqli_query($conn, "SELECT status, COUNT(*) AS c FROM users WHERE role='member' GROUP BY status");
+// Total seluruh anggota (tanpa filter kelas)
+$total_semua_res = mysqli_query($conn, "SELECT COUNT(*) AS c FROM users WHERE role='member'");
+$total_semua_anggota = $total_semua_res ? (int)(mysqli_fetch_assoc($total_semua_res)['c'] ?? 0) : 0;
+
+// Hitung status tabs — jika filter kelas aktif, sesuaikan angka tab dengan kelas tersebut
+$where_count = ["role = 'member'"];
+if ($kelas_filter !== "") {
+    $kf = mysqli_real_escape_string($conn, $kelas_filter);
+    $where_count[] = "TRIM(kelas) = '$kf'";
+}
+$where_count_sql = "WHERE " . implode(" AND ", $where_count);
+$count_res = mysqli_query($conn, "SELECT status, COUNT(*) AS c FROM users $where_count_sql GROUP BY status");
 $counts = ["pending" => 0, "approved" => 0, "rejected" => 0];
 while ($row = mysqli_fetch_assoc($count_res)) {
     $counts[$row["status"]] = (int)$row["c"];
@@ -436,7 +452,7 @@ ob_start();
       --border-color:rgba(216,184,120,.18);
       --card-border: rgba(216,184,120,.12);
       --radius:      10px;
-      --sidebar-w:   204px;
+      --sidebar-w:   220px;
       --trans:       .2s cubic-bezier(.22,1,.36,1);
       --shadow:      0 2px 12px rgba(0,0,0,.3);
       /* Paksa semua kontrol native (dropdown select, checkbox, scrollbar, dll)
@@ -500,12 +516,12 @@ ob_start();
       transition:all .2s;
     }
     .sidebar-toggle svg { width:22px; height:22px; stroke:var(--accent,#d8b878); color:var(--accent,#d8b878); stroke-width:2.3px; }
-    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); transform:scale(1.05); }
-    .sidebar-toggle:active { transform:scale(0.92); }
+    .sidebar-toggle:hover { background:rgba(216,184,120,.18); border-color:var(--accent2,#f0d9a8); }
+    .sidebar-toggle:active { transform:scale(0.96); }
 
     .avatar-wrap { position:relative; margin-bottom:14px; cursor:pointer; }
     .avatar-circle {
-      width:80px; height:80px; max-width:80px; max-height:80px; border-radius:50%;
+      width:72px; height:72px; max-width:72px; max-height:72px; border-radius:50%;
       background:#c0c0c8; overflow:hidden;
       border:3px solid rgba(255,255,255,.25);
       display:flex; align-items:center; justify-content:center;
@@ -573,23 +589,22 @@ ob_start();
       border: 1px solid rgba(216,184,120,.3);
       font-size:.72rem; font-weight:700;
       padding:4px 12px; border-radius:50px;
-      margin-bottom:20px; text-align:center;
+      margin-bottom:10px; text-align:center;
     }
 
     .sidebar-btn {
-      width:100%; display:flex; align-items:center; gap:11px;
-      padding:10px 14px; border-radius:9px;
+      width:100%; display:flex; align-items:center; gap:9px; padding:7.5px 12px; border-radius:8px;
       border:1px solid rgba(216,184,120,.16);
       background:rgba(255,255,255,.05); color:var(--text,#eef3f4);
-      font-family:inherit; font-size:.83rem; font-weight:700;
-      cursor:pointer; margin-bottom:7px;
+      font-family:inherit; font-size:.82rem; font-weight:700; cursor:pointer; margin-bottom:4px;
       transition:all var(--trans);
       text-align:left; text-decoration:none;
       flex-shrink:0; box-sizing:border-box;
+      line-height:1.25;
     }
-    .sidebar-btn svg { width:17px; height:17px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
-    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; transform:translateX(3px); }
-    .sidebar-btn:hover svg { color:#fff; stroke:#fff; transform:scale(1.1); }
+    .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
+    .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
       border-color:var(--accent,#d8b878);
@@ -643,13 +658,19 @@ ob_start();
     #searchResultArea { transition: opacity .15s ease; }
     #searchResultArea.loading-search { opacity: .55; }
     .btn-search {
-      background:var(--btn-primary); color:#fff;
-      border:none; border-radius:20px;
-      padding:6px 16px; font-family:'Nunito',sans-serif;
-      font-size:.78rem; font-weight:700; cursor:pointer;
-      transition:background var(--trans);
+      background:linear-gradient(135deg,#d8b878,#c8a060);
+      color:#121820; font-family:'Nunito',sans-serif;
+      font-size:.78rem; font-weight:800; cursor:pointer;
+      border:none; border-radius:20px; padding:7px 18px;
+      transition:all .18s ease;
+      box-shadow:0 2px 8px rgba(216,184,120,.22);
     }
-    .btn-search:hover { background:#222; }
+    .btn-search:hover {
+      background:linear-gradient(135deg,#e4c585,#d2aa6b);
+      box-shadow:0 4px 14px rgba(216,184,120,.38);
+      color:#121820;
+    }
+    .btn-search:active { transform:scale(.96); }
 
     .kelas-filter-bar {
       display:flex; align-items:center; gap:10px; margin-bottom:14px;
@@ -665,6 +686,21 @@ ob_start();
     }
     .kelas-filter-bar select:focus { outline:none; border-color:var(--accent); }
     .kelas-filter-bar select option { background:var(--card,#121820); color:var(--text); }
+    .btn-reset-kelas {
+      background:rgba(220,38,38,.12); color:#f87171;
+      border:1px solid rgba(220,38,38,.28); border-radius:8px;
+      padding:6px 12px; font-size:.76rem; font-weight:700;
+      font-family:'Nunito',sans-serif; cursor:pointer;
+      transition:all var(--trans);
+    }
+    .btn-reset-kelas:hover { background:rgba(220,38,38,.22); color:#fca5a5; transform:translateY(-1px); }
+    .filter-kelas-badge {
+      display:inline-flex; align-items:center; gap:5px;
+      background:rgba(216,184,120,.14); color:var(--accent,#d8b878);
+      border:1px solid rgba(216,184,120,.3); padding:3px 10px;
+      border-radius:20px; font-size:.8rem; font-weight:700;
+      margin-left:8px; vertical-align:middle;
+    }
 
     .content-header {
       display:flex; align-items:center; justify-content:space-between;
@@ -943,14 +979,6 @@ ob_start();
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     <span>AKSA NOVA • Daftar Anggota</span>
   </div>
-  <div class="mobile-topbar-actions">
-    <a href="halaman_admin.php" title="Kelola Buku">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
-    </a>
-    <a href="beranda.php" title="Lihat Beranda">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-    </a>
-  </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -959,7 +987,7 @@ ob_start();
     <div class="avatar-wrap" onclick="openProfilModal()" title="Edit Profil">
     <div class="avatar-circle">
       <?php if ($admin_foto && file_exists($admin_foto)): ?>
-        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="80" height="80" loading="eager" decoding="sync"/>
+        <img src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Admin" width="72" height="72" loading="eager" decoding="sync"/>
       <?php else: ?>
         <svg class="default-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
@@ -1063,7 +1091,8 @@ ob_start();
   <?php endif; ?>
 
   <form method="GET" action="" id="searchForm">
-    <?php if ($filter !== "all"): ?><input type="hidden" name="status" value="<?= htmlspecialchars($filter) ?>"><?php endif; ?>
+    <?php if ($filter !== "all"): ?><input type="hidden" name="status" id="searchStatusHidden" value="<?= htmlspecialchars($filter) ?>"><?php endif; ?>
+    <input type="hidden" name="kelas" id="searchKelasHidden" value="<?= htmlspecialchars($kelas_filter) ?>"/>
     <div class="topbar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       <input type="text" name="q" id="searchInput" autocomplete="off" placeholder="Cari anggota berdasarkan nama, kelas, username, atau email…"
@@ -1082,13 +1111,16 @@ ob_start();
   <div class="kelas-filter-bar">
     <label for="kelasFilterSelect">Filter Kelas</label>
     <select id="kelasFilterSelect">
-      <option value="">Semua Kelas</option>
-      <?php foreach ($list_kelas as $k): ?>
-        <option value="<?= htmlspecialchars($k['nama_kelas']) ?>" <?= $kelas_filter === $k['nama_kelas'] ? 'selected' : '' ?>>
-          <?= htmlspecialchars($k['nama_kelas']) ?>
+      <option value="">Semua Kelas (<?= $total_semua_anggota ?> siswa)</option>
+      <?php foreach ($kelas_asal_list as $k_nama => $k_jml): ?>
+        <option value="<?= htmlspecialchars($k_nama) ?>" <?= strcasecmp($kelas_filter, $k_nama) === 0 ? 'selected' : '' ?>>
+          <?= htmlspecialchars($k_nama) ?> (<?= $k_jml ?> siswa)
         </option>
       <?php endforeach; ?>
     </select>
+    <?php if ($kelas_filter !== ''): ?>
+      <button type="button" class="btn-reset-kelas" id="btnResetKelas" onclick="resetFilterKelas()">✕ Reset Kelas</button>
+    <?php endif; ?>
   </div>
 
   <div id="searchResultArea">
@@ -1096,6 +1128,7 @@ ob_start();
   <div class="content-header">
     <div class="content-title">
       Daftar Anggota
+      <?php if ($kelas_filter !== ''): ?><span class="filter-kelas-badge">Kelas: <?= htmlspecialchars($kelas_filter) ?></span><?php endif; ?>
       <?php if ($search): ?><span style="font-size:.9rem;color:var(--muted);font-family:'Nunito',sans-serif;"> — hasil: "<?= htmlspecialchars($search) ?>"</span><?php endif; ?>
     </div>
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
@@ -1133,7 +1166,7 @@ ob_start();
       foreach ($tabs as $key => $label):
         $active = $filter === $key ? "active" : "";
     ?>
-      <a class="status-tab <?= $active ?>" href="daftar_anggota.php?status=<?= $key ?><?= $qstr ?>"><?= $label ?></a>
+      <a class="status-tab <?= $active ?>" data-status="<?= $key ?>" href="daftar_anggota.php?status=<?= $key ?><?= $qstr ?>"><?= $label ?></a>
     <?php endforeach; ?>
   </div>
 
@@ -1204,7 +1237,7 @@ ob_start();
                 <button class="act-btn act-reject" onclick="kirimAksi('reject', <?= $a['id'] ?>)">Tolak</button>
               <?php elseif ($a["status"] === "approved"): ?>
                 <button class="act-btn act-reject" onclick="konfirmasiNonaktifkan(<?= $a['id'] ?>, '<?= htmlspecialchars(addslashes($a['full_name'])) ?>')">Nonaktifkan</button>
-                <button class="act-btn act-reset" onclick="konfirmasiReset(<?= $a['id'] ?>, '<?= htmlspecialchars(addslashes($a['full_name'])) ?>')">Ubah Sandi</button>
+                <button class="act-btn act-reset" onclick="bukaModalUbahSandi(<?= $a['id'] ?>, '<?= htmlspecialchars(addslashes($a['full_name'])) ?>', '<?= htmlspecialchars(addslashes($a['username'])) ?>')">Ubah Sandi</button>
               <?php else: ?>
                 <button class="act-btn act-approve" onclick="kirimAksi('approve', <?= $a['id'] ?>)">Aktifkan Kembali</button>
               <?php endif; ?>
@@ -1305,6 +1338,55 @@ ob_start();
     <div class="modal-footer" style="margin-top:16px;">
       <button type="button" class="btn-cancel" onclick="closeKelasModal()">Tutup</button>
     </div>
+  </div>
+</div>
+
+<!-- ═══════════ MODAL UBAH KATA SANDI ANGGOTA ═══════════ -->
+<div class="modal-overlay" id="ubahSandiModalOverlay">
+  <div class="modal-box" style="max-width:440px; width:92%;">
+    <div class="modal-header">
+      <div class="modal-title" style="display:flex;align-items:center;gap:8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+        Ubah Kata Sandi Anggota
+      </div>
+      <button type="button" class="modal-close" onclick="closeUbahSandiModal()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <form method="POST" action="daftar_anggota.php" id="formUbahSandiModal" style="margin-top:14px;">
+      <input type="hidden" name="action" value="reset_password"/>
+      <input type="hidden" name="id" id="ubahSandiUserId" value=""/>
+
+      <div style="margin-bottom:14px; background:rgba(216,184,120,.07); border:1px solid rgba(216,184,120,.2); padding:10px 14px; border-radius:8px;">
+        <div style="font-size:.76rem; color:var(--muted); margin-bottom:2px;">Anggota:</div>
+        <div id="ubahSandiNamaDisplay" style="font-weight:700; font-size:.92rem; color:var(--text);"></div>
+        <div id="ubahSandiUserDisplay" style="font-size:.78rem; color:var(--accent); font-family:monospace; margin-top:2px;"></div>
+      </div>
+
+      <div style="margin-bottom:18px;">
+        <label style="display:block; font-size:.8rem; font-weight:700; color:var(--text); margin-bottom:6px;">
+          Kata Sandi Baru:
+        </label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" name="custom_password" id="inputCustomPassword" class="form-input" placeholder="Ketik sandi baru atau klik Acak" required style="flex:1; padding:9px 12px; font-size:.88rem; font-family:monospace;"/>
+          <button type="button" class="act-btn" onclick="generateRandomSandi()" title="Buat Sandi Acak Otomatis" style="background:rgba(216,184,120,.15); color:var(--accent); border:1px solid rgba(216,184,120,.3); padding:8px 12px; font-size:.78rem; font-weight:700; white-space:nowrap; border-radius:8px; cursor:pointer;">
+            🎲 Acak
+          </button>
+        </div>
+        <p style="font-size:.74rem; color:var(--muted); margin-top:6px; line-height:1.4;">
+          Sandi lama akan langsung diganti. Sampaikan sandi baru ini kepada anggota yang bersangkutan.
+        </p>
+      </div>
+
+      <div style="display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" class="btn-cancel" onclick="closeUbahSandiModal()" style="padding:9px 16px; font-size:.82rem; border-radius:8px;">Batal</button>
+        <button type="submit" class="btn-save" style="padding:9px 20px; font-size:.82rem; border-radius:8px;">Simpan Sandi</button>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -1532,10 +1614,50 @@ function kirimAksi(action, id) {
   document.getElementById('formAksi').submit();
 }
 
-function konfirmasiReset(id, nama) {
-  if (confirm(`Ubah sandi untuk "${nama}"? Sandi lama akan langsung tidak berlaku.`)) {
-    kirimAksi('reset_password', id);
+// ─── Modal Ubah Sandi Anggota ───
+function bukaModalUbahSandi(id, nama, username) {
+  document.getElementById('ubahSandiUserId').value = id;
+  document.getElementById('ubahSandiNamaDisplay').textContent = nama;
+  document.getElementById('ubahSandiUserDisplay').textContent = '@' + username;
+  document.getElementById('inputCustomPassword').value = '';
+  document.getElementById('ubahSandiModalOverlay').classList.add('open');
+  setTimeout(() => {
+    const inp = document.getElementById('inputCustomPassword');
+    if (inp) inp.focus();
+  }, 100);
+}
+
+function closeUbahSandiModal() {
+  document.getElementById('ubahSandiModalOverlay').classList.remove('open');
+}
+
+document.getElementById('ubahSandiModalOverlay')?.addEventListener('click', function(e) {
+  if (e.target === this) closeUbahSandiModal();
+});
+
+function generateRandomSandi() {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
+  let pw = "";
+  for (let i = 0; i < 8; i++) {
+    pw += chars.charAt(Math.floor(Math.random() * chars.length));
   }
+  document.getElementById('inputCustomPassword').value = pw;
+}
+
+function togglePeekPw(id, plainPw) {
+  const el = document.getElementById('pwText_' + id);
+  if (!el) return;
+  if (el.getAttribute('data-shown') === '1') {
+    el.textContent = '••••••••';
+    el.removeAttribute('data-shown');
+  } else {
+    el.textContent = plainPw;
+    el.setAttribute('data-shown', '1');
+  }
+}
+
+function konfirmasiReset(id, nama) {
+  bukaModalUbahSandi(id, nama, '');
 }
 
 function konfirmasiCairkan(id, nama) {
@@ -1865,13 +1987,23 @@ function escapeHtmlText(str) {
   });
 }
 
+function resetFilterKelas() {
+  const sel = document.getElementById('kelasFilterSelect');
+  if (sel) {
+    sel.value = '';
+    sel.dispatchEvent(new Event('change'));
+  }
+}
+
 // ─── Live Search (ketik langsung cari, tanpa tombol) ───
 (function initLiveSearch() {
-  const CURRENT_FILTER = <?= json_encode($filter) ?>;
+  let currentFilterStatus = <?= json_encode($filter) ?>;
   const form        = document.getElementById('searchForm');
   const input       = document.getElementById('searchInput');
   const result      = document.getElementById('searchResultArea');
   const kelasSelect = document.getElementById('kelasFilterSelect');
+  const hiddenKelas = document.getElementById('searchKelasHidden');
+  const hiddenStatus= document.getElementById('searchStatusHidden');
   if (!form || !input || !result) return;
 
   let debounceTimer = null;
@@ -1882,7 +2014,7 @@ function escapeHtmlText(str) {
   function buildParams(query) {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
-    if (CURRENT_FILTER && CURRENT_FILTER !== 'all') params.set('status', CURRENT_FILTER);
+    if (currentFilterStatus && currentFilterStatus !== 'all') params.set('status', currentFilterStatus);
     if (kelasSelect && kelasSelect.value) params.set('kelas', kelasSelect.value);
     return params;
   }
@@ -1922,11 +2054,34 @@ function escapeHtmlText(str) {
       e.preventDefault();
       input.value = '';
       runSearch(input.value);
+      return;
+    }
+
+    const tabLink = e.target.closest('.status-tab');
+    if (tabLink && result.contains(tabLink)) {
+      e.preventDefault();
+      const st = tabLink.dataset.status || 'all';
+      currentFilterStatus = st;
+      if (hiddenStatus) {
+        if (st === 'all') {
+          hiddenStatus.remove();
+        } else {
+          hiddenStatus.value = st;
+        }
+      }
+      runSearch(input.value);
     }
   });
 
   if (kelasSelect) {
-    kelasSelect.addEventListener('change', () => runSearch(input.value));
+    kelasSelect.addEventListener('change', () => {
+      if (hiddenKelas) hiddenKelas.value = kelasSelect.value;
+      const btnReset = document.getElementById('btnResetKelas');
+      if (btnReset) {
+        btnReset.style.display = kelasSelect.value ? 'inline-flex' : 'none';
+      }
+      runSearch(input.value);
+    });
   }
 })();
 </script>

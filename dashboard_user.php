@@ -165,7 +165,7 @@ ob_start();
       --muted:        rgba(238,243,244,.65);
       --card:         #121820;
       --radius:       14px;
-      --sidebar-w:    204px;
+      --sidebar-w:   220px;
       --shadow-sm:    0 2px 12px rgba(0,0,0,.25);
       --shadow-md:    0 4px 20px rgba(0,0,0,.45);
       --card-border:  rgba(216,184,120,.14);
@@ -480,15 +480,17 @@ ob_start();
     /* Modal Detail Buku */
     .detail-overlay { position:fixed; inset:0; z-index:800; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:var(--card); border:1px solid var(--card-border); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:var(--shadow-md); position:relative; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
+    .detail-modal { background:var(--card); border:1px solid var(--card-border); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:var(--shadow-md); position:relative; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; animation:modalIn .3s cubic-bezier(.16,1,.3,1) both; }
     .detail-modal::-webkit-scrollbar { width:4px; }
     .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
     .detail-modal::-webkit-scrollbar-track { background:transparent; }
+    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
     .detail-loading { padding:40px; text-align:center; color:var(--muted); font-size:.85rem; }
     .detail-close-btn { position:absolute; top:12px; right:12px; width:40px; height:40px; border-radius:50%; border:2px solid var(--accent,#d8b878); background:rgba(18,24,32,0.92); color:var(--accent,#d8b878); font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .2s, transform .15s, border-color .2s; box-shadow:0 4px 14px rgba(0,0,0,.6); z-index:10; }
     .detail-close-btn:hover { background:var(--accent,#d8b878); color:#121820; transform:scale(1.08); }
     .detail-close-btn:hover svg { stroke:#121820; }
-    .detail-cover { width:100%; height:210px; background:var(--book-card); overflow:hidden; position:relative; }
+    .detail-cover { width:100%; height:210px; background:var(--book-card); overflow:hidden; position:relative; margin-top:0; }
     .detail-cover img { width:100%; height:100%; object-fit:cover; }
     .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%); pointer-events:none; }
     .detail-body { padding:20px; }
@@ -566,18 +568,20 @@ ob_start();
 
     /* Mobile portrait (≤540px) */
     @media (max-width: 540px) {
-      .detail-overlay { align-items:flex-end; padding:0; }
+      .detail-overlay { align-items:center; justify-content:center; padding:16px 12px; }
       .detail-modal {
-        max-width:100%; width:100%; margin:0;
-        border-radius:22px 22px 0 0;
+        max-width:100%; width:100%; margin:auto 0;
+        border-radius:18px;
+        border:1px solid var(--card-border);
         border-top:3px solid var(--accent,#d8b878);
-        max-height:88dvh;
+        max-height:86dvh;
+        animation:modalSlideUp .35s cubic-bezier(.16,1,.3,1) both !important;
       }
-      /* Drag handle indicator di atas bottom-sheet */
       .detail-modal::before {
-        content:''; display:block; width:40px; height:4px;
-        background:rgba(216,184,120,.4); border-radius:10px;
-        margin:10px auto 0; flex-shrink:0;
+        display:none !important;
+      }
+      .detail-body {
+        padding-bottom:24px !important;
       }
       .main { padding:74px 10px 28px; }
       .user-hero { padding:14px 12px; }
@@ -746,12 +750,6 @@ ob_start();
           </span>
         </div>
       </div>
-    </div>
-    <div class="hero-actions">
-      <a href="kartu_anggota.php" class="btn-hero-action btn-hero-gold">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="13" y2="12"/></svg>
-        Kartu Anggota
-      </a>
     </div>
   </div>
 
@@ -986,7 +984,7 @@ ob_start();
               </div>
               <div class="mc-credrow">
                 <span class="mc-credlabel">Password</span>
-                <span class="mc-credvalue muted">Tidak berubah</span>
+                <span class="mc-credvalue" style="letter-spacing:3px;font-size:.85rem;color:rgba(216,184,120,.7);">••••••••</span>
               </div>
             </div>
             <div class="mc-qrwrap">
@@ -1090,14 +1088,14 @@ ob_start();
             <div class="detail-title">${b.judul}</div>
             <div class="detail-author">✍️ ${b.penulis || 'Penulis tidak diketahui'} · Kategori: ${b.genre || 'Umum'}</div>
             ${b.rak ? `<div style="font-size:.78rem;color:var(--accent,#d8b878);margin-top:6px;display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>Lokasi: <strong>${b.rak}</strong></div>` : ''}
-            <div class="detail-desc">${b.sinopsis ? b.sinopsis.replace(/\\n/g, '<br>') : 'Sinopsis belum tersedia.'}</div>
+            <div class="detail-desc detail-sinopsis${b.sinopsis && b.sinopsis.length > 300 ? ' sinopsis-collapsed' : ''}" id="sinopsis_${b.id}">${b.sinopsis ? b.sinopsis.replace(/\\n/g, '<br>') : 'Sinopsis belum tersedia.'}</div>${b.sinopsis && b.sinopsis.length > 300 ? `<button class="sinopsis-toggle-btn" onclick="toggleSinopsis('sinopsis_${b.id}',this)">Lihat Selengkapnya ▾</button>` : ''}
             ${b.stok > 0
               ? `<a href="pengajuan_peminjaman.php?buku_id=${b.id}" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;background:var(--accent);color:#090c10;font-weight:700;text-decoration:none;font-size:.82rem;margin-top:14px;box-shadow:0 4px 16px rgba(216,184,120,.3);">
                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                    Ajukan Peminjaman Buku Ini
                  </a>`
               : `<button disabled style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);color:var(--muted);font-weight:700;font-size:.82rem;margin-top:14px;border:none;cursor:not-allowed;">
-                   Stok Buku Habis
+                   Stok Buku Kosong
                  </button>`}
           </div>
         `;

@@ -3,6 +3,10 @@
 // Berfungsi di SEMUA halaman admin secara konsisten & realtime
 declare(strict_types=1);
 
+// Guard: cegah double-render jika di-include lebih dari sekali
+if (defined('AKSA_NOTIF_INCLUDED')) return;
+define('AKSA_NOTIF_INCLUDED', true);
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -467,15 +471,20 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   }
 
   function updateSidebarBadge(count) {
-    var links = document.querySelectorAll('a.sidebar-btn[href*="pengajuan_buku.php"], .sidebar a[href*="pengajuan_buku.php"], a.nav-item[href*="halaman_admin.php"]');
+    var links = document.querySelectorAll([
+      'a.sidebar-btn[href*="pengajuan_buku.php"]',
+      '.sidebar a[href*="pengajuan_buku.php"]',
+      'a.nav-item[href*="halaman_admin.php"]'
+    ].join(', '));
     links.forEach(function(link) {
-      var existingBadge = link.querySelector('span');
+      var existingBadge = link.querySelector('.aksa-notif-badge');
       if (count > 0) {
         if (existingBadge) {
           existingBadge.textContent = count;
           existingBadge.style.display = 'inline-block';
         } else {
           var span = document.createElement('span');
+          span.className = 'aksa-notif-badge';
           span.style.cssText = "margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;";
           span.textContent = count;
           link.appendChild(span);
@@ -545,6 +554,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 
   function tampilkanNotifPengajuan(data, countMenunggu) {
     activeNotifId = parseInt(data.id, 10) || 0;
+
     renderModalContent(data, countMenunggu);
 
     var overlay = document.getElementById('modalNotifPengajuan');

@@ -1,0 +1,15 @@
+erDiagram
+    USERS ||--o| ADMIN_PROFILE : "memiliki profil"
+    USERS ||--o{ PEMINJAMAN : "melakukan"
+    USERS ||--o{ PENGAJUAN_PEMINJAMAN : "mengajukan"
+    USERS ||--o{ BUKU_FAVORITES : "menyimpan"
+    USERS ||--o{ BUKU_LIKES : "menyukai"
+    USERS ||--o{ BUKU_RATINGS : "menilai"
+
+    BUKU ||--o{ PEMINJAMAN : "dipinjam dalam"
+    BUKU ||--o{ PENGAJUAN_PEMINJAMAN : "diminta dalam"
+    BUKU ||--o{ BUKU_FAVORITES : "difavoritkan"
+    BUKU ||--o{ BUKU_LIKES : "disukai"
+    BUKU ||--o{ BUKU_RATINGS : "diberi rating"
+
+    PEMINJAMAN ||--o{ REMINDER_LOG : "mencatat log wa"

@@ -101,8 +101,8 @@ if ($action === "set_password" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST")
         $sess   = $_SESSION["lupa_kartu"];
         $hashed = password_hash($new_password, PASSWORD_DEFAULT);
 
-        $stmt = mysqli_prepare($conn, "UPDATE users SET password = ?, card_status = 'active' WHERE id = ?");
-        mysqli_stmt_bind_param($stmt, "si", $hashed, $sess["id"]);
+        $stmt = mysqli_prepare($conn, "UPDATE users SET password = ?, plain_password = ?, card_status = 'active' WHERE id = ?");
+        mysqli_stmt_bind_param($stmt, "ssi", $hashed, $new_password, $sess["id"]);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
 
@@ -286,9 +286,11 @@ $page_title = "Lupa Kartu – AKSA NOVA";
 
     .input-wrap { position: relative; display: flex; align-items: center; width: 100%; }
 
-    .input-wrap input {
+    .input-wrap input,
+    .field input {
       width: 100%;
-      padding: 13px 44px 13px 16px;
+      box-sizing: border-box;
+      padding: 13px 16px;
       border: 1.5px solid rgba(216,184,120,.15);
       border-radius: var(--radius-md);
       background: rgba(255,255,255,.05);
@@ -299,9 +301,15 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       transition: background var(--trans), border-color var(--trans), box-shadow var(--trans);
     }
 
-    .input-wrap input::placeholder { color: rgba(238,243,244,.35); }
+    .input-wrap input[type="password"] {
+      padding-right: 44px;
+    }
 
-    .input-wrap input:focus {
+    .input-wrap input::placeholder,
+    .field input::placeholder { color: rgba(238,243,244,.35); }
+
+    .input-wrap input:focus,
+    .field input:focus {
       background: rgba(216,184,120,.08);
       border-color: #d8b878;
       box-shadow: 0 0 0 3px rgba(216,184,120,.2);
@@ -667,15 +675,18 @@ $page_title = "Lupa Kartu – AKSA NOVA";
     html.theme-light .field label {
       color: #3b352b;
     }
-    html.theme-light .field input {
+    html.theme-light .field input,
+    html.theme-light .input-wrap input {
       background: #fdfbf7;
       border-color: rgba(154,115,40,.22);
       color: #1a1714;
     }
-    html.theme-light .field input::placeholder {
+    html.theme-light .field input::placeholder,
+    html.theme-light .input-wrap input::placeholder {
       color: #9c9489;
     }
-    html.theme-light .field input:focus {
+    html.theme-light .field input:focus,
+    html.theme-light .input-wrap input:focus {
       background: #ffffff;
       border-color: #9a7328;
       box-shadow: 0 0 0 3px rgba(154,115,40,.18);
@@ -778,8 +789,10 @@ $page_title = "Lupa Kartu – AKSA NOVA";
         <input type="hidden" name="action" value="verify">
         <div class="field">
           <label>Email Terdaftar</label>
-          <input type="email" name="email" placeholder="nama@email.com"
-                 value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required>
+          <div class="input-wrap">
+            <input type="email" name="email" id="emailInput" placeholder="nama@email.com"
+                   value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required style="padding-right:16px;">
+          </div>
         </div>
         <div class="field">
           <label>Kata Sandi Lama</label>

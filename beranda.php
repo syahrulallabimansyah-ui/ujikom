@@ -313,7 +313,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       --muted:      rgba(238,243,244,.65);
       --card:       #121820;
       --radius:     14px;
-      --sidebar-w:  204px;
+      --sidebar-w:   220px;
       --shadow-sm:  0 2px 12px rgba(0,0,0,.25);
       --shadow-md:  0 4px 20px rgba(0,0,0,.45);
       --card-border:rgba(216,184,120,.14);
@@ -1440,7 +1440,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       overflow-x: hidden;
       overscroll-behavior: contain;
       box-shadow: 0 24px 70px rgba(0,0,0,.6);
-      animation: modalIn .25s cubic-bezier(.22,1,.36,1) both;
+      animation: modalIn .3s cubic-bezier(.16,1,.3,1) both;
       box-sizing: border-box;
       scrollbar-width: thin;
       scrollbar-color: rgba(216,184,120,.25) transparent;
@@ -1448,7 +1448,8 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     .detail-modal::-webkit-scrollbar { width: 4px; }
     .detail-modal::-webkit-scrollbar-thumb { background: rgba(216,184,120,.3); border-radius: 10px; }
     .detail-modal::-webkit-scrollbar-track { background: transparent; }
-    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
     .detail-cover {
       width: 100%;
       aspect-ratio: 16/9;
@@ -1456,6 +1457,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       overflow: hidden;
       position: relative;
       background: #10151b;
+      margin-top: 0;
     }
     .detail-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .detail-cover::after {
@@ -1738,23 +1740,24 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     }
 
     @media (max-width: 540px) {
-      /* Bottom-sheet: modal muncul dari bawah, tidak perlu padding atas */
-      .detail-overlay { align-items: flex-end; padding: 0; }
+      /* Modal muncul ke tengah (sedikit ke atas) di mobile mode */
+      .detail-overlay { align-items: center; justify-content: center; padding: 16px 12px; }
       .detail-modal {
-        max-width: 100%; width: 100%; margin: 0;
-        border-radius: 22px 22px 0 0;
+        max-width: 100%; width: 100%; margin: auto 0;
+        border-radius: 18px;
+        border: 1px solid var(--border-color);
         border-top: 3px solid var(--accent, #d8b878);
-        max-height: 92dvh;
+        max-height: 86dvh;
+        animation: modalSlideUp .35s cubic-bezier(.16,1,.3,1) both !important;
       }
-      /* Drag handle indicator di atas bottom-sheet */
       .detail-modal::before {
-        content: '';
-        display: block;
-        width: 40px; height: 4px;
-        background: rgba(216,184,120,.4);
-        border-radius: 10px;
-        margin: 10px auto 0;
-        flex-shrink: 0;
+        display: none !important;
+      }
+      .detail-body {
+        padding-bottom: 24px !important;
+      }
+      .detail-footer-btns {
+        margin-bottom: 4px;
       }
     }
 
@@ -2017,7 +2020,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
                 $r_tot = $rat ? (int)$rat["total"] : 0;
                 $r_pct = max(0, min(100, $r_avg / 5 * 100));
                 $stok_i = (int)$buku["stok"];
-                if ($stok_i <= 0)      { $st_cls = "habis";    $st_txt = "Habis"; }
+                if ($stok_i <= 0)      { $st_cls = "habis";    $st_txt = "Kosong"; }
                 elseif ($stok_i <= 3)  { $st_cls = "terbatas"; $st_txt = "Terbatas · " . $stok_i; }
                 else                   { $st_cls = "tersedia"; $st_txt = "Tersedia · " . $stok_i; }
               ?>
@@ -2109,36 +2112,28 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       </div>
       <?php endif; ?>
 
-      <!-- Buku Simpan (Member Only) -->
-      <?php if (!$is_admin && !$is_guest): ?>
-      <div class="section-card">
+      <!-- Kategori Populer -->
+      <?php if (!empty($genre_populer)): ?>
+      <div class="section-card kategori-card">
         <div class="section-header">
           <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-            Buku Disimpan
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>
+            Kategori Populer
           </div>
-          <a href="buku_simpan.php" class="view-all-link">Lihat Semua &rsaquo;</a>
         </div>
-        <?php if (empty($saved_books)): ?>
-          <div style="text-align:center;padding:14px 0;color:var(--muted);font-size:.75rem;">Belum ada buku yang disimpan.</div>
-        <?php else: ?>
-        <div class="shelf-row">
-          <?php foreach ($saved_books as $i => $buku):
-            $grad = ["linear-gradient(135deg,#f5a623,#d4820a)","linear-gradient(135deg,#2ecc71,#1a8a4a)","linear-gradient(135deg,#9b59b6,#6c3483)","linear-gradient(135deg,#e74c3c,#922b21)"][$i % 4];
-          ?>
-          <div class="shelf-cover" style="background:<?= $grad ?>" onclick="bukaDetailBuku(<?= $buku['id'] ?>)" title="<?= htmlspecialchars($buku['judul']) ?>">
-            <?php if ($buku["gambar"] && file_exists($buku["gambar"])): ?>
-              <img src="<?= htmlspecialchars($buku["gambar"]) ?>" alt="">
-            <?php endif; ?>
-          </div>
+        <div class="genre-cloud">
+          <?php foreach ($genre_populer as $g): ?>
+            <span class="genre-pill">
+              <?= htmlspecialchars($g["genre"]) ?>
+              <span class="pill-count">· <?= (int)$g["jumlah"] ?></span>
+            </span>
           <?php endforeach; ?>
         </div>
-        <?php endif; ?>
       </div>
       <?php endif; ?>
 
-      <!-- Bingung Mau Baca Apa? (acak buku tersedia) — tampil untuk tamu -->
-      <?php if ($is_guest && !empty($acak_buku)): $pk = $acak_buku[0]; ?>
+      <!-- Bingung Mau Baca Apa? (acak buku tersedia) — tampil untuk semua pengguna -->
+      <?php if (!empty($acak_buku)): $pk = $acak_buku[0]; ?>
       <div class="section-card pick-card" id="pickCard">
         <div class="section-header">
           <div class="section-title">
@@ -2163,66 +2158,6 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
         </button>
       </div>
       <script>window.AKSA_PICK = <?= json_encode($acak_buku, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;</script>
-      <?php endif; ?>
-
-      <!-- Informasi Perpustakaan & Jam Layanan -->
-      <div class="section-card info-card">
-        <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            Informasi Layanan
-          </div>
-        </div>
-        <div style="display:flex;flex-direction:column;gap:10px;font-size:.78rem;color:var(--muted);">
-          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--card-border);padding-bottom:7px;">
-            <span>Senin – Jumat</span>
-            <span style="color:var(--text);font-weight:700;">08.00 – 20.00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--card-border);padding-bottom:7px;">
-            <span>Sabtu</span>
-            <span style="color:var(--text);font-weight:700;">09.00 – 17.00</span>
-          </div>
-          <div style="display:flex;justify-content:space-between;">
-            <span>Minggu / Libur</span>
-            <span style="color:#f87171;font-weight:700;">Tutup</span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Admin Profile Box -->
-      <div class="admin-profile-box">
-        <div class="admin-pic">
-          <?php if ($profil_foto && file_exists($profil_foto)): ?>
-            <img src="<?= htmlspecialchars($profil_foto) ?>?v=<?= filemtime($profil_foto) ?>" alt="Admin"/>
-          <?php else: ?>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <?php endif; ?>
-        </div>
-        <div style="min-width:0;">
-          <div style="font-size:.92rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= htmlspecialchars($profil_nama) ?></div>
-          <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">Administrator Perpustakaan</div>
-        </div>
-      </div>
-
-
-      <!-- Kategori Populer -->
-      <?php if (!empty($genre_populer)): ?>
-      <div class="section-card kategori-card">
-        <div class="section-header">
-          <div class="section-title">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 9h16M4 15h16M10 3L8 21M16 3l-2 18"/></svg>
-            Kategori Populer
-          </div>
-        </div>
-        <div class="genre-cloud">
-          <?php foreach ($genre_populer as $g): ?>
-            <span class="genre-pill">
-              <?= htmlspecialchars($g["genre"]) ?>
-              <span class="pill-count">· <?= (int)$g["jumlah"] ?></span>
-            </span>
-          <?php endforeach; ?>
-        </div>
-      </div>
       <?php endif; ?>
 
       <!-- Berita Terkini: 3 berita per halaman, bisa digeser -->
@@ -2277,6 +2212,45 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
           <?php endif; ?>
         </div>
         <?php endif; ?>
+      </div>
+
+      <!-- Admin Profile Box -->
+      <div class="admin-profile-box">
+        <div class="admin-pic">
+          <?php if ($profil_foto && file_exists($profil_foto)): ?>
+            <img src="<?= htmlspecialchars($profil_foto) ?>?v=<?= filemtime($profil_foto) ?>" alt="Admin"/>
+          <?php else: ?>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <?php endif; ?>
+        </div>
+        <div style="min-width:0;">
+          <div style="font-size:.92rem;font-weight:800;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"><?= htmlspecialchars($profil_nama) ?></div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">Administrator Perpustakaan</div>
+        </div>
+      </div>
+
+      <!-- Informasi Perpustakaan & Jam Layanan -->
+      <div class="section-card info-card">
+        <div class="section-header">
+          <div class="section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Informasi Layanan
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px;font-size:.78rem;color:var(--muted);">
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--card-border);padding-bottom:7px;">
+            <span>Senin – Jumat</span>
+            <span style="color:var(--text);font-weight:700;">08.00 – 20.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;border-bottom:1px solid var(--card-border);padding-bottom:7px;">
+            <span>Sabtu</span>
+            <span style="color:var(--text);font-weight:700;">09.00 – 17.00</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;">
+            <span>Minggu / Libur</span>
+            <span style="color:#f87171;font-weight:700;">Tutup</span>
+          </div>
+        </div>
       </div>
 
     </div><!-- /col-right -->
@@ -2364,7 +2338,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
 
   function renderDetail(b) {
     const content = document.getElementById('detailContent');
-    const stokLabel = b.stok == 0 ? 'Habis' : (b.stok <= 3 ? 'Terbatas' : 'Tersedia');
+    const stokLabel = b.stok == 0 ? 'Kosong' : (b.stok <= 3 ? 'Terbatas' : 'Tersedia');
     const stokColor = b.stok == 0 ? '#e74c3c' : (b.stok <= 3 ? '#f39c12' : '#27ae60');
     const tglInput = b.created_at ? new Date(b.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'}) : '—';
     const tglUpdate = b.updated_at && b.updated_at !== b.created_at ? new Date(b.updated_at).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'}) : null;
@@ -2375,9 +2349,9 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
            Ajukan Peminjaman
          </button>`
-      : `<button class="detail-btn-pinjam disabled" disabled title="Stok buku habis">
+      : `<button class="detail-btn-pinjam disabled" disabled title="Stok buku kosong">
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-           Stok Buku Habis
+           Stok Buku Kosong
          </button>`;
 
     const userActionBtns = IS_ADMIN ? '' : `
@@ -2424,7 +2398,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
           ${tglUpdate ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Diperbarui: <span>${tglUpdate}</span></div>` : ''}
         </div>
         <div class="detail-section-label">Sinopsis / Ringkasan</div>
-        ${b.sinopsis ? `<div class="detail-sinopsis">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>` : `<div class="detail-sinopsis"><span style="color:var(--muted);font-style:italic;">Sinopsis belum tersedia untuk buku ini.</span></div>`}
+        ${b.sinopsis ? `<div class="detail-sinopsis${b.sinopsis.length > 300 ? ' sinopsis-collapsed' : ''}" id="sinopsis_${b.id}">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>${b.sinopsis.length > 300 ? `<button class="sinopsis-toggle-btn" onclick="toggleSinopsis('sinopsis_${b.id}',this)">Lihat Selengkapnya ▾</button>` : ''}` : `<div class="detail-sinopsis"><span style="color:var(--muted);font-style:italic;">Sinopsis belum tersedia untuk buku ini.</span></div>`}
         ${userActionBtns}
       </div>`;
   }

@@ -23,7 +23,7 @@ $user_id = (int)$_SESSION["user_id"];
 
 // ─── Ambil data terbaru milik akun yang sedang login ───
 $stmt = mysqli_prepare($conn,
-    "SELECT id, full_name, nik, kelas, no_hp, email, no_anggota, username, password, foto, role, status, card_status
+    "SELECT id, full_name, nik, kelas, no_hp, email, no_anggota, username, password, plain_password, foto, role, status, card_status
      FROM users WHERE id = ?"
 );
 mysqli_stmt_bind_param($stmt, "i", $user_id);
@@ -74,6 +74,7 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
     $new_kelas     = trim($_POST["kelas"] ?? "");
     $new_no_hp     = trim($_POST["no_hp"] ?? "");
     $new_email     = strtolower(trim($_POST["email"] ?? ""));
+    $old_password  = trim($_POST["old_password"] ?? "");
     $new_password  = trim($_POST["new_password"] ?? "");
     $new_password2 = trim($_POST["new_password_confirm"] ?? "");
     $foto_path     = $user["foto"] ?? "";
@@ -87,8 +88,8 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
         "email"     => $new_email,
     ];
 
-    // Ganti password bersifat opsional — kosongkan berarti password tidak berubah
-    $want_change_password = $new_password !== "" || $new_password2 !== "";
+    // Ganti password bersifat opsional — jika ada salah satu kolom kata sandi yang diisi
+    $want_change_password = ($old_password !== "" || $new_password !== "" || $new_password2 !== "");
 
     if ($new_full_name === "") {
         $error = "Nama lengkap wajib diisi.";
@@ -100,10 +101,18 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
         $error = "Email wajib menggunakan akun siswa resmi (@student.smkn1rongga.sch.id).";
     } elseif ($new_no_hp !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $new_no_hp)) {
         $error = "Nomor HP tidak valid.";
+    } elseif ($want_change_password && $old_password === "") {
+        $error = "Kata sandi lama wajib dimasukkan untuk mengubah kata sandi.";
+    } elseif ($want_change_password && !password_verify($old_password, $user["password"]) && (empty($user["plain_password"]) || $old_password !== $user["plain_password"])) {
+        $error = "Kata sandi lama yang kamu masukkan salah.";
+    } elseif ($want_change_password && $new_password === "") {
+        $error = "Kata sandi baru wajib diisi.";
     } elseif ($want_change_password && strlen($new_password) < 8) {
         $error = "Kata sandi baru minimal 8 karakter.";
     } elseif ($want_change_password && (!preg_match('/[A-Za-z]/', $new_password) || !preg_match('/[0-9]/', $new_password))) {
         $error = "Kata sandi baru harus mengandung huruf dan angka.";
+    } elseif ($want_change_password && $new_password === $old_password) {
+        $error = "Kata sandi baru tidak boleh sama dengan kata sandi lama.";
     } elseif ($want_change_password && $new_password !== $new_password2) {
         $error = "Konfirmasi kata sandi baru tidak cocok.";
     } else {
@@ -167,6 +176,9 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
             $set_parts[] = "password = ?";
             $types      .= "s";
             $params[]    = $new_password_hash;
+            $set_parts[] = "plain_password = ?";
+            $types      .= "s";
+            $params[]    = $new_password;
         }
 
         $sql    = "UPDATE users SET " . implode(", ", $set_parts) . " WHERE id = ?";
@@ -193,7 +205,8 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
 
         // Tampilkan kartu dengan data terbaru. Password yang ditampilkan di kartu SELALU
         // yang asli/valid: kalau diganti, pakai password baru; kalau tidak, pakai password
-        // saat ini yang sudah dikonfirmasi & diverifikasi di atas — bukan versi disensor.
+        // yang tersimpan sebelumnya.
+        $display_pw = $want_change_password ? $new_password : ($user["plain_password"] ?? "");
         $_SESSION["kartu_data"] = [
             "id"                 => $user_id,
             "full_name"          => $new_full_name,
@@ -203,7 +216,7 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
             "email"              => $new_email,
             "no_anggota"         => $user["no_anggota"],
             "username"           => $user["username"],
-            "password"           => $want_change_password ? $new_password : "",
+            "password"           => $display_pw,
             "foto"               => $foto_path,
             "status"             => "approved",
             "reissued"           => false,
@@ -232,16 +245,11 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
 <html lang="id">
 <head>
   <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
   <title><?= htmlspecialchars($page_title) ?></title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet"/>
 
   <?php require_once "settings_include.php"; ?>
-  <script>
-    if (localStorage.getItem('aksanova_theme') === 'light') {
-      document.documentElement.classList.add('theme-light');
-    }
-  </script>
 
   <style>
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
@@ -258,25 +266,10 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       --card-border:  rgba(216,184,120,.14);
       --book-card:    #161e27;
       --radius:       14px;
-      --sidebar-w:    204px;
+      --sidebar-w:   220px;
       --shadow-sm:    0 2px 12px rgba(0,0,0,.25);
       --shadow-md:    0 4px 20px rgba(0,0,0,.45);
       --trans:        .2s cubic-bezier(.22,1,.36,1);
-    }
-
-    html.theme-light {
-      --bg:           #f6f2e9;
-      --sidebar-bg:   #ffffff;
-      --card:         #ffffff;
-      --accent:       #9a7328;
-      --accent2:      #8a6323;
-      --text:         #1a1714;
-      --muted:        #6b645b;
-      --border-color: rgba(154,115,40,.2);
-      --card-border:  rgba(154,115,40,.15);
-      --book-card:    #fdfbf7;
-      --shadow-sm:    0 2px 12px rgba(60,45,20,.08);
-      --shadow-md:    0 6px 24px rgba(60,45,20,.14);
     }
 
     body {
@@ -287,12 +280,6 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       display:flex;
       transition:background var(--trans), color var(--trans);
     }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar { width:6px; height:6px; }
-    ::-webkit-scrollbar-track { background:transparent; }
-    ::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:3px; }
-    ::-webkit-scrollbar-thumb:hover { background:var(--accent); }
 
     /* ── SIDEBAR ── */
     .sidebar {
@@ -337,9 +324,10 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
     }
     .btn-topbar-mode:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 6px 20px rgba(216,184,120,.35); }
     .btn-topbar-mode svg { width: 18px; height: 18px; }
-    .btn-topbar-mode .icon-sun { display: none; }
-    html.theme-light .btn-topbar-mode .icon-moon { display: none; }
-    html.theme-light .btn-topbar-mode .icon-sun  { display: block; }
+    html:not(.dark) .btn-topbar-mode .icon-moon,
+    html.light .btn-topbar-mode .icon-moon { display: none; }
+    html:not(.dark) .btn-topbar-mode .icon-sun,
+    html.light .btn-topbar-mode .icon-sun  { display: block; }
 
     .btn-musik {
       appearance: none; cursor: pointer; width: 40px; height: 40px; border-radius: 50%;
@@ -588,10 +576,13 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
     @media (max-width: 768px) {
       .sidebar {
         transform:translateX(-100%);
-        width:min(calc(var(--sidebar-w) + 60px), 260px);
+        width:min(calc(var(--sidebar-w) + 60px), 270px);
+        max-width:85vw;
         padding-bottom:max(20px, env(safe-area-inset-bottom));
       }
       .sidebar.open { transform:translateX(0); }
+      .nav-item { padding:13px 14px; font-size:.86rem; }
+      .nav-item svg { width:18px; height:18px; }
 
       .mobile-topbar {
         display:flex; align-items:center; gap:12px;
@@ -733,10 +724,6 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       <h1 class="page-title">Edit Profil Anggota</h1>
       <p class="page-sub">Perbarui informasi akun, foto profil, dan kata sandi kamu</p>
     </div>
-    <a href="dashboard_user.php" class="btn-back">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      <span>Dashboard</span>
-    </a>
   </div>
 
   <div class="profile-card">
@@ -745,7 +732,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <span><?= htmlspecialchars($blocked) ?></span>
       </div>
-      <a href="dashboard_user.php" class="btn-cancel">Kembali ke Dashboard</a>
+      <a href="dashboard_user.php" class="btn-cancel">Kembali</a>
     <?php else: ?>
 
       <?php if ($error): ?>
@@ -868,6 +855,18 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
           Ubah Kata Sandi (Opsional)
         </div>
 
+        <div class="field" style="margin-bottom:14px;">
+          <label for="oldPwInput">Kata Sandi Lama (Saat Ini)</label>
+          <div class="field-input-wrap" id="wrapPwOld">
+            <input type="password" id="oldPwInput" name="old_password" placeholder="Masukkan kata sandi saat ini untuk verifikasi" autocomplete="current-password">
+            <span class="toggle-eye" data-target="oldPwInput" data-wrap="wrapPwOld" role="button" tabindex="0" aria-label="Tampilkan kata sandi">
+              <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
+            </span>
+          </div>
+          <p class="field-hint" style="margin-top:4px;">Wajib diisi jika ingin mengubah kata sandi akun.</p>
+        </div>
+
         <div class="row2">
           <div class="field">
             <label for="newPwInput">Kata Sandi Baru</label>
@@ -890,7 +889,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
             </div>
           </div>
         </div>
-        <p class="field-hint" style="margin-top:-6px; margin-bottom:12px;">Kosongkan kedua kolom di atas jika kamu tidak ingin mengganti kata sandi.</p>
+        <p class="field-hint" style="margin-top:-6px; margin-bottom:12px;">Kosongkan kolom di atas jika kamu tidak ingin mengganti kata sandi.</p>
 
         <!-- Form Actions -->
         <div class="form-actions">

@@ -138,7 +138,7 @@ ob_start();
       --muted:      rgba(238,243,244,.65);
       --card:       #121820;
       --radius:     14px;
-      --sidebar-w:  204px;
+      --sidebar-w:   220px;
       --shadow-sm:  0 2px 12px rgba(0,0,0,.25);
       --shadow-md:  0 4px 20px rgba(0,0,0,.45);
       --card-border:rgba(216,184,120,.14);
@@ -358,9 +358,13 @@ ob_start();
 
     .book-info { padding:10px 12px 12px; flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
     .bk-title { font-size:.83rem; font-weight:800; color:var(--text); line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.25rem; }
-    .bk-author { font-size:.7rem; color:var(--muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .bk-badges-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px; min-height:22px; }
-    .bk-genre { font-size:.6rem; font-weight:700; color:var(--accent); background:rgba(216,184,120,.12); border:1px solid rgba(216,184,120,.2); padding:2px 8px; border-radius:50px; white-space:nowrap; }
+    .bk-badges-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px; min-height:22px; max-width:100%; }
+    .bk-genre {
+      font-size:.6rem; font-weight:700; color:var(--accent); background:rgba(216,184,120,.12);
+      border:1px solid rgba(216,184,120,.2); padding:2px 8px; border-radius:50px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+      display:inline-block; vertical-align:middle; line-height:1.4;
+    }
 
     /* Status badge */
     .status-badge { display:inline-flex; align-items:center; gap:5px; font-size:.62rem; font-weight:700; padding:3px 9px; border-radius:50px; white-space:nowrap; }
@@ -485,33 +489,38 @@ ob_start();
 
       .books-grid { grid-template-columns:repeat(auto-fill,minmax(135px,1fr)); gap:12px; }
       .bk-title { font-size:.78rem; min-height:2.1rem; }
+      .bk-badges-row { gap:4px; max-width:100%; }
+      .bk-genre { max-width:100%; font-size:.58rem; }
+      .status-badge { font-size:.58rem; padding:2px 7px; }
       .bk-actions { flex-wrap:nowrap; gap:8px; margin-top:auto; }
 
       /* Pagination info & tombol lebih ringkas tapi tetap ≥44px touch */
       .pagination-info { font-size:.7rem; }
       .page-btn { width:36px; height:36px; font-size:.72rem; }
 
-      /* Modal detail — bottom sheet: muncul dari bawah, tidak perlu padding atas */
-      .detail-overlay { align-items:flex-end; padding:0; }
+      /* Modal muncul ke tengah (sedikit ke atas) di mobile mode */
+      .detail-overlay { align-items:center; justify-content:center; padding:16px 12px; }
       .detail-modal {
-        margin:0; border-radius:22px 22px 0 0;
+        margin:auto 0; border-radius:18px;
+        border:1px solid rgba(216,184,120,.2);
         border-top:3px solid var(--accent,#d8b878);
-        max-height:92dvh;
+        max-height:86dvh;
         position:relative; bottom:auto; left:auto; right:auto; width:100%;
+        animation:modalSlideUp .35s cubic-bezier(.16,1,.3,1) both !important;
       }
-      /* Drag handle indicator di atas bottom-sheet */
       .detail-modal::before {
-        content:''; display:block; width:40px; height:4px;
-        background:rgba(216,184,120,.4); border-radius:10px;
-        margin:10px auto 0; flex-shrink:0;
+        display:none !important;
       }
       .detail-title { font-size:1.15rem; }
-      .detail-body { padding:16px 14px 22px; }
+      .detail-body {
+        padding:16px 14px 22px;
+        padding-bottom:24px !important;
+      }
       .detail-meta-row { gap:5px; flex-wrap:wrap; }
       .detail-meta-chip { font-size:.64rem; padding:4px 8px; }
       .detail-rating-row { gap:6px; flex-wrap:wrap; }
       .stars-input svg { width:22px; height:22px; }
-      .detail-footer-btns { gap:8px; flex-wrap:wrap; }
+      .detail-footer-btns { gap:8px; flex-wrap:wrap; margin-bottom:4px; }
       .detail-stat-row { gap:8px; flex-wrap:wrap; }
     }
 
@@ -526,20 +535,21 @@ ob_start();
 
 
     /* Like & Simpan — tombol ikon bulat berukuran sama, tanpa teks, supaya selalu simetris & tidak pernah tembus di layar kecil */
-    .btn-like, .btn-save {
-      display:inline-flex; align-items:center; justify-content:center; flex:0 0 auto;
-      position:relative; width:34px; height:34px; padding:0; border-radius:50%;
-      border:1.5px solid var(--border-color); background:rgba(255,255,255,.04);
-      color:var(--muted); cursor:pointer; transition:all .18s; user-select:none;
+    .btn-like, .btn-save, .bk-actions .btn-save {
+      display:inline-flex !important; align-items:center !important; justify-content:center !important; flex:0 0 auto !important;
+      position:relative !important; width:34px !important; height:34px !important; padding:0 !important; border-radius:50% !important;
+      border:1.5px solid var(--border-color, rgba(216,184,120,.2)) !important; background:rgba(255,255,255,.04) !important;
+      color:var(--muted) !important; cursor:pointer !important; transition:all .18s !important; user-select:none !important;
+      box-shadow:none !important;
     }
-    .btn-like svg, .btn-save svg { width:15px; height:15px; flex-shrink:0; transition:transform .2s; pointer-events:none; }
-    .btn-like:hover  { border-color:#e74c3c; color:#e74c3c; background:rgba(231,76,60,.1); }
-    .btn-save:hover  { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.12); }
-    .btn-like.aktif  { border-color:#e74c3c; color:#e74c3c; background:rgba(231,76,60,.15); }
-    .btn-save.aktif  { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.18); }
-    .btn-like.aktif svg { fill:#e74c3c; color:#e74c3c; }
-    .btn-save.aktif  svg { fill:var(--accent); color:var(--accent); }
-    .btn-like.pop svg, .btn-save.pop svg { transform:scale(1.4); }
+    .btn-like svg, .btn-save svg, .bk-actions .btn-save svg { width:15px !important; height:15px !important; flex-shrink:0 !important; transition:transform .2s !important; pointer-events:none !important; stroke:currentColor !important; }
+    .btn-like:hover  { border-color:#e74c3c !important; color:#e74c3c !important; background:rgba(231,76,60,.1) !important; }
+    .btn-save:hover, .bk-actions .btn-save:hover  { border-color:var(--accent, #d8b878) !important; color:var(--accent, #d8b878) !important; background:rgba(216,184,120,.14) !important; }
+    .btn-like.aktif  { border-color:#e74c3c !important; color:#e74c3c !important; background:rgba(231,76,60,.15) !important; }
+    .btn-save.aktif, .bk-actions .btn-save.aktif  { border-color:var(--accent, #d8b878) !important; color:var(--accent, #d8b878) !important; background:rgba(216,184,120,.22) !important; }
+    .btn-like.aktif svg { fill:#e74c3c !important; color:#e74c3c !important; stroke:#e74c3c !important; }
+    .btn-save.aktif svg, .bk-actions .btn-save.aktif svg  { fill:var(--accent, #d8b878) !important; color:var(--accent, #d8b878) !important; stroke:var(--accent, #d8b878) !important; }
+    .btn-like.pop svg, .btn-save.pop svg, .bk-actions .btn-save.pop svg { transform:scale(1.4) !important; }
     .btn-like .like-count-badge {
       position:absolute; top:-5px; right:-5px; min-width:15px; height:15px; padding:0 3px;
       border-radius:20px; background:var(--card); border:1px solid var(--border-color);
@@ -551,12 +561,13 @@ ob_start();
     /* ── MODAL DETAIL BUKU ── */
     .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:800; align-items:center; justify-content:center; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
+    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .3s cubic-bezier(.16,1,.3,1) both; margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
     .detail-modal::-webkit-scrollbar { width:4px; }
     .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
     .detail-modal::-webkit-scrollbar-track { background:transparent; }
-    @keyframes modalIn { from{opacity:0;transform:scale(.94) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
-    .detail-cover { width:100%; aspect-ratio:16/9; border-radius:16px 16px 0 0; overflow:hidden; position:relative; background:#10151b; }
+    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
+    .detail-cover { width:100%; aspect-ratio:16/9; border-radius:16px 16px 0 0; overflow:hidden; position:relative; background:#10151b; margin-top:0; }
     .detail-cover img { width:100%; height:100%; object-fit:cover; display:block; }
     .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%); pointer-events:none; }
     .detail-cover-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
@@ -612,16 +623,18 @@ ob_start();
     .detail-footer-btns { display:flex; gap:10px; margin-top:16px; }
     .detail-btn-like, .detail-btn-save {
       flex:1; display:flex; align-items:center; justify-content:center; gap:6px;
-      padding:9px 14px; border-radius:8px; border:1.5px solid #e4e5f0;
-      background:rgba(255,255,255,.04); font-family:'Nunito',sans-serif;
+      padding:9px 14px; border-radius:8px; border:1.5px solid var(--border-color, rgba(216,184,120,.2));
+      background:rgba(255,255,255,.04); font-family:var(--font-family,'Outfit',sans-serif);
       font-size:.8rem; font-weight:700; color:var(--muted);
       cursor:pointer; transition:all var(--trans);
     }
-    .detail-btn-like svg, .detail-btn-save svg { width:15px; height:15px; }
-    .detail-btn-like:hover { border-color:#e74c3c; color:#e74c3c; }
-    .detail-btn-like.aktif { background:#fef2f2; border-color:#e74c3c; color:#e74c3c; }
-    .detail-btn-save:hover { border-color:var(--accent); color:var(--accent); }
-    .detail-btn-save.aktif { background:#eef0ff; border-color:var(--accent); color:var(--accent); }
+    .detail-btn-like svg, .detail-btn-save svg { width:15px; height:15px; stroke:currentColor; }
+    .detail-btn-like:hover { border-color:#e74c3c !important; color:#e74c3c !important; background:rgba(231,76,60,.1) !important; }
+    .detail-btn-like.aktif { background:rgba(231,76,60,.15) !important; border-color:#e74c3c !important; color:#e74c3c !important; }
+    .detail-btn-like.aktif svg { fill:#e74c3c !important; stroke:#e74c3c !important; }
+    .detail-btn-save:hover { border-color:var(--accent, #d8b878) !important; color:var(--accent, #d8b878) !important; background:rgba(216,184,120,.12) !important; }
+    .detail-btn-save.aktif { background:rgba(216,184,120,.18) !important; border-color:var(--accent, #d8b878) !important; color:var(--accent, #d8b878) !important; }
+    .detail-btn-save.aktif svg { fill:var(--accent, #d8b878) !important; stroke:var(--accent, #d8b878) !important; }
     .detail-btn-pinjam {
       width:100%; display:inline-flex; align-items:center; justify-content:center; gap:8px;
       padding:11px 16px; border-radius:10px; border:none;
@@ -982,7 +995,7 @@ ob_start();
 
   function renderDetail(b) {
     const content = document.getElementById('detailContent');
-    const stokLabel = b.stok == 0 ? 'Habis' : (b.stok <= 3 ? 'Terbatas' : 'Tersedia');
+    const stokLabel = b.stok == 0 ? 'Kosong' : (b.stok <= 3 ? 'Terbatas' : 'Tersedia');
     const stokColor = b.stok == 0 ? '#e74c3c' : (b.stok <= 3 ? '#f39c12' : '#27ae60');
     const tglInput = b.created_at
       ? new Date(b.created_at).toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'})
@@ -1001,9 +1014,9 @@ ob_start();
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
            Ajukan Peminjaman
          </button>`
-      : `<button class="detail-btn-pinjam disabled" disabled title="Stok buku habis">
+      : `<button class="detail-btn-pinjam disabled" disabled title="Stok buku kosong">
            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-           Stok Buku Habis
+           Stok Buku Kosong
          </button>`;
 
     const userActionBtns = IS_ADMIN ? '' : `
@@ -1070,7 +1083,7 @@ ob_start();
 
         <div class="detail-section-label">Sinopsis / Ringkasan</div>
         ${b.sinopsis
-          ? `<div class="detail-sinopsis">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>`
+          ? `<div class="detail-sinopsis${b.sinopsis.length > 300 ? ' sinopsis-collapsed' : ''}" id="sinopsis_${b.id}">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>${b.sinopsis.length > 300 ? `<button class="sinopsis-toggle-btn" onclick="toggleSinopsis('sinopsis_${b.id}',this)">Lihat Selengkapnya ▾</button>` : ''}`
           : `<div class="detail-sinopsis"><span class="detail-sinopsis-empty">Sinopsis belum tersedia untuk buku ini.</span></div>`}
         ${userActionBtns}
       </div>`;
@@ -1376,6 +1389,7 @@ ob_start();
   if (window.AksaAudio) window.AksaAudio.init();
 </script>
 <?php require_once "pengaturan_panel.php"; ?>
+<?php if ($is_admin) require_once __DIR__ . '/notifikasi_pengajuan_admin.php'; ?>
 </body>
 </html>
 <?php ob_end_flush(); ?>

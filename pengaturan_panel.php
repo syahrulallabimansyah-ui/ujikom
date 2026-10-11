@@ -111,23 +111,7 @@
       </div>
     </div>
 
-    <!-- ── Seksi 3: Gradasi Warna / Accent ── -->
-    <div class="sett-section">
-      <div class="sett-label">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.926 0 1.648-.746 1.648-1.688 0-.437-.18-.835-.437-1.125-.29-.289-.438-.652-.438-1.125a1.64 1.64 0 0 1 1.668-1.668h1.996c3.051 0 5.555-2.503 5.555-5.554C21.965 6.012 17.461 2 12 2z"/></svg>
-        Warna Aksen
-      </div>
-      <div class="color-row">
-        <button class="color-dot" id="grad-emas"      onclick="setGrad('emas')"      style="background:#d8b878;" title="Emas"></button>
-        <button class="color-dot" id="grad-biru"      onclick="setGrad('biru')"      style="background:#2b4fff;" title="Biru"></button>
-        <button class="color-dot" id="grad-ungu"      onclick="setGrad('ungu')"      style="background:#7c3aed;" title="Ungu"></button>
-        <button class="color-dot" id="grad-hijau"     onclick="setGrad('hijau')"     style="background:#059669;" title="Hijau"></button>
-        <button class="color-dot" id="grad-merah"     onclick="setGrad('merah')"     style="background:#dc2626;" title="Merah"></button>
-        <button class="color-dot" id="grad-merah_muda" onclick="setGrad('merah_muda')" style="background:#db2777;" title="Merah Muda"></button>
-      </div>
-    </div>
-
-    <!-- ── Seksi 4: Font ── -->
+    <!-- ── Seksi 3: Font ── -->
     <div class="sett-section">
       <div class="sett-label">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
@@ -143,12 +127,15 @@
       </div>
     </div>
 
-    <!-- ── Seksi 5: Animasi ── -->
+    <!-- ── Seksi 4: Animasi & Mode Lite ── -->
     <div class="sett-section">
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <div class="sett-label" style="margin:0;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
-          Animasi & Transisi
+        <div>
+          <div class="sett-label" style="margin:0;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3l14 9-14 9V3z"/></svg>
+            Animasi & Efek Visual
+          </div>
+          <div style="font-size:.68rem;color:var(--muted,#7a7a9a);margin-top:2px;">Matikan untuk Mode Lite (lebih ringan & cepat)</div>
         </div>
         <label class="toggle-switch">
           <input type="checkbox" id="animToggle" checked onchange="setAnimation(this.checked)">
@@ -372,22 +359,32 @@ body.settings-open .mobile-topbar {
   background:rgba(216,184,120,.12);
   color:var(--accent,#d8b878);
 }
-/* Toggle switch */
-.toggle-switch { position:relative; display:inline-block; width:44px; height:24px; cursor:pointer; }
+/* Toggle switch — Jelas dan kontras saat OFF / ON */
+.toggle-switch { position:relative; display:inline-block; width:48px; height:26px; cursor:pointer; }
 .toggle-switch input { opacity:0; width:0; height:0; }
 .toggle-track {
   position:absolute; inset:0;
-  background:rgba(255,255,255,.2); border-radius:24px;
-  transition:background .25s;
+  background:#374151; /* Abu-abu tegas saat mati */
+  border:1.5px solid #4b5563; /* Border abu-abu jelas terlihat */
+  border-radius:24px;
+  transition:all .25s ease;
+  box-sizing:border-box;
 }
-.toggle-switch input:checked + .toggle-track { background:var(--accent,#d8b878); }
+.toggle-switch input:checked + .toggle-track {
+  background:var(--accent,#d8b878);
+  border-color:var(--accent,#d8b878);
+}
 .toggle-thumb {
   position:absolute; top:3px; left:3px;
-  width:18px; height:18px; border-radius:50%;
-  background:#fff; transition:left .25s;
-  box-shadow:0 1px 4px rgba(0,0,0,.35);
+  width:17px; height:17px; border-radius:50%;
+  background:#9ca3af; /* Abu-abu terang saat mati */
+  transition:all .25s ease;
+  box-shadow:0 2px 4px rgba(0,0,0,.4);
 }
-.toggle-switch input:checked + .toggle-track .toggle-thumb { left:23px; }
+.toggle-switch input:checked + .toggle-track .toggle-thumb {
+  left:24px;
+  background:#121820; /* Gelap kontras dengan aksen emas saat nyala */
+}
 </style>
 
 <!-- ═══════ SCRIPT PANEL ═══════ -->
@@ -528,18 +525,7 @@ body.settings-open .mobile-topbar {
     var s = saveSett({ ui: ui });
     var root = document.documentElement;
     // Hapus kelas ui lama
-    root.className = root.className.replace(/ui-\w+/g, '').trim();
-    root.classList.add('ui-' + ui);
     applyColors(ui, s.mode || (localStorage.getItem('aksanova_theme') === 'light' ? 'light' : 'dark'));
-    refreshUI();
-  };
-
-  window.setGrad = function(grad) {
-    saveSett({ gradient: grad });
-    var pal = palettes[grad] || palettes.emas;
-    applyRoot('--accent', pal.accent);
-    applyRoot('--accent2', pal.accent2);
-    applyRoot('--accent-rgb', pal.accentRgb);
     refreshUI();
   };
 
@@ -553,6 +539,7 @@ body.settings-open .mobile-topbar {
   window.setAnimation = function(on) {
     saveSett({ animation: on });
     applyRoot('--trans-speed', on ? '.2s' : '0s');
+    document.documentElement.classList.toggle('mode-lite', !on);
   };
 
   window.resetSettings = function() {
@@ -565,7 +552,6 @@ body.settings-open .mobile-topbar {
     var s = getSett();
     var mode  = s.mode      || (localStorage.getItem('aksanova_theme') === 'light' ? 'light' : 'dark');
     var ui    = s.ui        || 'default';
-    var grad  = s.gradient  || 'emas';
     var font  = s.font      || 'Outfit';
     var anim  = s.animation !== undefined ? s.animation : true;
 
@@ -575,11 +561,6 @@ body.settings-open .mobile-topbar {
     ['default','minimal','modern','kuno','gradasi'].forEach(function(k){
       var el = document.getElementById('ui-'+k);
       if(el) el.classList.toggle('aktif', k === ui);
-    });
-    // Gradient
-    ['emas','biru','ungu','hijau','merah','merah_muda'].forEach(function(k){
-      var el = document.getElementById('grad-'+k);
-      if(el) el.classList.toggle('aktif', k === grad);
     });
     // Font
     ['Outfit','Nunito','Poppins','Merriweather','Playfair Display','Roboto Mono'].forEach(function(k){
