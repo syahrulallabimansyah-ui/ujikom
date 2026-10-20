@@ -11,7 +11,7 @@
  ═══════════════════════════════════════════════════════ -->
 
 <!-- Panel Backdrop -->
-<div id="settingsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:850;backdrop-filter:blur(3px);transition:opacity .3s;" onclick="tutupSettings()"></div>
+<div id="settingsBackdrop" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:850;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);opacity:0;transition:opacity 0.36s cubic-bezier(0.16,1,0.3,1);" onclick="tutupSettings()"></div>
 
 <!-- Panel Utama -->
 <aside id="settingsPanel" class="settings-panel">
@@ -178,7 +178,8 @@ body.settings-open .mobile-topbar {
   z-index: 99999;
   display: flex; flex-direction: column;
   transform: translateX(100%);
-  transition: transform .32s cubic-bezier(.22,1,.36,1), box-shadow .32s;
+  transition: transform 0.38s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.38s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform;
   font-family: var(--font-family, 'Outfit', sans-serif);
   overflow: hidden;
   box-sizing: border-box;
@@ -431,7 +432,7 @@ body.settings-open .mobile-topbar {
     if (panel) panel.classList.remove('open');
     if (backdrop) backdrop.style.opacity = '0';
     document.body.classList.remove('settings-open');
-    setTimeout(function(){ if (backdrop) backdrop.style.display='none'; }, 330);
+    setTimeout(function(){ if (backdrop) backdrop.style.display='none'; }, 380);
   };
 
   // Tutup dengan tombol Escape
@@ -500,12 +501,13 @@ body.settings-open .mobile-topbar {
   }
 
   var fontMap = {
-    'Outfit':       "'Outfit', sans-serif",
-    'Nunito':       "'Nunito', sans-serif",
-    'Poppins':      "'Poppins', sans-serif",
-    'Merriweather': "'Merriweather', serif",
+    'Outfit':           "'Outfit', sans-serif",
+    'Nunito':           "'Nunito', sans-serif",
+    'Poppins':          "'Poppins', sans-serif",
+    'Merriweather':     "'Merriweather', serif",
+    'Playfair':         "'Playfair Display', serif",
     'Playfair Display': "'Playfair Display', serif",
-    'Roboto Mono':  "'Roboto Mono', monospace",
+    'Roboto Mono':      "'Roboto Mono', monospace",
   };
   var weightMap = { light:'300', normal:'400', bold:'600', extrabold:'800' };
 
@@ -563,9 +565,21 @@ body.settings-open .mobile-topbar {
       if(el) el.classList.toggle('aktif', k === ui);
     });
     // Font
-    ['Outfit','Nunito','Poppins','Merriweather','Playfair Display','Roboto Mono'].forEach(function(k){
-      var el = document.getElementById('font-'+k);
-      if(el) el.classList.toggle('aktif', k === font);
+    var fontKeys = [
+      { id: 'font-Outfit', keys: ['Outfit'] },
+      { id: 'font-Nunito', keys: ['Nunito'] },
+      { id: 'font-Poppins', keys: ['Poppins'] },
+      { id: 'font-Merriweather', keys: ['Merriweather'] },
+      { id: 'font-Playfair', altId: 'font-Playfair Display', keys: ['Playfair', 'Playfair Display'] },
+      { id: 'font-Roboto Mono', altId: 'font-RobotoMono', keys: ['Roboto Mono', 'RobotoMono'] }
+    ];
+
+    fontKeys.forEach(function(item){
+      var el = document.getElementById(item.id) || (item.altId ? document.getElementById(item.altId) : null);
+      if(el) {
+        var isAktif = item.keys.indexOf(font) !== -1;
+        el.classList.toggle('aktif', isAktif);
+      }
     });
     // Anim toggle
     var animEl = document.getElementById('animToggle');

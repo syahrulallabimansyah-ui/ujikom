@@ -34,14 +34,12 @@ if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
 }
 
 require_once "db.php";
-
-// API key Google Books (dibuat & dibatasi khusus untuk Books API di Google
-// Cloud Console). Dengan key ini, kuota harian jauh lebih besar daripada
-// kuota anonim bersama yang sebelumnya bikin error "429 Quota exceeded".
-// CATATAN KEAMANAN: jangan commit file ini ke repo GitHub publik. Kalau
-// suatu saat repo-nya mau di-publish, pindahkan baris di bawah ini ke file
-// config terpisah yang di-gitignore, lalu require file itu dari sini.
-define("GOOGLE_BOOKS_API_KEY", "AIzaSyAGnEXPAvJtnKpSkkInJ3oAzp-PXfgHZbw");
+if (file_exists(__DIR__ . "/config.php")) {
+    require_once __DIR__ . "/config.php";
+}
+if (!defined("GOOGLE_BOOKS_API_KEY")) {
+    define("GOOGLE_BOOKS_API_KEY", "AIzaSyAGnEXPAvJtnKpSkkInJ3oAzp-PXfgHZbw");
+}
 
 // Debug bisa diaktifkan sementara lewat ?debug=1 di URL (aman — endpoint ini
 // sudah mengharuskan login sebagai admin di atas, jadi tidak bisa diintip

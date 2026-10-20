@@ -410,11 +410,11 @@ ob_start();
       width:100%; max-width:440px;
       max-height:90vh; overflow-y:auto;
       box-shadow:0 20px 60px rgba(0,0,0,.25);
-      animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
+      animation:modalIn .32s cubic-bezier(.16,1,.3,1) both;
       padding:28px 28px 24px; margin:16px;
     }
     @keyframes modalIn {
-      from { opacity:0; transform:scale(.94) translateY(10px); }
+      from { opacity:0; transform:scale(.975) translateY(10px); }
       to   { opacity:1; transform:scale(1) translateY(0); }
     }
     .modal-header {
@@ -618,7 +618,7 @@ ob_start();
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     Pengajuan Buku
     <?php if ($cnt_aju_badge > 0): ?>
-      <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -655,7 +655,7 @@ ob_start();
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
-    <?= $msg_type === 'success' ? '✅' : '❌' ?> <?= htmlspecialchars($msg) ?>
+    <span style="font-weight:bold;margin-right:4px;"><?= $msg_type === 'success' ? '✓' : '✕' ?></span> <?= htmlspecialchars($msg) ?>
   </div>
   <?php endif; ?>
 
@@ -713,11 +713,15 @@ ob_start();
         <div class="book-title" title="<?= htmlspecialchars($buku['judul']) ?>"><?= htmlspecialchars($buku['judul']) ?></div>
         <div class="book-author"><?= htmlspecialchars($buku['penulis'] ?? '-') ?></div>
         <?php if (!empty($buku['rak'])): ?>
-          <div style="font-size:.72rem;color:var(--accent,#d8b878);margin-bottom:8px;font-weight:600;">📍 <?= htmlspecialchars($buku['rak']) ?></div>
+          <div style="font-size:.72rem;color:var(--accent,#d8b878);margin-bottom:8px;font-weight:600;display:flex;align-items:center;gap:4px;">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            <?= htmlspecialchars($buku['rak']) ?>
+          </div>
         <?php endif; ?>
-        <button class="btn-pinjam"
+        <button class="btn-pinjam" style="display:inline-flex;align-items:center;justify-content:center;gap:6px;"
           onclick="bukaPinjamModal(<?= $buku['id'] ?>, '<?= $judul_js ?>', '<?= $penulis_js ?>', '<?= htmlspecialchars(addslashes($buku['rak'] ?? ''), ENT_QUOTES) ?>')">
-          📖 Pinjam Buku
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Pinjam Buku
         </button>
       </div>
     </div>
@@ -761,7 +765,10 @@ ob_start();
           <div class="selected-avatar" id="selectedAvatar"></div>
           <input type="text" id="inputNama" class="form-input"
                  placeholder="Belum ada anggota dipilih…" readonly/>
-          <button type="button" class="btn-pilih-anggota" onclick="bukaAnggotaModal()">👤 Pilih Anggota</button>
+          <button type="button" class="btn-pilih-anggota" onclick="bukaAnggotaModal()" style="display:inline-flex;align-items:center;gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Pilih Anggota
+          </button>
         </div>
         <input type="hidden" name="user_id" id="inputUserId"/>
         <div class="anggota-hint" id="anggotaHint">Hanya anggota yang sudah punya akun yang bisa dipilih.</div>
@@ -774,7 +781,10 @@ ob_start();
       </div>
 
       <div class="modal-footer">
-        <button type="submit" class="btn-submit">📖 Konfirmasi Pinjam</button>
+        <button type="submit" class="btn-submit" style="display:inline-flex;align-items:center;gap:6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+          Konfirmasi Pinjam
+        </button>
         <button type="button" class="btn-cancel" onclick="tutupPinjamModal()">Batal</button>
       </div>
     </form>
@@ -816,7 +826,7 @@ const anggotaData = <?= json_encode($anggota_list, JSON_HEX_TAG | JSON_HEX_APOS 
 // ─── Modal Pinjam ───
 function bukaPinjamModal(bukuId, judul, penulis, rak = '') {
   document.getElementById('inputBukuId').value = bukuId;
-  const rakBadge = rak ? ` &middot; <span style="color:var(--accent,#d8b878);font-weight:700;">📍 ${rak}</span>` : '';
+  const rakBadge = rak ? ` &middot; <span style="color:var(--accent,#d8b878);font-weight:700;">${rak}</span>` : '';
   document.getElementById('modalBookInfo').innerHTML = `"${judul}" oleh ${penulis}${rakBadge}`;
 
   // Batas kembali default 7 hari dari sekarang (format date)
@@ -852,7 +862,7 @@ document.querySelector('#pinjamModalOverlay form').addEventListener('submit', fu
   if (!userId) {
     e.preventDefault();
     const hint = document.getElementById('anggotaHint');
-    hint.textContent = '⚠️ Pilih anggota terlebih dahulu sebelum konfirmasi pinjam.';
+    hint.textContent = 'Pilih anggota terlebih dahulu sebelum konfirmasi pinjam.';
     hint.classList.add('warn');
   }
 });
@@ -928,7 +938,7 @@ function pilihAnggota(id, nama, foto) {
   avatarEl.classList.add('show');
 
   const hint = document.getElementById('anggotaHint');
-  hint.textContent = '✅ Anggota terpilih, siap dipinjamkan.';
+  hint.textContent = 'Anggota terpilih, siap dipinjamkan.';
   hint.classList.remove('warn');
   tutupAnggotaModal();
 }
@@ -963,7 +973,7 @@ function cekKonfirmasi() {
   const pw1=document.getElementById('pwNew'),pw2=document.getElementById('pwConfirm'),lb=document.getElementById('pwMatchLabel');
   if(!pw1||!pw2||!lb) return;
   if(!pw2.value){lb.textContent='';return;}
-  lb.textContent=pw1.value===pw2.value?'✅ Kata sandi cocok':'❌ Tidak cocok';
+  lb.textContent=pw1.value===pw2.value?'Kata sandi cocok':'Tidak cocok';
   lb.style.color=pw1.value===pw2.value?'#22c55e':'#ef4444';
 }
 function closeProfilModal() {

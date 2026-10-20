@@ -400,7 +400,7 @@ while ($row = mysqli_fetch_assoc($res)) {
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     Pengajuan Buku
     <?php if ($cnt_aju_badge > 0): ?>
-      <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -408,7 +408,7 @@ while ($row = mysqli_fetch_assoc($res)) {
     Telah Dipinjam
   </a>
   <a class="sidebar-btn active" href="pengaturan_denda.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     Pengaturan Denda
   </a>
   <a class="sidebar-btn" href="pengaturan_musik.php">
@@ -433,11 +433,11 @@ while ($row = mysqli_fetch_assoc($res)) {
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
-    <?= $msg_type === 'success' ? '✅' : '❌' ?> <?= htmlspecialchars($msg) ?>
+    <?= htmlspecialchars($msg) ?>
   </div>
   <?php endif; ?>
 
-  <div class="page-title">⚙️ Pengaturan Denda</div>
+  <div class="page-title">Pengaturan Denda</div>
 
   <!-- STATISTIK -->
   <div class="stat-row">
@@ -500,12 +500,12 @@ while ($row = mysqli_fetch_assoc($res)) {
       </div>
 
       <div style="margin-top:10px;padding:12px 14px;background:#fffbeb;border-radius:8px;border:1px solid #fcd34d;font-size:.76rem;color:#92400e;font-weight:600;">
-        💡 Preview: Terlambat <strong>3 hari</strong> → Denda
+        Preview: Terlambat <strong>3 hari</strong> → Denda
         <strong>Rp <?= number_format(max(0, 3 - $grace_period) * $denda_per_hari, 0, ',', '.') ?></strong>
         <?= $grace_period > 0 ? "(toleransi $grace_period hari)" : '' ?>
       </div>
 
-      <button type="submit" class="btn-save">💾 Simpan Pengaturan</button>
+      <button type="submit" class="btn-save">Simpan Pengaturan</button>
     </form>
   </div>
 
@@ -564,9 +564,9 @@ while ($row = mysqli_fetch_assoc($res)) {
             <td class="denda-amount">Rp <?= number_format((int)$d['denda'], 0, ',', '.') ?></td>
             <td>
               <?php if ($d['status_denda'] === 'belum_bayar'): ?>
-                <span class="chip chip-belum">⚠ Belum Bayar</span>
+                <span class="chip chip-belum">Belum Bayar</span>
               <?php elseif ($d['status_denda'] === 'lunas'): ?>
-                <span class="chip chip-lunas">✅ Lunas</span>
+                <span class="chip chip-lunas">Lunas</span>
               <?php else: ?>
                 <span class="chip chip-tidak">–</span>
               <?php endif; ?>
@@ -578,7 +578,7 @@ while ($row = mysqli_fetch_assoc($res)) {
                 <input type="hidden" name="pem_id" value="<?= (int)$d['id'] ?>"/>
                 <button type="submit" class="btn-lunas"
                   onclick="return confirm('Tandai denda peminjaman ini sebagai lunas?')">
-                  ✅ Tandai Lunas
+                  Tandai Lunas
                 </button>
               </form>
               <?php else: ?>

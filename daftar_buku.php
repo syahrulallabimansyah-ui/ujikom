@@ -561,11 +561,11 @@ ob_start();
     /* ── MODAL DETAIL BUKU ── */
     .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:800; align-items:center; justify-content:center; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .3s cubic-bezier(.16,1,.3,1) both; margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
+    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .34s cubic-bezier(.16,1,.3,1) both; margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
     .detail-modal::-webkit-scrollbar { width:4px; }
     .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
     .detail-modal::-webkit-scrollbar-track { background:transparent; }
-    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalIn { from{opacity:0;transform:scale(.975) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
     @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
     .detail-cover { width:100%; aspect-ratio:16/9; border-radius:16px 16px 0 0; overflow:hidden; position:relative; background:#10151b; margin-top:0; }
     .detail-cover img { width:100%; height:100%; object-fit:cover; display:block; }
@@ -856,7 +856,7 @@ ob_start();
           <div class="bk-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></div>
           <div class="bk-badges-row">
             <?php if ($buku["genre"]): ?><span class="bk-genre"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
-            <?php if (!empty($buku["rak"])): ?><span class="bk-genre" style="border-color:rgba(216,184,120,.35);color:var(--accent,#d8b878);" title="Lokasi Rak">📍 <?= htmlspecialchars($buku["rak"]) ?></span><?php endif; ?>
+            <?php if (!empty($buku["rak"])): ?><span class="bk-genre" style="border-color:rgba(216,184,120,.35);color:var(--accent,#d8b878);" title="Lokasi Rak"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><?= htmlspecialchars($buku["rak"]) ?></span><?php endif; ?>
             <span class="status-badge status-<?= $status_cls ?>"><span class="dot"></span><?= $status_label ?> · <?= (int)$buku["stok"] ?></span>
           </div>
           <?php if (!$is_admin):
@@ -1045,7 +1045,7 @@ ob_start();
       <div class="detail-body">
         ${b.genre ? `<div class="detail-genre-chip">${escHTML(b.genre)}</div>` : ''}
         <div class="detail-title">${escHTML(b.judul)}</div>
-        <div class="detail-author">${b.penulis ? '✍️ ' + escHTML(b.penulis) : 'Penulis tidak diketahui'}</div>
+        <div class="detail-author">${b.penulis ? escHTML(b.penulis) : 'Penulis tidak diketahui'}</div>
 
         <div class="detail-stat-row">
           <div class="detail-stat likes" id="statLike_${b.id}">

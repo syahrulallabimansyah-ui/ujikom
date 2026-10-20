@@ -370,10 +370,10 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
       background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:16px; width:100%; max-width:380px;
       max-height:90vh; overflow-y:auto; padding:24px;
       box-shadow:0 20px 60px rgba(0,0,0,.25);
-      animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
+      animation:modalIn .32s cubic-bezier(.16,1,.3,1) both;
     }
     @keyframes modalIn {
-      from { opacity:0; transform:scale(.94) translateY(10px); }
+      from { opacity:0; transform:scale(.975) translateY(10px); }
       to   { opacity:1; transform:scale(1) translateY(0); }
     }
     .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
@@ -756,7 +756,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     Pengajuan Buku
     <?php if ($cnt_aju_badge > 0): ?>
-      <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -799,39 +799,49 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
   </div>
 
   <?php if ($profil_msg): ?>
-  <div class="notice notice-<?= $profil_msg_type ?>"><?= $profil_msg_type === "success" ? "✅" : "⚠️" ?> <?= htmlspecialchars($profil_msg) ?></div>
+  <div class="notice notice-<?= $profil_msg_type ?>"><span style="font-weight:bold;margin-right:4px;"><?= $profil_msg_type === "success" ? "✓" : "✕" ?></span> <?= htmlspecialchars($profil_msg) ?></div>
   <?php endif; ?>
 
   <?php if (!$skema_lengkap): ?>
   <div class="notice">
-    ⚠️ Sebagian data peminjaman tidak dapat ditampilkan karena tabel <code>peminjaman</code> belum terdeteksi lengkap (kolom anggota/buku/tanggal pinjam). Statistik anggota &amp; buku tetap ditampilkan seperti biasa.
+    Sebagian data peminjaman tidak dapat ditampilkan karena tabel <code>peminjaman</code> belum terdeteksi lengkap (kolom anggota/buku/tanggal pinjam). Statistik anggota &amp; buku tetap ditampilkan seperti biasa.
   </div>
   <?php endif; ?>
 
   <!-- Kartu ringkasan -->
   <div class="stat-grid">
     <div class="stat-card c-anggota">
-      <span class="stat-icon">👥</span>
+      <span class="stat-icon" style="display:inline-flex;align-items:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#2b7de9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </span>
       <span class="stat-value"><?= $total_anggota_aktif ?></span>
       <span class="stat-label">Anggota Aktif</span>
     </div>
     <div class="stat-card c-buku">
-      <span class="stat-icon">📚</span>
+      <span class="stat-icon" style="display:inline-flex;align-items:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8a5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1-2.5-2.5Z"/><path d="M6 6h10M6 10h10"/></svg>
+      </span>
       <span class="stat-value"><?= $total_buku ?></span>
       <span class="stat-label">Judul Buku (<?= $total_stok ?> stok)</span>
     </div>
     <div class="stat-card c-dipinjam">
-      <span class="stat-icon">📖</span>
+      <span class="stat-icon" style="display:inline-flex;align-items:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1a8a4a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+      </span>
       <span class="stat-value"><?= $sedang_dipinjam !== null ? $sedang_dipinjam : "–" ?></span>
       <span class="stat-label">Sedang Dipinjam</span>
     </div>
     <div class="stat-card c-telat">
-      <span class="stat-icon">⏰</span>
+      <span class="stat-icon" style="display:inline-flex;align-items:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e74c3c" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </span>
       <span class="stat-value"><?= $terlambat !== null ? $terlambat : "–" ?></span>
       <span class="stat-label">Terlambat Kembali</span>
     </div>
     <div class="stat-card c-pending">
-      <span class="stat-icon">🕓</span>
+      <span class="stat-icon" style="display:inline-flex;align-items:center;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e67e22" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 8 14"/></svg>
+      </span>
       <span class="stat-value"><?= $pending_count ?></span>
       <span class="stat-label">Pendaftar Menunggu</span>
     </div>
@@ -857,7 +867,7 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
             Export Excel
           </a>
           <button class="btn-print" onclick="window.print()">
-            🖨️ Cetak Laporan
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Cetak Laporan
           </button>
         </div>
       </div>
@@ -938,34 +948,34 @@ $wa_link      = "https://wa.me/?text=" . urlencode($laporan_text);
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           Export Excel
         </a>
-        <button class="btn-print" onclick="window.print()">🖨️ Cetak Laporan</button>
+        <button class="btn-print" onclick="window.print()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:4px;"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>Cetak Laporan</button>
       </div>
     </div>
 
     <div class="laporan-grid">
       <div class="laporan-card">
-        <h4>📚 Koleksi Buku</h4>
+        <h4>Koleksi Buku</h4>
         <div class="laporan-row"><span>Total Judul Buku</span><span><?= $total_buku ?></span></div>
         <div class="laporan-row"><span>Total Stok Fisik</span><span><?= $total_stok ?></span></div>
         <div class="laporan-row"><span>Sedang Dipinjam</span><span><?= $sedang_dipinjam !== null ? $sedang_dipinjam : '–' ?></span></div>
       </div>
 
       <div class="laporan-card">
-        <h4>👥 Keanggotaan</h4>
+        <h4>Keanggotaan</h4>
         <div class="laporan-row"><span>Anggota Aktif</span><span><?= $anggota_counts["approved"] ?></span></div>
         <div class="laporan-row"><span>Menunggu Persetujuan</span><span><?= $anggota_counts["pending"] ?></span></div>
         <div class="laporan-row"><span>Ditolak</span><span><?= $anggota_counts["rejected"] ?></span></div>
       </div>
 
       <div class="laporan-card">
-        <h4>📖 Aktivitas Peminjaman</h4>
+        <h4>Aktivitas Peminjaman</h4>
         <div class="laporan-row"><span>Peminjaman Bulan Ini</span><span><?= $peminjaman_bulan_ini ?></span></div>
         <div class="laporan-row"><span>Total Tahun <?= $tahun ?></span><span><?= $total_tahun_pinjam ?></span></div>
         <div class="laporan-row <?= ($terlambat ?? 0) > 0 ? 'highlight' : '' ?>"><span>Terlambat Kembali</span><span><?= $terlambat !== null ? $terlambat : '–' ?></span></div>
       </div>
 
       <div class="laporan-card">
-        <h4>💰 Denda</h4>
+        <h4>Denda</h4>
         <?php if (!$denda_tersedia): ?>
           <div class="empty-mini" style="padding:8px 0;">Data denda belum tersedia.</div>
         <?php else: ?>

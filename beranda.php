@@ -538,7 +538,8 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       display: flex;
       width: 100%;
       height: 100%;
-      transition: transform .4s cubic-bezier(.22,1,.36,1);
+      transition: transform .52s cubic-bezier(0.16, 1, 0.3, 1);
+      will-change: transform;
     }
     .hero-slide {
       flex: 0 0 100%;
@@ -1440,7 +1441,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       overflow-x: hidden;
       overscroll-behavior: contain;
       box-shadow: 0 24px 70px rgba(0,0,0,.6);
-      animation: modalIn .3s cubic-bezier(.16,1,.3,1) both;
+      animation: modalIn .34s cubic-bezier(.16,1,.3,1) both;
       box-sizing: border-box;
       scrollbar-width: thin;
       scrollbar-color: rgba(216,184,120,.25) transparent;
@@ -1448,7 +1449,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     .detail-modal::-webkit-scrollbar { width: 4px; }
     .detail-modal::-webkit-scrollbar-thumb { background: rgba(216,184,120,.3); border-radius: 10px; }
     .detail-modal::-webkit-scrollbar-track { background: transparent; }
-    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalIn { from{opacity:0;transform:scale(.975) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
     @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
     .detail-cover {
       width: 100%;
@@ -1906,7 +1907,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
         <div class="hero-slide">
           <div class="hero-welcome-card">
             <div class="hero-welcome-left">
-              <div class="hero-greet"><?= htmlspecialchars($sapaan) ?>, <?= htmlspecialchars($user_name) ?> 👋</div>
+              <div class="hero-greet"><?= htmlspecialchars($sapaan) ?>, <?= htmlspecialchars($user_name) ?></div>
               <div class="hero-title">Selamat datang di AKSA NOVA</div>
               <div class="hero-quote-box">
                 <span class="hero-quote-text">"<?= htmlspecialchars($kutipan_hari_ini["teks"]) ?>"</span>
@@ -1932,8 +1933,14 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
         <?php foreach ($banners as $b): ?>
         <div class="hero-slide">
           <div class="hero-banner-slide">
-            <?php if ($b["link_url"]): ?><a href="<?= htmlspecialchars($b["link_url"]) ?>" style="position:absolute;inset:0;z-index:2;"></a><?php endif; ?>
-            <img src="<?= htmlspecialchars($b["gambar"]) ?>" alt="<?= htmlspecialchars($b["judul"] ?: "Banner") ?>" draggable="false">
+            <?php if (!empty($b["link_url"])): ?><a href="<?= htmlspecialchars($b["link_url"]) ?>" style="position:absolute;inset:0;z-index:2;"></a><?php endif; ?>
+            <?php 
+            $_bext = strtolower(pathinfo($b["gambar"], PATHINFO_EXTENSION));
+            if (in_array($_bext, ["mp4", "webm"])): ?>
+              <video src="<?= htmlspecialchars($b["gambar"]) ?>" autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;display:block;" draggable="false"></video>
+            <?php else: ?>
+              <img src="<?= htmlspecialchars($b["gambar"]) ?>" alt="<?= htmlspecialchars($b["judul"] ?: "Banner") ?>" draggable="false">
+            <?php endif; ?>
             <?php if ($b["judul"] || $b["subjudul"]): ?>
             <div class="hero-banner-overlay">
               <?php if ($b["judul"]): ?><div class="hero-banner-title"><?= htmlspecialchars($b["judul"]) ?></div><?php endif; ?>
@@ -2286,9 +2293,9 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     <div class="footer-bottom-row">
       <span>© <?= date("Y") ?> AKSA NOVA Library Catalog App. Semua hak dilindungi.</span>
       <div class="footer-social-btns">
-        <a href="#" title="Instagram" onclick="return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.5" y2="6.5"/></svg></a>
-        <a href="#" title="Email" onclick="return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 6L2 7"/></svg></a>
-        <a href="#" title="Lokasi" onclick="return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></a>
+        <a href="https://www.instagram.com/smkn1rongga/" target="_blank" rel="noopener" title="Instagram SMKN 1 Rongga"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4"/><line x1="17.5" y1="6.5" x2="17.5" y2="6.5"/></svg></a>
+        <a href="https://www.tiktok.com/@jinggasmkn1rongga?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener" title="TikTok SMKN 1 Rongga"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 2c.4 2.2 1.8 3.9 4 4.4v3.1c-1.4 0-2.8-.4-4-1.2v6.4c0 3.5-2.8 6.3-6.3 6.3S3.9 18.2 3.9 14.7s2.8-6.3 6.3-6.3c.3 0 .6 0 .9.1v3.2c-.3-.1-.6-.2-.9-.2-1.8 0-3.2 1.4-3.2 3.2s1.4 3.2 3.2 3.2 3.3-1.4 3.3-3.2V2h3z"/></svg></a>
+        <a href="https://share.google/U4hL457xrbEKTbj31" target="_blank" rel="noopener" title="Facebook SMKN 1 Rongga"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.6 21v-7.6h2.6l.4-3h-3V8.4c0-.9.2-1.5 1.5-1.5H16.7V4.2c-.3 0-1.2-.2-2.3-.2-2.3 0-3.9 1.4-3.9 4v2.4H7.9v3h2.6V21h3.1z"/></svg></a>
       </div>
     </div>
   </footer>
@@ -2377,7 +2384,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       <div class="detail-body">
         ${b.genre ? `<div class="detail-genre-chip">${escHTML(b.genre)}</div>` : ''}
         <div class="detail-title">${escHTML(b.judul)}</div>
-        <div class="detail-author">${b.penulis ? '✍️ ' + escHTML(b.penulis) : 'Penulis tidak diketahui'}</div>
+        <div class="detail-author">${b.penulis ? escHTML(b.penulis) : 'Penulis tidak diketahui'}</div>
         <div class="detail-stat-row">
           <div class="detail-stat likes" id="statLike_${b.id}"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><span id="likeCount_${b.id}">${b.jumlah_like}</span> Suka</div>
           <div class="detail-stat favs"><svg viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>${b.jumlah_favorit} Favorit</div>

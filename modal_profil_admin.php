@@ -24,7 +24,7 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
 }
 .modal-overlay.open { display: flex !important; }
 @keyframes modalIn {
-  from { opacity: 0; transform: scale(.94) translateY(10px); }
+  from { opacity: 0; transform: scale(.975) translateY(10px); }
   to   { opacity: 1; transform: scale(1) translateY(0); }
 }
 .profil-modal-box {
@@ -33,7 +33,7 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
   border-radius: 16px; width: 100%; max-width: 410px;
   max-height: 90vh; overflow-y: auto; padding: 24px;
   box-shadow: 0 20px 60px rgba(0,0,0,.5);
-  animation: modalIn .25s cubic-bezier(.22,1,.36,1) both;
+  animation: modalIn .32s cubic-bezier(.16, 1, 0.3, 1) both;
   color: var(--text, #eef3f4);
   font-family: var(--font-family, 'Outfit', sans-serif);
 }
@@ -79,9 +79,9 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
       <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
 
       <?php if (isset($_GET['profil_saved'])): ?>
-      <div style="background:rgba(5,150,105,.15);color:#4ade80;border:1px solid rgba(5,150,105,.3);padding:9px 12px;border-radius:8px;font-size:.8rem;font-weight:700;margin-bottom:12px;">✅ Profil berhasil disimpan.</div>
+      <div style="background:rgba(5,150,105,.15);color:#4ade80;border:1px solid rgba(5,150,105,.3);padding:9px 12px;border-radius:8px;font-size:.8rem;font-weight:700;margin-bottom:12px;">Profil berhasil disimpan.</div>
       <?php elseif (isset($_GET['profil_err'])): ?>
-      <div style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);padding:9px 12px;border-radius:8px;font-size:.8rem;font-weight:700;margin-bottom:12px;">⚠️ <?= htmlspecialchars($_GET['profil_err']) ?></div>
+      <div style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);padding:9px 12px;border-radius:8px;font-size:.8rem;font-weight:700;margin-bottom:12px;"><?= htmlspecialchars($_GET['profil_err']) ?></div>
       <?php endif; ?>
 
       <div style="margin-bottom:14px;">
@@ -216,10 +216,10 @@ function cekKonfirmasi() {
   if (!pw1 || !pw2 || !label) return;
   if (!pw2.value) { label.textContent = ''; return; }
   if (pw1.value === pw2.value) {
-    label.textContent = '✅ Kata sandi cocok';
+    label.textContent = 'Kata sandi cocok';
     label.style.color = '#22c55e';
   } else {
-    label.textContent = '❌ Kata sandi tidak cocok';
+    label.textContent = 'Kata sandi tidak cocok';
     label.style.color = '#ef4444';
   }
 }

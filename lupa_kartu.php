@@ -815,7 +815,7 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       <h1 class="form-title">Buat Kata Sandi Baru</h1>
       <p class="form-sub">Kartu lama atas nama <b><?= htmlspecialchars($info) ?></b> sudah dibekukan. Buat kata sandi baru sendiri, lalu kartu penggantimu akan langsung diterbitkan.</p>
 
-      <div class="frozen-notice">🔒 Kartu lama sedang dibekukan sementara sampai kamu menyelesaikan langkah ini.</div>
+      <div class="frozen-notice">Kartu lama sedang dibekukan sementara sampai kamu menyelesaikan langkah ini.</div>
 
       <?php if ($error): ?><div class="error-msg"><?= htmlspecialchars($error) ?></div><?php endif; ?>
 

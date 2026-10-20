@@ -668,13 +668,13 @@ ob_start();
       max-height:92vh; overflow-y:auto; overflow-x:hidden;
       overscroll-behavior:contain;
       box-shadow:0 24px 70px rgba(0,0,0,.5);
-      animation:modalIn .3s cubic-bezier(.16,1,.3,1) both;
+      animation:modalIn .34s cubic-bezier(.16,1,.3,1) both;
       margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent;
     }
     .detail-modal::-webkit-scrollbar { width:4px; }
     .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
     .detail-modal::-webkit-scrollbar-track { background:transparent; }
-    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalIn { from{opacity:0;transform:scale(.975) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
     @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
     .detail-cover {
       width:100%; aspect-ratio:16/9;
@@ -965,7 +965,7 @@ ob_start();
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Pengajuan Buku
       <?php if ($cnt_aju_badge > 0): ?>
-        <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+        <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
       <?php endif; ?>
     </a>
     <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -1005,7 +1005,7 @@ ob_start();
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
-    <?= $msg_type === "success" ? "✅" : "❌" ?> <?= htmlspecialchars($msg) ?>
+    <?= htmlspecialchars($msg) ?>
   </div>
   <?php endif; ?>
 
@@ -1304,7 +1304,7 @@ function renderDetail(b) {
     <div class="detail-body">
       ${b.genre ? `<div class="detail-genre-chip">${escHTML(b.genre)}</div>` : ''}
       <div class="detail-title">${escHTML(b.judul)}</div>
-      <div class="detail-author">${b.penulis ? '✍️ ' + escHTML(b.penulis) : 'Penulis tidak diketahui'}</div>
+      <div class="detail-author">${b.penulis ? escHTML(b.penulis) : 'Penulis tidak diketahui'}</div>
 
       <div class="detail-stat-row">
         <div class="detail-stat likes">
@@ -1594,14 +1594,14 @@ function cariISBN() {
 
   if (digits.length !== 10 && digits.length !== 13) {
     statusEl.style.color = '#e74c3c';
-    statusEl.textContent = '⚠️ ISBN harus terdiri dari 10 atau 13 digit.';
+    statusEl.textContent = 'ISBN harus terdiri dari 10 atau 13 digit.';
     return;
   }
 
   clearTimeout(isbnDebounceTimer);
   btn.disabled = true;
   statusEl.style.color = 'var(--muted)';
-  statusEl.textContent = '⏳ Mencari data buku…';
+  statusEl.textContent = 'Mencari data buku…';
 
   fetch('cari_isbn.php?isbn=' + encodeURIComponent(digits))
     // Ambil dulu sebagai teks mentah (bukan langsung .json()). Kalau
@@ -1617,7 +1617,7 @@ function cariISBN() {
         data = JSON.parse(text);
       } catch (e) {
         statusEl.style.color = '#e74c3c';
-        statusEl.textContent = '⚠️ Server mengirim respons yang bukan JSON valid. '
+        statusEl.textContent = 'Server mengirim respons yang bukan JSON valid. '
           + 'Kemungkinan ada error PHP di cari_isbn.php atau db.php. '
           + 'Cek console browser (F12) untuk respons mentahnya.';
         console.error('cari_isbn.php respons mentah:', text);
@@ -1626,7 +1626,7 @@ function cariISBN() {
 
       if (!data.ok) {
         statusEl.style.color = '#e74c3c';
-        statusEl.textContent = '⚠️ ' + data.message;
+        statusEl.textContent = data.message;
         if (data.duplikat) {
           statusEl.textContent += ' (Sudah terdaftar sebagai "' + data.duplikat.judul + '".)';
         }
@@ -1658,18 +1658,18 @@ function cariISBN() {
       }
 
       statusEl.style.color = '#2ecc71';
-      statusEl.textContent = '✅ Data ditemukan (' + data.sumber + '). Silakan periksa kembali sebelum menyimpan.';
+      statusEl.textContent = 'Data ditemukan (' + data.sumber + '). Silakan periksa kembali sebelum menyimpan.';
 
       if (data.duplikat) {
         statusEl.style.color = '#f39c12';
-        statusEl.textContent = '⚠️ ISBN ini sudah terdaftar sebagai "' + data.duplikat.judul +
+        statusEl.textContent = 'ISBN ini sudah terdaftar sebagai "' + data.duplikat.judul +
           '" (stok saat ini: ' + data.duplikat.stok + '). Data tetap diisi otomatis, pastikan Anda tidak membuat duplikat.';
       }
     })
     .catch(() => {
       btn.disabled = false;
       statusEl.style.color = '#e74c3c';
-      statusEl.textContent = '⚠️ Gagal menghubungi server pencarian ISBN. Periksa koneksi internet server.';
+      statusEl.textContent = 'Gagal menghubungi server pencarian ISBN. Periksa koneksi internet server.';
     });
 }
 

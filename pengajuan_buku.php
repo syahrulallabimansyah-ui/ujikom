@@ -662,7 +662,7 @@ if ($q_res) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Pengajuan Buku
       <?php if ($cnt_menunggu > 0): ?>
-        <span class="badge-nav"><?= $cnt_menunggu ?></span>
+        <span class="badge-nav aksa-notif-badge"><?= $cnt_menunggu ?></span>
       <?php endif; ?>
     </a>
     <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -670,7 +670,7 @@ if ($q_res) {
       Telah Dipinjam
     </a>
     <a class="sidebar-btn" href="pengaturan_denda.php">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       Pengaturan Denda
     </a>
     <a class="sidebar-btn" href="pengaturan_musik.php">
@@ -887,10 +887,10 @@ if ($q_res) {
                   <?php endif; ?>
                   <div>
                     <div class="book-title-cell"><?= htmlspecialchars($row['judul'] ?? 'Buku Perpustakaan') ?></div>
-                    <div class="book-author-cell">✍️ <?= htmlspecialchars($row['penulis'] ?: '—') ?></div>
+                    <div class="book-author-cell"><?= htmlspecialchars($row['penulis'] ?: '—') ?></div>
                     <?php if (!empty($row['buku_rak'])): ?>
                       <div style="font-size:.68rem;color:var(--accent,#d8b878);margin-top:2px;font-weight:600;">
-                        📍 <?= htmlspecialchars($row['buku_rak']) ?>
+                        <?= htmlspecialchars($row['buku_rak']) ?>
                       </div>
                     <?php endif; ?>
                     <div style="font-size:.68rem;color:<?= (int)($row['buku_stok'] ?? 0) > 0 ? '#1a8a4a' : '#c0392b' ?>;margin-top:2px;">
@@ -907,9 +907,9 @@ if ($q_res) {
                 </div>
                 <div>
                   <?php if ($row['waktu_pengambilan'] === 'sekarang'): ?>
-                    <span class="badge-pickup sekarang">⚡ Ambil Sekarang</span>
+                    <span class="badge-pickup sekarang">Ambil Sekarang</span>
                   <?php else: ?>
-                    <span class="badge-pickup nanti">🕒 Ambil Nanti</span>
+                    <span class="badge-pickup nanti">Ambil Nanti</span>
                     <?php if (!empty($row['catatan_pengambilan'])): ?>
                       <div style="font-size:.68rem;color:var(--muted);margin-top:3px;max-width:180px;">
                         "<?= htmlspecialchars($row['catatan_pengambilan']) ?>"

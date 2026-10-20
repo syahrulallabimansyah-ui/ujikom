@@ -106,8 +106,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $error_msg = 'Maaf, stok buku "' . htmlspecialchars($buku_cek['judul']) . '" saat ini sedang kosong.';
     } elseif ($total_buku > (int)$buku_cek['stok']) {
         $error_msg = 'Jumlah buku yang diajukan (' . $total_buku . ') melebihi stok yang tersedia (' . $buku_cek['stok'] . ').';
-    } elseif ($total_buku > 3) {
-        $error_msg = 'Maksimal peminjaman adalah 3 buku sekaligus.';
+    } elseif ($total_buku > 40) {
+        $error_msg = 'Maksimal peminjaman adalah 40 buku sekaligus.';
     } elseif (empty($batas_kembali) || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $batas_kembali)) {
         $error_msg = 'Format tanggal batas pengembalian tidak valid.';
     } elseif (strtotime($batas_kembali) < strtotime(date('Y-m-d'))) {
@@ -692,7 +692,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
                 </div>
 
                 <div class="book-preview-title" id="previewJudul"><?= htmlspecialchars($buku_terpilih['judul']) ?></div>
-                <div class="book-preview-author" id="previewPenulis">✍️ <?= htmlspecialchars($buku_terpilih['penulis'] ?: 'Penulis tidak diketahui') ?></div>
+                <div class="book-preview-author" id="previewPenulis"><?= htmlspecialchars($buku_terpilih['penulis'] ?: 'Penulis tidak diketahui') ?></div>
 
                 <div class="book-meta-chips">
                   <?php if (!empty($buku_terpilih['genre'])): ?>
@@ -705,7 +705,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
                     Sisa Stok: <?= (int)$buku_terpilih['stok'] ?> buku
                   </div>
                   <div class="book-chip" id="previewRak" style="<?= empty($buku_terpilih['rak']) ? 'display:none;' : '' ?>color:var(--accent,#d8b878);border-color:rgba(216,184,120,.35);">
-                    📍 <?= htmlspecialchars($buku_terpilih['rak'] ?? '') ?>
+                    <?= htmlspecialchars($buku_terpilih['rak'] ?? '') ?>
                   </div>
                 </div>
 
@@ -795,11 +795,11 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
               <div class="form-group">
                 <label class="form-label">
                   Total Buku Dipinjam <span class="req">*</span>
-                  <span class="form-label-desc">Maksimal 3 eksemplar</span>
+                  <span class="form-label-desc">Maksimal 40 eksemplar</span>
                 </label>
                 <div class="stepper-wrap">
                   <button type="button" class="btn-step" onclick="ubahJumlah(-1)">−</button>
-                  <input type="number" name="total_buku" id="inputTotalBuku" class="step-input" value="1" min="1" max="<?= max(1, min(3, (int)($buku_terpilih['stok'] ?? 3))) ?>" readonly>
+                  <input type="number" name="total_buku" id="inputTotalBuku" class="step-input" value="1" min="1" max="<?= max(1, min(40, (int)($buku_terpilih['stok'] ?? 40))) ?>" readonly>
                   <button type="button" class="btn-step" onclick="ubahJumlah(1)">+</button>
                 </div>
               </div>
@@ -931,7 +931,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
             <div class="book-picker-title"><?= htmlspecialchars($b['judul']) ?></div>
             <div class="book-picker-author"><?= htmlspecialchars($b['penulis'] ?: 'Penulis tidak diketahui') ?></div>
             <?php if (!empty($b['rak'])): ?>
-              <div style="font-size:.72rem;color:var(--accent,#d8b878);margin-top:2px;">📍 <?= htmlspecialchars($b['rak']) ?></div>
+              <div style="font-size:.72rem;color:var(--accent,#d8b878);margin-top:2px;"><?= htmlspecialchars($b['rak']) ?></div>
             <?php endif; ?>
           </div>
           <div class="book-picker-stock">Stok: <?= (int)$b['stok'] ?></div>
@@ -1042,7 +1042,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
   function ubahJumlah(delta) {
     const inp = document.getElementById('inputTotalBuku');
     const minVal = parseInt(inp.min) || 1;
-    const maxVal = parseInt(inp.max) || 3;
+    const maxVal = parseInt(inp.max) || 40;
     let currVal = parseInt(inp.value) || 1;
     currVal += delta;
     if (currVal < minVal) currVal = minVal;
@@ -1107,7 +1107,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     const prevJudul = document.getElementById('previewJudul');
     if (prevJudul) prevJudul.textContent = judul;
     const prevPenulis = document.getElementById('previewPenulis');
-    if (prevPenulis) prevPenulis.textContent = '✍️ ' + penulis;
+    if (prevPenulis) prevPenulis.textContent = penulis;
     const prevGenre = document.getElementById('previewGenre');
     if (prevGenre) prevGenre.textContent = genre;
     const prevStok = document.getElementById('previewStok');
@@ -1119,7 +1119,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     const prevRak = document.getElementById('previewRak');
     if (prevRak) {
       if (rak) {
-        prevRak.textContent = '📍 ' + rak;
+        prevRak.textContent = rak;
         prevRak.style.display = 'inline-flex';
       } else {
         prevRak.style.display = 'none';
@@ -1139,7 +1139,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     // Update max stepper
     const stepInp = document.getElementById('inputTotalBuku');
     if (stepInp) {
-      const maxAllowed = Math.min(3, stok);
+      const maxAllowed = Math.min(40, stok);
       stepInp.max = Math.max(1, maxAllowed);
       if (parseInt(stepInp.value) > maxAllowed) stepInp.value = Math.max(1, maxAllowed);
     }

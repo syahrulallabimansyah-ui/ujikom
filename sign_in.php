@@ -3,13 +3,9 @@
 session_start();
 require_once "db.php";
 
-// Jika sudah login, langsung arahkan ke halaman utama yang sesuai
+// Jika sudah login, langsung arahkan ke beranda
 if (isset($_SESSION["user_id"])) {
-    if (($_SESSION["role"] ?? "") === "admin") {
-        header("Location: halaman_admin.php");
-    } else {
-        header("Location: beranda.php");
-    }
+    header("Location: beranda.php");
     exit;
 }
 
@@ -112,11 +108,12 @@ $page_title = "Sign In – AKSA NOVA";
       display: flex;
       box-shadow: var(--shadow);
       border: 1px solid rgba(216,184,120,.18);
-      animation: riseIn .9s cubic-bezier(.22,1,.36,1) both;
+      animation: riseIn .65s cubic-bezier(0.16, 1, 0.3, 1) both;
+      will-change: transform, opacity;
     }
 
     @keyframes riseIn {
-      from { opacity:0; transform:translateY(36px) scale(.97); }
+      from { opacity:0; transform:translateY(16px) scale(.985); }
       to   { opacity:1; transform:translateY(0) scale(1); }
     }
 
@@ -335,13 +332,13 @@ $page_title = "Sign In – AKSA NOVA";
 
     @keyframes orbFloat {
       0%,100% { transform: translateY(0) scale(1); }
-      50%      { transform: translateY(-18px) scale(1.08); }
+      50%      { transform: translateY(-10px) scale(1.04); }
     }
 
     .right-content {
       position: relative;
       text-align: center;
-      animation: riseIn .9s .15s cubic-bezier(.22,1,.36,1) both;
+      animation: riseIn .65s .1s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
 
     .right-title {

@@ -276,20 +276,21 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   }
   .field input[type="text"] {
     width:100%; padding:10px 14px; border-radius:8px;
-    border:1px solid #ddd; font-family:'Nunito',sans-serif; font-size:.88rem;
-    color: var(--text); outline: none; transition: border-color .18s ease;
+    border:1px solid var(--border-color, rgba(216,184,120,.2)); font-family:'Nunito',sans-serif; font-size:.88rem;
+    color: var(--text, #eef3f4); background: rgba(255,255,255,.05); outline: none; transition: border-color .18s ease;
   }
   .field input[type="text"]:focus { border-color: var(--accent); }
   .field .file-drop {
-    border: 1.6px dashed #ccc; border-radius: 10px; padding: 20px;
+    border: 1.6px dashed var(--border-color, rgba(216,184,120,.25)); border-radius: 10px; padding: 20px;
     text-align:center; cursor:pointer; transition: border-color .18s ease, background .18s ease;
+    background: rgba(255,255,255,.02);
     position: relative;
   }
-  .field .file-drop:hover { border-color: var(--accent); background: #fafafc; }
+  .field .file-drop:hover { border-color: var(--accent); background: rgba(216,184,120,.08); }
   .field .file-drop input[type="file"] {
     position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%;
   }
-  .field .file-drop svg { width:26px; height:26px; color:#999; margin-bottom:8px; }
+  .field .file-drop svg { width:26px; height:26px; color:var(--accent, #d8b878); margin-bottom:8px; }
   .field .file-drop .file-drop-text { font-size:.82rem; color: var(--muted); }
   .field .file-drop .file-name { font-size:.82rem; font-weight:700; color: var(--text); margin-top:4px; }
 
@@ -304,48 +305,64 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   .switch input { opacity:0; width:0; height:0; }
   .switch .slider {
     position:absolute; cursor:pointer; inset:0;
-    background:#d0d0d8; border-radius:999px; transition: background .2s ease;
+    background:rgba(255,255,255,.15); border-radius:999px; transition: background .2s ease;
   }
   .switch .slider::before {
     content:''; position:absolute; width:20px; height:20px; left:3px; top:3px;
     background:#fff; border-radius:50%; transition: transform .2s ease;
     box-shadow: 0 1px 4px rgba(0,0,0,.3);
   }
-  .switch input:checked + .slider { background: var(--gold); }
+  .switch input:checked + .slider { background: var(--accent, #d8b878); }
   .switch input:checked + .slider::before { transform: translateX(20px); }
 
   .current-preview {
-    display:flex; align-items:center; gap:12px;
-    padding: 12px 14px; border-radius: 10px;
-    background:#f6f6f9; border:1px solid #ececf2;
-    margin-bottom: 18px;
+    display:flex; align-items:center; gap:14px;
+    padding: 14px 18px; border-radius: var(--radius, 10px);
+    background: var(--card, #121820);
+    border: 1px solid var(--card-border, rgba(216,184,120,.18));
+    box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    transition: background var(--trans), border-color var(--trans);
   }
   .current-preview .icon-wrap {
-    width:38px; height:38px; border-radius:50%;
-    background: var(--gold); color:#fff;
+    width:42px; height:42px; border-radius:50%;
+    background: rgba(216,184,120,.15);
+    border: 1px solid rgba(216,184,120,.3);
+    color: var(--accent, #d8b878);
     display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
-  .current-preview .icon-wrap svg { width:18px; height:18px; }
+  .current-preview .icon-wrap svg { width:20px; height:20px; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); }
   .current-preview .info { flex:1; min-width:0; }
-  .current-preview .info .name { font-size:.85rem; font-weight:700; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .current-preview .info .status { font-size:.74rem; color: var(--muted); }
-  .current-preview audio { max-width: 220px; height: 32px; }
+  .current-preview .info .name {
+    font-size:.92rem; font-weight:800; color:var(--text, #eef3f4);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-bottom:3px;
+  }
+  .current-preview .info .status { font-size:.76rem; color: var(--muted, rgba(238,243,244,.7)); }
+  .current-preview audio {
+    max-width: 250px;
+    height: 36px;
+    outline: none;
+    color-scheme: dark;
+  }
+  html.light .current-preview audio {
+    color-scheme: light;
+  }
 
   .btn-row { display:flex; gap:10px; flex-wrap:wrap; margin-top: 6px; }
   .btn-simpan {
     padding:11px 26px; border-radius:8px; border:none;
-    background: var(--btn-primary); color:#fff;
-    font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700;
+    background: var(--btn-primary); color:#121820;
+    font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:800;
     cursor:pointer; transition: background var(--trans), box-shadow var(--trans);
   }
-  .btn-simpan:hover { background:#222; box-shadow:0 4px 14px rgba(0,0,0,.2); }
+  .btn-simpan:hover { background:var(--accent, #d8b878); box-shadow:0 4px 14px rgba(216,184,120,.3); }
   .btn-hapus-file {
-    padding:11px 22px; border-radius:8px; border:1px solid #f0b0b0;
-    background:#fff; color:#c0392b;
+    padding:11px 22px; border-radius:8px; border:1px solid rgba(220,38,38,.4);
+    background:rgba(220,38,38,.12); color:#f87171;
     font-family:'Nunito',sans-serif; font-size:.85rem; font-weight:700;
     cursor:pointer; transition: background var(--trans);
   }
-  .btn-hapus-file:hover { background:rgba(220,38,38,.2); border-color:rgba(220,38,38,.5); }
+  .btn-hapus-file:hover { background:rgba(220,38,38,.25); border-color:rgba(220,38,38,.6); color:#fff; }
 
   /* Responsive */
   @media (max-width:860px) {
@@ -449,7 +466,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Pengajuan Buku
       <?php if ($cnt_aju_badge > 0): ?>
-        <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+        <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
       <?php endif; ?>
     </a>
     <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -486,7 +503,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
-    <?= $msg_type === "success" ? "✅" : "❌" ?> <?= htmlspecialchars($msg) ?>
+    <?= htmlspecialchars($msg) ?>
   </div>
   <?php endif; ?>
 

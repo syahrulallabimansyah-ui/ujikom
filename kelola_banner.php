@@ -36,12 +36,13 @@ if (isset($_GET["profil_saved"])) {
 // ─────────────────────────────────────────────
 function uploadGambarBanner($file): string {
     if (!isset($file) || $file["error"] !== UPLOAD_ERR_OK) return "";
-    if (($file["size"] ?? 0) > 5 * 1024 * 1024) return "";
+    $ext     = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
+    $allowed = ["jpg", "jpeg", "png", "webp", "gif", "mp4", "webm"];
+    if (!in_array($ext, $allowed)) return "";
+    $maxSize = in_array($ext, ["mp4", "webm"]) ? 20 * 1024 * 1024 : 5 * 1024 * 1024;
+    if (($file["size"] ?? 0) > $maxSize) return "";
     $dir = "uploads/banner/";
     if (!is_dir($dir)) mkdir($dir, 0775, true);
-    $ext     = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
-    $allowed = ["jpg", "jpeg", "png", "webp", "gif"];
-    if (!in_array($ext, $allowed)) return "";
     $filename = uniqid("banner_") . "." . $ext;
     move_uploaded_file($file["tmp_name"], $dir . $filename);
     return $dir . $filename;
@@ -519,7 +520,7 @@ $total = count($banner_list);
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
       Pengajuan Buku
       <?php if ($cnt_aju_badge > 0): ?>
-        <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+        <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
       <?php endif; ?>
     </a>
     <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -578,7 +579,7 @@ $total = count($banner_list);
             <?php $_bext = strtolower(pathinfo($b["gambar"], PATHINFO_EXTENSION)); ?>
             <?php if (in_array($_bext, ["mp4","webm"])): ?>
               <video src="<?= htmlspecialchars($b["gambar"]) ?>" muted autoplay loop playsinline style="width:100%;height:100%;object-fit:cover;border-radius:6px;"></video>
-              <span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:.65rem;padding:2px 7px;border-radius:4px;font-weight:700;">🎬 VIDEO</span>
+              <span style="position:absolute;top:6px;left:6px;background:rgba(0,0,0,.65);color:#fff;font-size:.65rem;padding:2px 7px;border-radius:4px;font-weight:700;">VIDEO</span>
             <?php else: ?>
               <img src="<?= htmlspecialchars($b["gambar"]) ?>" alt="<?= htmlspecialchars($b["judul"]) ?>">
             <?php endif; ?>
@@ -589,7 +590,7 @@ $total = count($banner_list);
         <div class="banner-body">
           <div class="banner-judul"><?= $b["judul"] ? htmlspecialchars($b["judul"]) : "<em style='color:#aaa;'>(tanpa judul)</em>" ?></div>
           <?php if ($b["subjudul"]): ?><div class="banner-sub"><?= htmlspecialchars($b["subjudul"]) ?></div><?php endif; ?>
-          <?php if ($b["link_url"]): ?><div class="banner-link">🔗 <?= htmlspecialchars($b["link_url"]) ?></div><?php endif; ?>
+          <?php if ($b["link_url"]): ?><div class="banner-link"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px;"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg><?= htmlspecialchars($b["link_url"]) ?></div><?php endif; ?>
         </div>
         <div class="banner-actions">
           <form method="post" style="display:contents;">
@@ -651,7 +652,7 @@ $total = count($banner_list);
         <label>Gambar Banner *</label>
         <div class="upload-box" onclick="document.getElementById('inputGambar').click()">
           <img id="previewImg">
-          <div class="hint" id="uploadHint">Klik untuk unggah gambar<br><span style="color:var(--accent)">GIF / MP4 / WEBM</span>: langsung digunakan tanpa crop ✨<br>JPG/PNG/WEBP: crop ke rasio 16:7<br>Format: JPG, PNG, WEBP, GIF (maks 5 MB)</div>
+          <div class="hint" id="uploadHint">Klik untuk unggah gambar<br><span style="color:var(--accent)">GIF / MP4 / WEBM</span>: langsung digunakan tanpa crop<br>JPG/PNG/WEBP: crop ke rasio 16:7<br>Format: JPG, PNG, WEBP, GIF (maks 5 MB)</div>
         </div>
         <input type="file" name="gambar" id="inputGambar" accept=".jpg,.jpeg,.png,.webp,.gif,.mp4,.webm" style="display:none;">
       </div>

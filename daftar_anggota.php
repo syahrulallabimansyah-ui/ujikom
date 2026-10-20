@@ -17,15 +17,17 @@ $sidebar_badges_loaded = true;
 
 
 // ─── Bantu format nomor HP anggota jadi format wa.me (62xxxxxxxxxx) ───
-function format_nomor_wa($no_hp) {
-    $digits = preg_replace('/\D/', '', $no_hp ?? '');
-    if ($digits === '') return '';
-    if (substr($digits, 0, 1) === '0') {
-        $digits = '62' . substr($digits, 1);
-    } elseif (substr($digits, 0, 2) !== '62') {
-        $digits = '62' . $digits;
+if (!function_exists('format_nomor_wa')) {
+    function format_nomor_wa($no_hp) {
+        $digits = preg_replace('/\D/', '', $no_hp ?? '');
+        if ($digits === '') return '';
+        if (substr($digits, 0, 1) === '0') {
+            $digits = '62' . substr($digits, 1);
+        } elseif (substr($digits, 0, 2) !== '62') {
+            $digits = '62' . $digits;
+        }
+        return $digits;
     }
-    return $digits;
 }
 
 $page_title = "Daftar Anggota – AKSA NOVA";
@@ -344,8 +346,8 @@ if (!function_exists('hitungNextKelas')) {
 $semua_kelas_promo = [];
 $sudah_terdata = [];
 
-// 1. Ambil dari siswa yang ada di tabel users
-$res_skp = mysqli_query($conn, "SELECT kelas, COUNT(*) as jml FROM users WHERE role = 'member' AND kelas IS NOT NULL AND kelas != '' AND LOWER(kelas) != 'alumni' GROUP BY kelas");
+// 1. Ambil dari siswa yang ada di tabel users (kecuali Alumni dan Guru)
+$res_skp = mysqli_query($conn, "SELECT kelas, COUNT(*) as jml FROM users WHERE role = 'member' AND kelas IS NOT NULL AND kelas != '' AND LOWER(kelas) != 'alumni' AND LOWER(kelas) != 'guru' GROUP BY kelas");
 if ($res_skp) {
     while ($row = mysqli_fetch_assoc($res_skp)) {
         $k_asal = trim($row['kelas']);
@@ -363,7 +365,7 @@ if ($res_skp) {
 // 2. Sertakan pula kelas dari tabel kelas yang saat ini belum ada siswanya
 foreach ($list_kelas as $lk) {
     $k_name = trim($lk['nama_kelas']);
-    if (strcasecmp($k_name, 'Alumni') !== 0 && !isset($sudah_terdata[strtolower($k_name)])) {
+    if (strcasecmp($k_name, 'Alumni') !== 0 && strcasecmp($k_name, 'Guru') !== 0 && !isset($sudah_terdata[strtolower($k_name)])) {
         $semua_kelas_promo[] = [
             "asal"   => $k_name,
             "jml"    => 0,
@@ -385,10 +387,11 @@ usort($semua_kelas_promo, function($a, $b) {
 // ─────────────────────────────────────────────
 //  AMBIL DATA
 // ─────────────────────────────────────────────
-$search      = trim($_GET["q"] ?? "");
-$is_ajax     = isset($_GET["ajax"]) && $_GET["ajax"] == "1";
-$filter      = $_GET["status"] ?? "all";
+$search       = trim($_GET["q"] ?? "");
+$is_ajax      = isset($_GET["ajax"]) && $_GET["ajax"] == "1";
+$filter       = $_GET["status"] ?? "all";
 $kelas_filter = trim($_GET["kelas"] ?? "");
+$tipe_filter  = $_GET["tipe"] ?? "all";
 
 $where = ["role = 'member'"];
 if ($search !== "") {
@@ -401,6 +404,11 @@ if (in_array($filter, ["pending", "approved", "rejected"], true)) {
 if ($kelas_filter !== "") {
     $kf = mysqli_real_escape_string($conn, $kelas_filter);
     $where[] = "TRIM(kelas) = '$kf'";
+}
+if ($tipe_filter === "guru") {
+    $where[] = "LOWER(TRIM(kelas)) = 'guru'";
+} elseif ($tipe_filter === "siswa") {
+    $where[] = "LOWER(TRIM(kelas)) != 'guru'";
 }
 $where_sql = "WHERE " . implode(" AND ", $where);
 
@@ -415,11 +423,21 @@ $total_anggota = count($anggota_list);
 $total_semua_res = mysqli_query($conn, "SELECT COUNT(*) AS c FROM users WHERE role='member'");
 $total_semua_anggota = $total_semua_res ? (int)(mysqli_fetch_assoc($total_semua_res)['c'] ?? 0) : 0;
 
-// Hitung status tabs — jika filter kelas aktif, sesuaikan angka tab dengan kelas tersebut
+// Hitung total Guru & Siswa untuk badge tabs
+$total_guru_res = mysqli_query($conn, "SELECT COUNT(*) AS c FROM users WHERE role='member' AND LOWER(TRIM(kelas)) = 'guru'");
+$total_guru = $total_guru_res ? (int)(mysqli_fetch_assoc($total_guru_res)['c'] ?? 0) : 0;
+$total_siswa = max(0, $total_semua_anggota - $total_guru);
+
+// Hitung status tabs — jika filter kelas / tipe aktif, sesuaikan angka tab
 $where_count = ["role = 'member'"];
 if ($kelas_filter !== "") {
     $kf = mysqli_real_escape_string($conn, $kelas_filter);
     $where_count[] = "TRIM(kelas) = '$kf'";
+}
+if ($tipe_filter === "guru") {
+    $where_count[] = "LOWER(TRIM(kelas)) = 'guru'";
+} elseif ($tipe_filter === "siswa") {
+    $where_count[] = "LOWER(TRIM(kelas)) != 'guru'";
 }
 $where_count_sql = "WHERE " . implode(" AND ", $where_count);
 $count_res = mysqli_query($conn, "SELECT status, COUNT(*) AS c FROM users $where_count_sql GROUP BY status");
@@ -550,10 +568,10 @@ ob_start();
       background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:16px; width:100%; max-width:380px;
       max-height:90vh; overflow-y:auto; padding:24px;
       box-shadow:0 20px 60px rgba(0,0,0,.25);
-      animation:modalIn .25s cubic-bezier(.22,1,.36,1) both;
+      animation:modalIn .32s cubic-bezier(.16,1,.3,1) both;
     }
     @keyframes modalIn {
-      from { opacity:0; transform:scale(.94) translateY(10px); }
+      from { opacity:0; transform:scale(.975) translateY(10px); }
       to   { opacity:1; transform:scale(1) translateY(0); }
     }
     .modal-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
@@ -672,34 +690,46 @@ ob_start();
     }
     .btn-search:active { transform:scale(.96); }
 
-    .kelas-filter-bar {
-      display:flex; align-items:center; gap:10px; margin-bottom:14px;
-      animation:fadeUp .5s .07s both;
+    .filter-toolbar {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 16px;
+      animation: fadeUp .5s .07s both; flex-wrap: wrap;
     }
-    .kelas-filter-bar label {
-      font-size:.76rem; font-weight:700; color:var(--muted);
+    .filter-group {
+      display: inline-flex; align-items: center; gap: 8px;
     }
-    .kelas-filter-bar select {
-      font-family:'Nunito',sans-serif; font-size:.82rem; color:var(--text);
-      background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.2)); border-radius:8px;
-      padding:7px 12px; cursor:pointer; box-shadow:var(--shadow);
+    .filter-group label {
+      font-size: .78rem; font-weight: 700; color: var(--muted);
+      white-space: nowrap;
     }
-    .kelas-filter-bar select:focus { outline:none; border-color:var(--accent); }
-    .kelas-filter-bar select option { background:var(--card,#121820); color:var(--text); }
+    .filter-group select {
+      font-family: 'Nunito', sans-serif; font-size: .82rem; color: var(--text);
+      background: var(--card, #121820); border: 1px solid var(--border-color, rgba(216,184,120,.2));
+      border-radius: 8px; padding: 7px 12px; cursor: pointer; box-shadow: var(--shadow);
+      transition: border-color var(--trans);
+    }
+    .filter-group select:focus { outline: none; border-color: var(--accent); }
+    .filter-group select option { background: var(--card, #121820); color: var(--text); }
     .btn-reset-kelas {
-      background:rgba(220,38,38,.12); color:#f87171;
-      border:1px solid rgba(220,38,38,.28); border-radius:8px;
-      padding:6px 12px; font-size:.76rem; font-weight:700;
-      font-family:'Nunito',sans-serif; cursor:pointer;
-      transition:all var(--trans);
+      background: rgba(220,38,38,.12); color: #f87171;
+      border: 1px solid rgba(220,38,38,.28); border-radius: 8px;
+      padding: 6px 12px; font-size: .76rem; font-weight: 700;
+      font-family: 'Nunito', sans-serif; cursor: pointer;
+      transition: all var(--trans);
+      display: inline-flex; align-items: center; gap: 4px;
     }
-    .btn-reset-kelas:hover { background:rgba(220,38,38,.22); color:#fca5a5; transform:translateY(-1px); }
+    .btn-reset-kelas:hover { background: rgba(220,38,38,.22); color: #fca5a5; transform: translateY(-1px); }
     .filter-kelas-badge {
-      display:inline-flex; align-items:center; gap:5px;
-      background:rgba(216,184,120,.14); color:var(--accent,#d8b878);
-      border:1px solid rgba(216,184,120,.3); padding:3px 10px;
-      border-radius:20px; font-size:.8rem; font-weight:700;
-      margin-left:8px; vertical-align:middle;
+      display: inline-flex; align-items: center; gap: 5px;
+      background: rgba(216,184,120,.14); color: var(--accent, #d8b878);
+      border: 1px solid rgba(216,184,120,.3); padding: 3px 10px;
+      border-radius: 20px; font-size: .8rem; font-weight: 700;
+      margin-left: 8px; vertical-align: middle;
+    }
+    .filter-kelas-badge svg { width: 13px; height: 13px; flex-shrink: 0; }
+    .filter-badge-guru {
+      background: rgba(99,102,241,.18) !important;
+      color: #818cf8 !important;
+      border-color: rgba(99,102,241,.35) !important;
     }
 
     .content-header {
@@ -1036,7 +1066,7 @@ ob_start();
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     Pengajuan Buku
     <?php if ($cnt_aju_badge > 0): ?>
-      <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -1073,7 +1103,7 @@ ob_start();
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
-    <?= $msg_type === "success" ? "✅" : "❌" ?> <?= htmlspecialchars($msg) ?>
+    <span style="font-weight:bold;margin-right:4px;"><?= $msg_type === "success" ? "✓" : "✕" ?></span> <?= htmlspecialchars($msg) ?>
   </div>
   <?php endif; ?>
 
@@ -1084,14 +1114,21 @@ ob_start();
       Sampaikan ke anggota — sandi ini hanya tampil sekali di sini.
     </div>
     <div class="rb-cred">
-      <span>👤 <?= htmlspecialchars($reset_info["username"]) ?></span>
-      <span>🔑 <?= htmlspecialchars($reset_info["password"]) ?></span>
+      <span style="display:inline-flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        <?= htmlspecialchars($reset_info["username"]) ?>
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="7.5" cy="15.5" r="5.5"/><path d="m21 2-9.6 9.6M15.5 7.5l3 3"/></svg>
+        <?= htmlspecialchars($reset_info["password"]) ?>
+      </span>
     </div>
   </div>
   <?php endif; ?>
 
   <form method="GET" action="" id="searchForm">
-    <?php if ($filter !== "all"): ?><input type="hidden" name="status" id="searchStatusHidden" value="<?= htmlspecialchars($filter) ?>"><?php endif; ?>
+    <input type="hidden" name="status" id="searchStatusHidden" value="<?= htmlspecialchars($filter) ?>"/>
+    <input type="hidden" name="tipe" id="searchTipeHidden" value="<?= htmlspecialchars($tipe_filter) ?>"/>
     <input type="hidden" name="kelas" id="searchKelasHidden" value="<?= htmlspecialchars($kelas_filter) ?>"/>
     <div class="topbar">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
@@ -1101,6 +1138,7 @@ ob_start();
       <?php
         $reset_qs = [];
         if ($filter !== 'all') $reset_qs[] = 'status=' . urlencode($filter);
+        if ($tipe_filter !== 'all') $reset_qs[] = 'tipe=' . urlencode($tipe_filter);
         if ($kelas_filter !== '') $reset_qs[] = 'kelas=' . urlencode($kelas_filter);
       ?>
       <a href="daftar_anggota.php<?= $reset_qs ? '?' . implode('&', $reset_qs) : '' ?>" id="searchResetBtn" style="font-size:.75rem;color:var(--muted);text-decoration:none;white-space:nowrap;">✕ Reset</a>
@@ -1108,18 +1146,30 @@ ob_start();
     </div>
   </form>
 
-  <div class="kelas-filter-bar">
-    <label for="kelasFilterSelect">Filter Kelas</label>
-    <select id="kelasFilterSelect">
-      <option value="">Semua Kelas (<?= $total_semua_anggota ?> siswa)</option>
-      <?php foreach ($kelas_asal_list as $k_nama => $k_jml): ?>
-        <option value="<?= htmlspecialchars($k_nama) ?>" <?= strcasecmp($kelas_filter, $k_nama) === 0 ? 'selected' : '' ?>>
-          <?= htmlspecialchars($k_nama) ?> (<?= $k_jml ?> siswa)
-        </option>
-      <?php endforeach; ?>
-    </select>
-    <?php if ($kelas_filter !== ''): ?>
-      <button type="button" class="btn-reset-kelas" id="btnResetKelas" onclick="resetFilterKelas()">✕ Reset Kelas</button>
+  <!-- Filter Toolbar Rapi: Dropdown Kategori & Kelas -->
+  <div class="filter-toolbar">
+    <div class="filter-group">
+      <label for="tipeFilterSelect">Kategori:</label>
+      <select id="tipeFilterSelect" onchange="applyKategoriFilter(this.value)">
+        <option value="all" <?= $tipe_filter === 'all' ? 'selected' : '' ?>>Semua Anggota (<?= $total_semua_anggota ?>)</option>
+        <option value="siswa" <?= $tipe_filter === 'siswa' ? 'selected' : '' ?>>Siswa (<?= $total_siswa ?>)</option>
+        <option value="guru" <?= $tipe_filter === 'guru' ? 'selected' : '' ?>>Guru / Pendidik (<?= $total_guru ?>)</option>
+      </select>
+    </div>
+    <div class="filter-group" id="wrapFilterKelas" style="<?= $tipe_filter === 'guru' ? 'display:none;' : '' ?>">
+      <label for="kelasFilterSelect">Kelas:</label>
+      <select id="kelasFilterSelect" onchange="applyKelasFilter(this.value)">
+        <option value="">Semua Kelas (<?= $total_siswa ?> siswa)</option>
+        <?php foreach ($kelas_asal_list as $k_nama => $k_jml): ?>
+          <?php if (strcasecmp($k_nama, 'Guru') === 0) continue; ?>
+          <option value="<?= htmlspecialchars($k_nama) ?>" <?= strcasecmp($kelas_filter, $k_nama) === 0 ? 'selected' : '' ?>>
+            <?= htmlspecialchars($k_nama) ?> (<?= $k_jml ?> siswa)
+          </option>
+        <?php endforeach; ?>
+      </select>
+    </div>
+    <?php if ($kelas_filter !== '' || $tipe_filter !== 'all'): ?>
+      <button type="button" class="btn-reset-kelas" id="btnResetFilter" onclick="resetAllFilters()">✕ Reset Filter</button>
     <?php endif; ?>
   </div>
 
@@ -1128,8 +1178,23 @@ ob_start();
   <div class="content-header">
     <div class="content-title">
       Daftar Anggota
-      <?php if ($kelas_filter !== ''): ?><span class="filter-kelas-badge">Kelas: <?= htmlspecialchars($kelas_filter) ?></span><?php endif; ?>
-      <?php if ($search): ?><span style="font-size:.9rem;color:var(--muted);font-family:'Nunito',sans-serif;"> — hasil: "<?= htmlspecialchars($search) ?>"</span><?php endif; ?>
+      <?php if ($tipe_filter === 'guru'): ?>
+        <span class="filter-kelas-badge filter-badge-guru">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          Guru / Pendidik
+        </span>
+      <?php elseif ($tipe_filter === 'siswa'): ?>
+        <span class="filter-kelas-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+          Siswa
+        </span>
+      <?php endif; ?>
+      <?php if ($kelas_filter !== ''): ?>
+        <span class="filter-kelas-badge">Kelas: <?= htmlspecialchars($kelas_filter) ?></span>
+      <?php endif; ?>
+      <?php if ($search): ?>
+        <span style="font-size:.9rem;color:var(--muted);font-family:'Nunito',sans-serif;"> — hasil: "<?= htmlspecialchars($search) ?>"</span>
+      <?php endif; ?>
     </div>
     <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
       <button type="button" class="btn-manage-kelas btn-naik-kelas" onclick="openNaikKelasModal()">
@@ -1149,17 +1214,18 @@ ob_start();
     </div>
   </div>
 
+  <!-- Hanya satu baris status tabs yang rapi dan bersih -->
   <div class="status-tabs">
     <?php
       $qstr = $search !== "" ? "&q=" . urlencode($search) : "";
       $qstr .= $kelas_filter !== "" ? "&kelas=" . urlencode($kelas_filter) : "";
+      $qstr .= $tipe_filter !== "all" ? "&tipe=" . urlencode($tipe_filter) : "";
       $tabs = [
         "all"      => "Semua (" . array_sum($counts) . ")",
         "approved" => "Aktif (" . $counts["approved"] . ")",
         "rejected" => "Nonaktif (" . $counts["rejected"] . ")",
       ];
       // Tab "Menunggu" hanya ditampilkan jika masih ada data lama berstatus pending
-      // (akun baru sekarang langsung aktif tanpa perlu persetujuan admin).
       if ($counts["pending"] > 0) {
           $tabs = ["all" => $tabs["all"]] + ["pending" => "Menunggu (" . $counts["pending"] . ")"] + array_slice($tabs, 1, null, true);
       }
@@ -1205,13 +1271,26 @@ ob_start();
               </div>
               <div>
                 <div class="cell-name"><?= htmlspecialchars($a["full_name"]) ?></div>
-                <div class="cell-sub"><?= htmlspecialchars($a["email"]) ?></div>
+                <div class="cell-sub">
+                  <?= htmlspecialchars($a["email"]) ?>
+                  <?php if (!empty($a["nik"])): ?>
+                    • <?= strcasecmp($a["kelas"], "Guru") === 0 ? "NIP: " : "NIS: " ?><?= htmlspecialchars($a["nik"]) ?>
+                  <?php endif; ?>
+                </div>
               </div>
             </div>
           </td>
           <td data-label="Kelas">
-            <?php if (strcasecmp($a["kelas"], "Alumni") === 0): ?>
-              <span class="badge-alumni">🎓 Alumni</span>
+            <?php if (strcasecmp($a["kelas"], "Guru") === 0): ?>
+              <span class="badge" style="background:rgba(99,102,241,.18);color:#818cf8;border:1px solid rgba(99,102,241,.35);font-weight:700;padding:3px 8px;border-radius:6px;font-size:.74rem;display:inline-flex;align-items:center;gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Guru / Pendidik
+              </span>
+            <?php elseif (strcasecmp($a["kelas"], "Alumni") === 0): ?>
+              <span class="badge-alumni" style="display:inline-flex;align-items:center;gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+                Alumni
+              </span>
             <?php else: ?>
               <?= htmlspecialchars($a["kelas"]) ?>
             <?php endif; ?>
@@ -1227,7 +1306,10 @@ ob_start();
               <span class="badge badge-rejected">Nonaktif</span>
             <?php endif; ?>
             <?php if (($a["card_status"] ?? "active") === "frozen"): ?>
-              <span class="badge badge-frozen">🔒 Dibekukan (proses Lupa Kartu)</span>
+              <span class="badge badge-frozen" style="display:inline-flex;align-items:center;gap:4px;">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                Dibekukan (proses Lupa Kartu)
+              </span>
             <?php endif; ?>
           </td>
           <td data-label="Aksi">
@@ -1373,8 +1455,9 @@ ob_start();
         </label>
         <div style="display:flex; gap:8px;">
           <input type="text" name="custom_password" id="inputCustomPassword" class="form-input" placeholder="Ketik sandi baru atau klik Acak" required style="flex:1; padding:9px 12px; font-size:.88rem; font-family:monospace;"/>
-          <button type="button" class="act-btn" onclick="generateRandomSandi()" title="Buat Sandi Acak Otomatis" style="background:rgba(216,184,120,.15); color:var(--accent); border:1px solid rgba(216,184,120,.3); padding:8px 12px; font-size:.78rem; font-weight:700; white-space:nowrap; border-radius:8px; cursor:pointer;">
-            🎲 Acak
+          <button type="button" class="act-btn" onclick="generateRandomSandi()" title="Buat Sandi Acak Otomatis" style="background:rgba(216,184,120,.15); color:var(--accent); border:1px solid rgba(216,184,120,.3); padding:8px 12px; font-size:.78rem; font-weight:700; white-space:nowrap; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+            Acak
           </button>
         </div>
         <p style="font-size:.74rem; color:var(--muted); margin-top:6px; line-height:1.4;">
@@ -1408,11 +1491,13 @@ ob_start();
 
     <!-- Navigation Tabs -->
     <div style="display:flex; gap:8px; margin-bottom:14px; border-bottom:1px solid rgba(90,90,110,.15); padding-bottom:12px;">
-      <button type="button" class="tab-naik-btn active" id="tabBtnSemua" onclick="switchNaikTab('semua')">
-        ⚡ Naikkan Semua Kelas Sekaligus
+      <button type="button" class="tab-naik-btn active" id="tabBtnSemua" onclick="switchNaikTab('semua')" style="display:inline-flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m13 2-2 10h4l-2 10 7-12h-4l2-8z"/></svg>
+        Naikkan Semua Kelas Sekaligus
       </button>
-      <button type="button" class="tab-naik-btn" id="tabBtnManual" onclick="switchNaikTab('manual')">
-        🎯 Pindah Per Satu Kelas
+      <button type="button" class="tab-naik-btn" id="tabBtnManual" onclick="switchNaikTab('manual')" style="display:inline-flex;align-items:center;gap:6px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+        Pindah Per Satu Kelas
       </button>
     </div>
 
@@ -1457,7 +1542,7 @@ ob_start();
                 <div style="display:flex; align-items:center; gap:6px; flex:1.2;">
                   <span style="color:var(--accent); font-size:.85rem; font-weight:bold;">➔</span>
                   <select name="target_kelas[<?= htmlspecialchars($item['asal']) ?>]" id="target_promo_<?= $idx ?>" class="form-input" style="padding:5px 8px; font-size:.78rem; height:32px; cursor:pointer; margin-bottom:0;" onchange="hitungTotalSemua()">
-                    <option value="Alumni" <?= strcasecmp($item['tujuan'], 'Alumni') === 0 ? 'selected' : '' ?>>🎓 Alumni (Lulus)</option>
+                    <option value="Alumni" <?= strcasecmp($item['tujuan'], 'Alumni') === 0 ? 'selected' : '' ?>>Alumni (Lulus)</option>
                     <optgroup label="Pilihan Kelas Lanjutan">
                       <?php
                       $found_in_list = false;
@@ -1465,7 +1550,7 @@ ob_start();
                           if (strcasecmp($k['nama_kelas'], $item['tujuan']) === 0) { $found_in_list = true; break; }
                       }
                       if (!$found_in_list && strcasecmp($item['tujuan'], 'Alumni') !== 0 && $item['tujuan'] !== '') {
-                          echo '<option value="' . htmlspecialchars($item['tujuan']) . '" selected>✨ ' . htmlspecialchars($item['tujuan']) . ' (Baru)</option>';
+                          echo '<option value="' . htmlspecialchars($item['tujuan']) . '" selected>' . htmlspecialchars($item['tujuan']) . ' (Baru)</option>';
                       }
                       foreach ($list_kelas as $k):
                           if (strcasecmp($k['nama_kelas'], 'Alumni') === 0) continue;
@@ -1494,8 +1579,9 @@ ob_start();
 
           <div class="modal-footer" style="margin-top:0;">
             <button type="button" class="btn-cancel" onclick="closeNaikKelasModal()">Batal</button>
-            <button type="submit" class="btn-save btn-naik-kelas" id="btnSubmitSemua" style="flex:1.5;">
-              ⚡ Naikkan Semua Kelas Terpilih
+            <button type="submit" class="btn-save btn-naik-kelas" id="btnSubmitSemua" style="flex:1.5; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              Naikkan Semua Kelas Terpilih
             </button>
           </div>
         </form>
@@ -1538,14 +1624,15 @@ ob_start();
         <div class="form-group" style="margin-bottom:16px;">
           <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
             <label class="form-label" style="margin-bottom:0;">Pilih Kelas Baru / Tujuan</label>
-            <button type="button" onclick="setTujuanAlumni()" style="background:none; border:none; color:#10b981; font-size:.72rem; font-weight:700; cursor:pointer; text-decoration:underline;">
-              🎓 Set Jadi Alumni
+            <button type="button" onclick="setTujuanAlumni()" style="background:none; border:none; color:#10b981; font-size:.72rem; font-weight:700; cursor:pointer; text-decoration:underline; display:inline-flex; align-items:center; gap:4px;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>
+              Set Jadi Alumni
             </button>
           </div>
           <select class="form-input" name="kelas_tujuan" id="selectKelasTujuan" required onchange="updateNaikSummary()" style="cursor:pointer;">
             <option value="" disabled selected>-- Pilih Kelas Tujuan --</option>
             <optgroup label="Khusus Kelulusan">
-              <option value="Alumni">🎓 Alumni (Lulus Sekolah)</option>
+              <option value="Alumni">Alumni (Lulus Sekolah)</option>
             </optgroup>
             <optgroup label="Daftar Kelas Tingkat Lanjutan">
               <?php foreach ($list_kelas as $k): ?>
@@ -1572,8 +1659,9 @@ ob_start();
 
         <div class="modal-footer" style="margin-top:0;">
           <button type="button" class="btn-cancel" onclick="closeNaikKelasModal()">Batal</button>
-          <button type="submit" class="btn-save btn-naik-kelas" id="btnSubmitNaikKelas" style="flex:1.5;">
-            🚀 Pindahkan Kelas
+          <button type="submit" class="btn-save btn-naik-kelas" id="btnSubmitNaikKelas" style="flex:1.5; display:inline-flex; align-items:center; justify-content:center; gap:6px;">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            Pindahkan Kelas
           </button>
         </div>
       </form>
@@ -1582,31 +1670,7 @@ ob_start();
 </div>
 
 <script>
-// Sidebar mobile toggle dikelola terpusat oleh settings_include.php
-
-// ─── Modal Edit Profil ───
-function openProfilModal() {
-  document.getElementById('profilModalOverlay').classList.add('open');
-}
-function closeProfilModal() {
-  document.getElementById('profilModalOverlay').classList.remove('open');
-  document.getElementById('inputFotoAdmin').value = '';
-}
-document.getElementById('profilModalOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeProfilModal();
-});
-document.getElementById('inputFotoAdmin').addEventListener('change', function(e) {
-  const file = e.target.files[0];
-  if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const img = document.getElementById('profilPreviewImg');
-    img.src = ev.target.result;
-    img.style.display = 'block';
-    document.getElementById('profilUploadPlaceholder').style.display = 'none';
-  };
-  reader.readAsDataURL(file);
-});
+// Sidebar mobile toggle & modal profil dikelola terpusat oleh settings_include.php & modal_profil_admin.php
 
 function kirimAksi(action, id) {
   document.getElementById('aksiAction').value = action;
@@ -1918,7 +1982,7 @@ function updateNaikSummary() {
   }
 
   if (asalVal.toLowerCase() === tujuanVal.toLowerCase()) {
-    previewText.innerHTML = '<span style="color:#ef4444;font-weight:700;">❌ Kelas asal dan kelas tujuan tidak boleh sama!</span>';
+    previewText.innerHTML = '<span style="color:#ef4444;font-weight:700;">✕ Kelas asal dan kelas tujuan tidak boleh sama!</span>';
     previewDiv.style.background = 'rgba(239,68,68,.1)';
     previewDiv.style.borderColor = 'rgba(239,68,68,.3)';
     if (submitBtn) submitBtn.disabled = true;
@@ -1926,7 +1990,7 @@ function updateNaikSummary() {
   }
 
   if (count === 0) {
-    previewText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">⚠️ Kelas <b>' + escapeHtmlText(asalVal) + '</b> saat ini belum memiliki siswa terdaftar. Tidak ada siswa yang akan dipindahkan.</span>';
+    previewText.innerHTML = '<span style="color:#f59e0b;font-weight:600;">Perhatian: Kelas <b>' + escapeHtmlText(asalVal) + '</b> saat ini belum memiliki siswa terdaftar. Tidak ada siswa yang akan dipindahkan.</span>';
     previewDiv.style.background = 'rgba(245,158,11,.1)';
     previewDiv.style.borderColor = 'rgba(245,158,11,.3)';
     if (submitBtn) submitBtn.disabled = true;
@@ -1935,11 +1999,11 @@ function updateNaikSummary() {
 
   if (submitBtn) submitBtn.disabled = false;
   if (tujuanVal === 'Alumni') {
-    previewText.innerHTML = '🎓 Sebanyak <b style="color:#34d399;font-size:.92rem;">' + count + ' siswa</b> dari kelas <b>' + escapeHtmlText(asalVal) + '</b> akan resmi diubah statusnya menjadi <b>Alumni (Lulus)</b>.';
+    previewText.innerHTML = 'Sebanyak <b style="color:#34d399;font-size:.92rem;">' + count + ' siswa</b> dari kelas <b>' + escapeHtmlText(asalVal) + '</b> akan resmi diubah statusnya menjadi <b>Alumni (Lulus)</b>.';
     previewDiv.style.background = 'rgba(16,185,129,.12)';
     previewDiv.style.borderColor = 'rgba(16,185,129,.35)';
   } else {
-    previewText.innerHTML = '🚀 Sebanyak <b style="color:var(--accent);font-size:.92rem;">' + count + ' siswa</b> dari kelas <b>' + escapeHtmlText(asalVal) + '</b> akan dipindahkan ke kelas <b>' + escapeHtmlText(tujuanVal) + '</b>.';
+    previewText.innerHTML = 'Sebanyak <b style="color:var(--accent);font-size:.92rem;">' + count + ' siswa</b> dari kelas <b>' + escapeHtmlText(asalVal) + '</b> akan dipindahkan ke kelas <b>' + escapeHtmlText(tujuanVal) + '</b>.';
     previewDiv.style.background = 'rgba(216,184,120,.08)';
     previewDiv.style.borderColor = 'rgba(90,90,110,.15)';
   }
@@ -1987,12 +2051,36 @@ function escapeHtmlText(str) {
   });
 }
 
-function resetFilterKelas() {
-  const sel = document.getElementById('kelasFilterSelect');
-  if (sel) {
-    sel.value = '';
-    sel.dispatchEvent(new Event('change'));
+function applyKategoriFilter(val) {
+  const url = new URL(window.location.href);
+  if (val && val !== 'all') {
+    url.searchParams.set('tipe', val);
+  } else {
+    url.searchParams.delete('tipe');
   }
+  // Guru tidak berada di kelas siswa, jadi bersihkan filter kelas jika kategori guru dipilih
+  if (val === 'guru') {
+    url.searchParams.delete('kelas');
+  }
+  window.location.href = url.pathname + (url.search ? url.search : '');
+}
+
+function applyKelasFilter(val) {
+  const url = new URL(window.location.href);
+  if (val) {
+    url.searchParams.set('kelas', val);
+  } else {
+    url.searchParams.delete('kelas');
+  }
+  window.location.href = url.pathname + (url.search ? url.search : '');
+}
+
+function resetAllFilters() {
+  window.location.href = 'daftar_anggota.php';
+}
+
+function resetFilterKelas() {
+  resetAllFilters();
 }
 
 // ─── Live Search (ketik langsung cari, tanpa tombol) ───
@@ -2001,20 +2089,23 @@ function resetFilterKelas() {
   const form        = document.getElementById('searchForm');
   const input       = document.getElementById('searchInput');
   const result      = document.getElementById('searchResultArea');
+  const tipeSelect  = document.getElementById('tipeFilterSelect');
   const kelasSelect = document.getElementById('kelasFilterSelect');
-  const hiddenKelas = document.getElementById('searchKelasHidden');
-  const hiddenStatus= document.getElementById('searchStatusHidden');
   if (!form || !input || !result) return;
 
   let debounceTimer = null;
   let currentRequest = null;
 
-  form.addEventListener('submit', e => e.preventDefault());
+  form.addEventListener('submit', e => {
+    e.preventDefault();
+    runSearch(input.value);
+  });
 
   function buildParams(query) {
     const params = new URLSearchParams();
     if (query) params.set('q', query);
     if (currentFilterStatus && currentFilterStatus !== 'all') params.set('status', currentFilterStatus);
+    if (tipeSelect && tipeSelect.value && tipeSelect.value !== 'all') params.set('tipe', tipeSelect.value);
     if (kelasSelect && kelasSelect.value) params.set('kelas', kelasSelect.value);
     return params;
   }
@@ -2062,27 +2153,11 @@ function resetFilterKelas() {
       e.preventDefault();
       const st = tabLink.dataset.status || 'all';
       currentFilterStatus = st;
-      if (hiddenStatus) {
-        if (st === 'all') {
-          hiddenStatus.remove();
-        } else {
-          hiddenStatus.value = st;
-        }
-      }
+      const hiddenStatus = document.getElementById('searchStatusHidden');
+      if (hiddenStatus) hiddenStatus.value = st;
       runSearch(input.value);
     }
   });
-
-  if (kelasSelect) {
-    kelasSelect.addEventListener('change', () => {
-      if (hiddenKelas) hiddenKelas.value = kelasSelect.value;
-      const btnReset = document.getElementById('btnResetKelas');
-      if (btnReset) {
-        btnReset.style.display = kelasSelect.value ? 'inline-flex' : 'none';
-      }
-      runSearch(input.value);
-    });
-  }
 })();
 </script>
 <?php require_once 'modal_profil_admin.php';

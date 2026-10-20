@@ -3,7 +3,7 @@
 ?>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Nunito:wght@300;400;600;700;800&family=Cormorant+Garamond:ital,wght@0,600;0,700;1,400&family=Merriweather:wght@300;400;700&family=Poppins:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
 <script>
 (function(){
   // Baca settings dari localStorage
@@ -95,7 +95,10 @@
   root.style.setProperty('--font-family', fontMap[fontFam] || fontMap['Outfit']);
 
   // Animation & Mode Lite
-  root.style.setProperty('--trans-speed', animation ? '.2s' : '0s');
+  root.style.setProperty('--trans-speed', animation ? '.28s' : '0s');
+  root.style.setProperty('--ease-smooth', 'cubic-bezier(0.22, 1, 0.36, 1)');
+  root.style.setProperty('--ease-out', 'cubic-bezier(0.16, 1, 0.3, 1)');
+  root.style.setProperty('--trans', '0.28s cubic-bezier(0.22, 1, 0.36, 1)');
 
   // Class pada html
   var classList = [mode, 'ui-' + uiKey];
@@ -282,9 +285,26 @@
   /* ── Spacing compact/relaxed ── */
   html body .section-card, html body .stats-card { padding: calc(var(--spacing) * 1.1) !important; }
 
-  /* Transitions */
+  /* ── Variabel & Transisi Halus Global (Silky Smooth Motion Suite) ── */
+  :root {
+    --ease-out:         cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-smooth:      cubic-bezier(0.22, 1, 0.36, 1);
+    --ease-spring:      cubic-bezier(0.34, 1.25, 0.64, 1);
+    --ease-in-out:      cubic-bezier(0.4, 0, 0.2, 1);
+    --trans-fast:       0.18s cubic-bezier(0.22, 1, 0.36, 1);
+    --trans-normal:     0.28s cubic-bezier(0.22, 1, 0.36, 1);
+    --trans-slow:       0.42s cubic-bezier(0.16, 1, 0.3, 1);
+    --trans-bounce:     0.36s cubic-bezier(0.34, 1.25, 0.64, 1);
+  }
+
+  /* Smooth Scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Transisi warna & background yang luwes tanpa kedipan */
   body, .sidebar, .section-card, .stats-card, .admin-card, .book-card, .nav-item {
-    transition: background var(--trans-speed) ease, color var(--trans-speed) ease !important;
+    transition: background var(--trans-normal), color var(--trans-normal), border-color var(--trans-normal) !important;
   }
 
   /* ── Stabilitas Tata Letak & Scrollbar (Cegah Loncat Antar Halaman) ── */
@@ -311,7 +331,7 @@
   ::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.22) !important;
     border-radius: 10px !important;
-    transition: background .2s ease !important;
+    transition: background .25s ease !important;
   }
   ::-webkit-scrollbar-thumb:hover {
     background: var(--accent, #d8b878) !important;
@@ -350,28 +370,143 @@
     animation-duration: 0s !important;
   }
   ::view-transition-old(app-main) {
-    animation: 0.12s cubic-bezier(0.4, 0, 1, 1) both pageFadeOut;
+    animation: 0.18s cubic-bezier(0.4, 0, 1, 1) both pageFadeOut;
   }
   ::view-transition-new(app-main) {
-    animation: 0.22s cubic-bezier(0.16, 1, 0.3, 1) both pageFadeIn;
+    animation: 0.32s cubic-bezier(0.16, 1, 0.3, 1) both pageFadeIn;
   }
   @keyframes pageFadeOut {
-    from { opacity: 1; transform: translateY(0); }
-    to   { opacity: 0; transform: translateY(-4px); }
+    from { opacity: 1; transform: translateY(0) scale(1); }
+    to   { opacity: 0; transform: translateY(-8px) scale(0.995); }
   }
   @keyframes pageFadeIn {
-    from { opacity: 0.15; transform: translateY(4px); }
-    to   { opacity: 1;    transform: translateY(0); }
+    from { opacity: 0; transform: translateY(12px) scale(0.995); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
 
-  /* ── Hilangkan flash/blink pada body, transisikan hanya konten (.main) ── */
+  /* ── Transisi konten (.main) saat halaman dimuat ── */
   body {
     animation: none !important;
   }
   @media (prefers-reduced-motion: no-preference) {
     .main {
-      animation: pageFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+      animation: pageFadeIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) both;
     }
+  }
+
+  /* ── Perhalus Interaksi Kartu (Cards) di Seluruh Halaman ── */
+  .book-card,
+  .book-card-item,
+  .shelf-cover,
+  .spotlight-card,
+  .section-card,
+  .stats-card,
+  .admin-card {
+    will-change: transform, box-shadow;
+    transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+                border-color 0.24s ease,
+                background-color 0.24s ease !important;
+  }
+  .book-card:hover,
+  .book-card-item:hover,
+  .shelf-cover:hover {
+    transform: translateY(-3.5px) !important;
+  }
+  .book-card:active,
+  .book-card-item:active,
+  .shelf-cover:active {
+    transform: translateY(-1px) scale(0.988) !important;
+    transition-duration: 0.1s !important;
+  }
+
+  /* ── Perhalus Tombol & Elemen Interaktif (Buttons & Controls) ── */
+  .btn,
+  .btn-primary,
+  .btn-secondary,
+  .btn-submit,
+  .btn-add,
+  .btn-search,
+  .tab-btn,
+  .filter-btn,
+  .btn-detail,
+  .btn-mode,
+  .btn-musik {
+    will-change: transform;
+    transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                background 0.2s ease,
+                border-color 0.2s ease,
+                color 0.2s ease !important;
+  }
+  .btn:hover,
+  .btn-primary:hover,
+  .btn-secondary:hover,
+  .btn-submit:hover,
+  .btn-add:hover,
+  .btn-search:hover,
+  .tab-btn:hover,
+  .filter-btn:hover {
+    transform: translateY(-1.5px);
+  }
+  .btn:active,
+  .btn-primary:active,
+  .btn-secondary:active,
+  .btn-submit:active,
+  .btn-add:active,
+  .btn-search:active,
+  .tab-btn:active,
+  .filter-btn:active {
+    transform: scale(0.975) !important;
+    transition-duration: 0.1s !important;
+  }
+
+  /* ── Perhalus Modal & Dialog di Seluruh Halaman ── */
+  .modal-overlay,
+  .overlay,
+  .detail-modal-overlay,
+  .sidebar-overlay,
+  .modal-backdrop {
+    transition: opacity 0.32s cubic-bezier(0.22, 1, 0.36, 1),
+                backdrop-filter 0.32s ease !important;
+  }
+  .modal,
+  .detail-modal,
+  .modal-box,
+  .modal-content,
+  .modal-profil {
+    animation-duration: 0.34s !important;
+    animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important;
+    will-change: transform, opacity;
+  }
+  @keyframes modalIn {
+    from {
+      opacity: 0;
+      transform: scale(0.97) translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+  @keyframes modalSlideUp {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* ── Perhalus Input, Select & Form Focus ── */
+  input,
+  select,
+  textarea {
+    transition: border-color 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                box-shadow 0.24s cubic-bezier(0.22, 1, 0.36, 1),
+                background-color 0.2s ease !important;
   }
 
   /* ══════════════════════════════════════════════════════════════
@@ -386,7 +521,7 @@
     cursor: pointer !important;
     align-items: center !important;
     justify-content: center !important;
-    transition: border-color .2s ease, box-shadow .2s ease !important;
+    transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.22s ease, box-shadow 0.25s ease, background-color 0.22s ease !important;
     background: #161e27 !important;
     border: 1.5px solid var(--accent, #d8b878) !important;
     box-shadow: 0 4px 16px rgba(0, 0, 0, .45) !important;
@@ -399,19 +534,20 @@
     color: var(--accent, #d8b878) !important;
     stroke-width: 2.3px !important;
     display: block !important;
-    transition: stroke .2s ease, transform .2s ease !important;
+    transition: stroke .2s ease, transform 0.25s cubic-bezier(0.22, 1, 0.36, 1) !important;
   }
   .sidebar-toggle:hover {
     background: rgba(216, 184, 120, 0.18) !important;
     border-color: var(--accent2, #f0d9a8) !important;
-    transform: scale(1.05) !important;
+    transform: scale(1.04) !important;
   }
   .sidebar-toggle:hover svg {
     stroke: var(--accent2, #f0d9a8) !important;
     color: var(--accent2, #f0d9a8) !important;
   }
   .sidebar-toggle:active {
-    transform: scale(0.92) !important;
+    transform: scale(0.96) !important;
+    transition-duration: 0.1s !important;
   }
 
   /* Menu Burger pada Mode Terang (Light Mode) */
@@ -1409,7 +1545,7 @@
       height: 100dvh !important;
       z-index: 10010 !important;
       transform: translateX(-100%) !important;
-      transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.28s, box-shadow 0.28s !important;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.35s, box-shadow 0.35s !important;
       box-shadow: none !important;
       visibility: hidden !important;
       pointer-events: none !important;
@@ -1432,7 +1568,7 @@
       opacity: 0 !important;
       visibility: hidden !important;
       pointer-events: none !important;
-      transition: opacity 0.25s ease, visibility 0.25s ease !important;
+      transition: opacity 0.32s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.32s !important;
     }
     .sidebar-overlay.open {
       opacity: 1 !important;

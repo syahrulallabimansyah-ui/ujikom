@@ -474,15 +474,26 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     var links = document.querySelectorAll([
       'a.sidebar-btn[href*="pengajuan_buku.php"]',
       '.sidebar a[href*="pengajuan_buku.php"]',
-      'a.nav-item[href*="halaman_admin.php"]'
+      'a[href="pengajuan_buku.php"]'
     ].join(', '));
+
     links.forEach(function(link) {
-      var existingBadge = link.querySelector('.aksa-notif-badge');
+      // Cari semua elemen badge yang mungkin ada (baik dari PHP atau JS)
+      var badges = link.querySelectorAll('.aksa-notif-badge, .badge-nav, span[style*="border-radius:20px"], span[style*="border-radius: 20px"]');
+
       if (count > 0) {
-        if (existingBadge) {
-          existingBadge.textContent = count;
-          existingBadge.style.display = 'inline-block';
+        if (badges.length > 0) {
+          // Pakai badge pertama
+          var badge = badges[0];
+          badge.className = 'aksa-notif-badge';
+          badge.textContent = count;
+          badge.style.display = 'inline-block';
+          // Hapus badge duplikat bila ada lebih dari satu
+          for (var i = 1; i < badges.length; i++) {
+            badges[i].remove();
+          }
         } else {
+          // Buat badge baru jika belum ada
           var span = document.createElement('span');
           span.className = 'aksa-notif-badge';
           span.style.cssText = "margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;";
@@ -490,9 +501,10 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
           link.appendChild(span);
         }
       } else {
-        if (existingBadge) {
-          existingBadge.style.display = 'none';
-        }
+        // Jika count 0, sembunyikan semua badge
+        badges.forEach(function(b) {
+          b.style.display = 'none';
+        });
       }
     });
   }
@@ -524,7 +536,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     bookTitle.textContent = data.judul || 'Judul Buku Tidak Diketahui';
     var authText = data.penulis ? ('Penulis: ' + data.penulis) : '-';
     if (data.rak) {
-      bookAuth.innerHTML = escapeHtml(authText) + ' &middot; <span style="color:var(--accent,#d8b878);font-weight:700;">📍 ' + escapeHtml(data.rak) + '</span>';
+      bookAuth.innerHTML = escapeHtml(authText) + ' &middot; <span style="color:var(--accent,#d8b878);font-weight:700;">' + escapeHtml(data.rak) + '</span>';
     } else {
       bookAuth.textContent = authText;
     }
@@ -538,9 +550,9 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     batasKem.textContent  = data.batas_kembali_fmt || data.batas_kembali || '-';
 
     if (data.waktu_pengambilan === 'nanti') {
-      waktuAmb.innerHTML = '<span class="notif-badge-waktu nanti">📅 Ambil Nanti</span>' + (data.catatan_pengambilan ? ' <span style="font-size:.78rem;color:var(--muted);margin-left:4px;">(' + escapeHtml(data.catatan_pengambilan) + ')</span>' : '');
+      waktuAmb.innerHTML = '<span class="notif-badge-waktu nanti">Ambil Nanti</span>' + (data.catatan_pengambilan ? ' <span style="font-size:.78rem;color:var(--muted);margin-left:4px;">(' + escapeHtml(data.catatan_pengambilan) + ')</span>' : '');
     } else {
-      waktuAmb.innerHTML = '<span class="notif-badge-waktu sekarang">⚡ Ambil Sekarang</span>';
+      waktuAmb.innerHTML = '<span class="notif-badge-waktu sekarang">Ambil Sekarang</span>';
     }
 
     if (countMenunggu > 1) {

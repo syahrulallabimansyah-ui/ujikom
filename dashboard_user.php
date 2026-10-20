@@ -35,7 +35,7 @@ if (!$user) {
 }
 
 // ─── Pengaturan denda ───
-$denda_per_hari = 5000;
+$denda_per_hari = 1000;
 $denda_aktif    = 0;
 $pgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('denda_per_hari','denda_aktif')");
 if ($pgt) {
@@ -460,10 +460,10 @@ ob_start();
     .mc-credvalue { font-family: 'JetBrains Mono', monospace; font-size: .76rem; font-weight: 600; color: #fff; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .mc-credvalue.muted { color: #e0ac78; font-weight: 500; font-size: .7rem; }
 
-    .mc-qrwrap { flex-shrink: 0; text-align: center; }
-    .mc-qrbox { background: #fff; padding: 5px; border-radius: 8px; line-height: 0; }
-    .mc-qrbox img { display: block; width: 52px; height: 52px; }
-    .mc-noanggota { font-family: 'JetBrains Mono', monospace; font-size: .6rem; color: #d8d8e8; margin-top: 5px; letter-spacing: .03em; }
+    .mc-qrwrap { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; text-align: center; }
+    .mc-qrbox { background: #fff; padding: 5px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; box-sizing: border-box; line-height: 0; box-shadow: 0 3px 8px rgba(0,0,0,.2); }
+    .mc-qrbox img { display: block; width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; }
+    .mc-noanggota { font-family: 'JetBrains Mono', monospace; font-size: .6rem; color: #d8d8e8; margin-top: 5px; letter-spacing: .03em; white-space: nowrap; }
 
     /* Shelf Mini */
     .shelf-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -480,11 +480,11 @@ ob_start();
     /* Modal Detail Buku */
     .detail-overlay { position:fixed; inset:0; z-index:800; background:rgba(0,0,0,.7); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:16px; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:var(--card); border:1px solid var(--card-border); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:var(--shadow-md); position:relative; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; animation:modalIn .3s cubic-bezier(.16,1,.3,1) both; }
+    .detail-modal { background:var(--card); border:1px solid var(--card-border); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:540px; max-height:90vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:var(--shadow-md); position:relative; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; animation:modalIn .34s cubic-bezier(.16,1,.3,1) both; }
     .detail-modal::-webkit-scrollbar { width:4px; }
     .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
     .detail-modal::-webkit-scrollbar-track { background:transparent; }
-    @keyframes modalIn { from{opacity:0;transform:scale(.95) translateY(24px)} to{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes modalIn { from{opacity:0;transform:scale(.975) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
     @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
     .detail-loading { padding:40px; text-align:center; color:var(--muted); font-size:.85rem; }
     .detail-close-btn { position:absolute; top:12px; right:12px; width:40px; height:40px; border-radius:50%; border:2px solid var(--accent,#d8b878); background:rgba(18,24,32,0.92); color:var(--accent,#d8b878); font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .2s, transform .15s, border-color .2s; box-shadow:0 4px 14px rgba(0,0,0,.6); z-index:10; }
@@ -832,7 +832,7 @@ ob_start();
               </div>
               <div class="loan-info">
                 <div class="loan-title"><?= htmlspecialchars($p["judul"] ?? "Buku Perpustakaan") ?></div>
-                <div class="loan-author">✍️ <?= htmlspecialchars($p["penulis"] ?? "Penulis tidak diketahui") ?></div>
+                <div class="loan-author"><?= htmlspecialchars($p["penulis"] ?? "Penulis tidak diketahui") ?></div>
                 <div class="loan-dates">
                   <span>Pinjam: <strong><?= $tgl_pinjam ?></strong></span>
                   <span>·</span>
@@ -842,14 +842,14 @@ ob_start();
               <div>
                 <?php if ($is_late): ?>
                   <span class="loan-status-badge late" style="flex-direction:column;align-items:flex-end;gap:1px;text-align:right;">
-                    <span>⚠ Terlambat <?= $diff_days ?> Hari</span>
+                    <span>Terlambat <?= $diff_days ?> Hari</span>
                     <?php if ($denda_aktif && $diff_days > 0): ?>
                       <span style="font-size:.62rem;opacity:.9;">Denda: Rp <?= number_format($diff_days * $denda_per_hari, 0, ',', '.') ?></span>
                     <?php endif; ?>
                   </span>
                 <?php else: ?>
                   <span class="loan-status-badge ontime">
-                    ✓ Aktif Dipinjam
+                    Aktif Dipinjam
                   </span>
                 <?php endif; ?>
               </div>
@@ -970,7 +970,11 @@ ob_start();
             </div>
             <div style="min-width:0;">
               <div class="mc-name"><?= htmlspecialchars($user["full_name"]) ?></div>
-              <div class="mc-meta">Kelas <?= htmlspecialchars($user["kelas"] ?: "Umum") ?></div>
+              <?php
+              $raw_k = $user["kelas"] ?? "";
+              $disp_k = (stripos($raw_k, "kelas ") === 0) ? trim(substr($raw_k, 6)) : $raw_k;
+              ?>
+              <div class="mc-meta"><?= strcasecmp($raw_k, "Guru") === 0 ? "Tenaga Pendidik / Guru" : ("Kelas " . htmlspecialchars($disp_k ?: "Umum")) ?></div>
             </div>
           </div>
 
@@ -1086,7 +1090,7 @@ ob_start();
           </div>
           <div class="detail-body">
             <div class="detail-title">${b.judul}</div>
-            <div class="detail-author">✍️ ${b.penulis || 'Penulis tidak diketahui'} · Kategori: ${b.genre || 'Umum'}</div>
+            <div class="detail-author">${b.penulis || 'Penulis tidak diketahui'} · Kategori: ${b.genre || 'Umum'}</div>
             ${b.rak ? `<div style="font-size:.78rem;color:var(--accent,#d8b878);margin-top:6px;display:flex;align-items:center;gap:6px;"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>Lokasi: <strong>${b.rak}</strong></div>` : ''}
             <div class="detail-desc detail-sinopsis${b.sinopsis && b.sinopsis.length > 300 ? ' sinopsis-collapsed' : ''}" id="sinopsis_${b.id}">${b.sinopsis ? b.sinopsis.replace(/\\n/g, '<br>') : 'Sinopsis belum tersedia.'}</div>${b.sinopsis && b.sinopsis.length > 300 ? `<button class="sinopsis-toggle-btn" onclick="toggleSinopsis('sinopsis_${b.id}',this)">Lihat Selengkapnya ▾</button>` : ''}
             ${b.stok > 0

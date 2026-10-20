@@ -54,14 +54,18 @@ $grace_period   = (int)getSetting($conn, 'denda_grace_period', '0');
 // ─── Helper: hitung denda ───
 if (!function_exists('hitungDenda')) {
     function hitungDenda(string $batas_kembali, string $waktu_kembali, bool $aktif, int $per_hari, int $grace): array {
-        if (!$aktif) return ['hari' => 0, 'total' => 0];
-        $batas  = new DateTimeImmutable($batas_kembali);
-        $kembali = new DateTimeImmutable($waktu_kembali);
-        if ($kembali <= $batas) return ['hari' => 0, 'total' => 0];
-        $diff  = $batas->diff($kembali);
-        $hari  = $diff->days;
-        $hari_denda = max(0, $hari - $grace);
-        return ['hari' => $hari, 'total' => $hari_denda * $per_hari];
+        if (!$aktif || trim($batas_kembali) === '' || trim($waktu_kembali) === '') return ['hari' => 0, 'total' => 0];
+        try {
+            $batas   = new DateTimeImmutable($batas_kembali);
+            $kembali = new DateTimeImmutable($waktu_kembali);
+            if ($kembali <= $batas) return ['hari' => 0, 'total' => 0];
+            $diff    = $batas->diff($kembali);
+            $hari    = (int)$diff->days;
+            $hari_denda = max(0, $hari - $grace);
+            return ['hari' => $hari, 'total' => $hari_denda * $per_hari];
+        } catch (\Throwable $e) {
+            return ['hari' => 0, 'total' => 0];
+        }
     }
 }
 
@@ -292,7 +296,7 @@ function pesanPengingatWa(string $nama, string $judul, string $batasKembali, int
     if ($denda > 0) {
         $msg .= 'Estimasi denda saat ini: Rp ' . number_format($denda, 0, ',', '.') . ".\n";
     }
-    $msg .= 'Mohon segera dikembalikan ke perpustakaan ya. Terima kasih 🙏';
+    $msg .= 'Mohon segera dikembalikan ke perpustakaan ya. Terima kasih.';
     return $msg;
 }
 
@@ -558,8 +562,8 @@ ob_start();
     /* MODAL */
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:500; align-items:center; justify-content:center; }
     .modal-overlay.open { display:flex; }
-    .modal { background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:14px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.25); animation:modalIn .25s cubic-bezier(.22,1,.36,1) both; padding:28px 28px 24px; margin:16px; }
-    @keyframes modalIn { from { opacity:0; transform:scale(.94) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    .modal { background:var(--card,#121820); border:1px solid var(--border-color,rgba(216,184,120,.18)); border-radius:14px; width:100%; max-width:400px; box-shadow:0 20px 60px rgba(0,0,0,.25); animation:modalIn .32s cubic-bezier(.16,1,.3,1) both; padding:28px 28px 24px; margin:16px; }
+    @keyframes modalIn { from { opacity:0; transform:scale(.975) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
     .modal-title { font-family:'Cormorant Garamond',serif; font-size:1.25rem; font-weight:700; color:var(--text); margin-bottom:8px; }
     .modal-desc  { font-size:.82rem; color:var(--muted); font-weight:600; margin-bottom:14px; line-height:1.5; }
     /* Denda info di modal */
@@ -674,7 +678,7 @@ ob_start();
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
     Pengajuan Buku
     <?php if ($cnt_aju_badge > 0): ?>
-      <span style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn active" href="telah_dipinjam.php">
@@ -682,7 +686,7 @@ ob_start();
     Telah Dipinjam
   </a>
   <a class="sidebar-btn" href="pengaturan_denda.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
     Pengaturan Denda
   </a>
   <a class="sidebar-btn" href="pengaturan_musik.php">
@@ -707,7 +711,7 @@ ob_start();
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
-    <?= $msg_type === 'success' ? '✅' : ($msg_type === 'warning' ? '⚠️' : '❌') ?> <?= htmlspecialchars($msg) ?>
+    <span style="font-weight:bold;margin-right:4px;"><?= $msg_type === 'success' ? '✓' : '✕' ?></span> <?= htmlspecialchars($msg) ?>
   </div>
   <?php endif; ?>
 
@@ -737,9 +741,9 @@ ob_start();
   <div class="tab-bar">
     <?php
     $tabs = [
-      'dipinjam'     => ['label' => '📖 Sedang Dipinjam'],
-      'dikembalikan' => ['label' => '✅ Dikembalikan'],
-      'riwayat'      => ['label' => '📋 Semua Riwayat'],
+      'dipinjam'     => ['label' => 'Sedang Dipinjam'],
+      'dikembalikan' => ['label' => 'Dikembalikan'],
+      'riwayat'      => ['label' => 'Semua Riwayat'],
     ];
     foreach ($tabs as $key => $data):
       $active = $tab === $key ? 'active' : '';
@@ -825,15 +829,15 @@ ob_start();
         </div>
         <div class="pem-info">
           <?php if ($isDipinjam && $isTerlambat): ?>
-            <span class="status-chip chip-terlambat">⚠ Terlambat</span>
+            <span class="status-chip chip-terlambat">Terlambat</span>
           <?php elseif ($isDipinjam): ?>
-            <span class="status-chip chip-dipinjam">📖 Dipinjam</span>
+            <span class="status-chip chip-dipinjam">Dipinjam</span>
           <?php else: ?>
-            <span class="status-chip chip-kembali">✅ Dikembalikan</span>
+            <span class="status-chip chip-kembali">Dikembalikan</span>
             <?php if ($denda_sudah > 0 && $status_denda === 'belum_bayar'): ?>
-              <span class="denda-status-chip denda-chip-belum">⚠ Belum Bayar</span>
+              <span class="denda-status-chip denda-chip-belum">Belum Bayar</span>
             <?php elseif ($denda_sudah > 0 && $status_denda === 'lunas'): ?>
-              <span class="denda-status-chip denda-chip-lunas">✅ Lunas</span>
+              <span class="denda-status-chip denda-chip-lunas">Lunas</span>
             <?php endif; ?>
           <?php endif; ?>
 
@@ -876,14 +880,14 @@ ob_start();
       <!-- Denda Info Box -->
       <?php if ($isDipinjam && $isTerlambat && $preview_denda > 0 && $denda_aktif): ?>
       <div class="denda-box preview">
-        <div class="denda-title">⚠ Estimasi Denda Saat Ini</div>
+        <div class="denda-title">Estimasi Denda Saat Ini</div>
         <div class="denda-nominal">Rp <?= number_format($preview_denda, 0, ',', '.') ?></div>
         <div class="denda-sub">Bertambah Rp <?= number_format($denda_per_hari, 0, ',', '.') ?>/hari sampai dikembalikan</div>
       </div>
       <?php elseif (!$isDipinjam && $denda_sudah > 0): ?>
       <div class="denda-box <?= $status_denda === 'lunas' ? 'lunas' : '' ?>">
         <div class="denda-title <?= $status_denda === 'lunas' ? 'no-denda' : '' ?>">
-          <?= $status_denda === 'lunas' ? '✅ Denda Lunas' : '💰 Denda Keterlambatan' ?>
+          <?= $status_denda === 'lunas' ? 'Denda Lunas' : 'Denda Keterlambatan' ?>
           <?= $terlambat_hari_sudah > 0 ? "($terlambat_hari_sudah hari)" : '' ?>
         </div>
         <div class="denda-nominal <?= $status_denda === 'lunas' ? 'no-denda' : '' ?>">
@@ -900,7 +904,7 @@ ob_start();
           <?php if ($isTerlambat): ?>
             <?php if ($waSudahDikirim): ?>
             <div class="wa-status-row">
-              <span class="wa-status-sent">✅ WA sudah dikirim hari ini</span>
+              <span class="wa-status-sent">WA sudah dikirim hari ini</span>
               <button type="button" class="btn-tandai-wa" onclick="tandaiWa(<?= $pem['id'] ?>, 0)">Batalkan</button>
             </div>
             <?php endif; ?>
@@ -912,7 +916,7 @@ ob_start();
               Kirim Pengingat WA
             </a>
             <?php elseif (!$waSudahDikirim): ?>
-            <div class="btn-wa-disabled" title="No HP anggota belum tercatat di akunnya">📵 No HP anggota belum diisi</div>
+            <div class="btn-wa-disabled" title="No HP anggota belum tercatat di akunnya">No HP anggota belum diisi</div>
             <?php endif; ?>
           <?php endif; ?>
         <button class="btn-kembalikan <?= ($isTerlambat && $preview_denda > 0) ? 'has-denda' : '' ?>"
@@ -924,13 +928,13 @@ ob_start();
             <?= $preview_denda ?>,
             '<?= htmlspecialchars(addslashes($sisa['label'] ?? '')) ?>'
           )">
-          <?= ($isTerlambat && $preview_denda > 0) ? '⚠ Kembalikan + Catat Denda' : '✅ Kembalikan Buku' ?>
+          <?= ($isTerlambat && $preview_denda > 0) ? 'Kembalikan + Catat Denda' : 'Kembalikan Buku' ?>
         </button>
         <?php else: ?>
-        <span class="returned-label">✅ Buku telah dikembalikan</span>
+        <span class="returned-label">Buku telah dikembalikan</span>
         <button class="btn-hapus-riwayat"
           onclick="konfirmasiHapusRiwayat(<?= $pem['id'] ?>, '<?= htmlspecialchars(addslashes($pem['judul'])) ?>', '<?= htmlspecialchars(addslashes($pem['nama_peminjam'])) ?>')">
-          🗑 Hapus Riwayat
+          Hapus Riwayat
         </button>
         <?php endif; ?>
       </div>
@@ -969,7 +973,7 @@ ob_start();
       <input type="hidden" name="action"  value="kembalikan"/>
       <input type="hidden" name="pem_id"  id="inputPemId"/>
       <div class="modal-footer">
-        <button type="submit" class="btn-confirm" id="btnKonfirmasi">✅ Ya, Kembalikan</button>
+        <button type="submit" class="btn-confirm" id="btnKonfirmasi">Ya, Kembalikan</button>
         <button type="button" class="btn-cancel-modal" onclick="tutupKembaliModal()">Batal</button>
       </div>
     </form>
@@ -985,7 +989,7 @@ ob_start();
       <input type="hidden" name="action"  value="hapus_riwayat"/>
       <input type="hidden" name="pem_id"  id="inputHapusRiwayatId"/>
       <div class="modal-footer">
-        <button type="submit" class="btn-confirm" style="background:#dc2626;">🗑 Ya, Hapus</button>
+        <button type="submit" class="btn-confirm" style="background:#dc2626;">Ya, Hapus</button>
         <button type="button" class="btn-cancel-modal" onclick="tutupHapusRiwayatModal()">Batal</button>
       </div>
     </form>
@@ -1023,7 +1027,7 @@ function cekKonfirmasi() {
   const pw1=document.getElementById('pwNew'),pw2=document.getElementById('pwConfirm'),lb=document.getElementById('pwMatchLabel');
   if(!pw1||!pw2||!lb) return;
   if(!pw2.value){lb.textContent='';return;}
-  lb.textContent=pw1.value===pw2.value?'✅ Kata sandi cocok':'❌ Tidak cocok';
+  lb.textContent=pw1.value===pw2.value?'Kata sandi cocok':'Tidak cocok';
   lb.style.color=pw1.value===pw2.value?'#22c55e':'#ef4444';
 }
 function closeProfilModal() {
@@ -1065,21 +1069,21 @@ function konfirmasiKembali(pemId, judul, peminjam, terlambat, dendaEstimasi, sis
     box.style.display = 'block';
     box.className = 'modal-denda-box';
     label.className = 'modal-denda-label';
-    label.textContent = '⚠ Denda akan dicatat: ' + sisaLabel;
+    label.textContent = 'Denda akan dicatat: ' + sisaLabel;
     val.className = 'modal-denda-val';
     val.textContent = formatRupiah(dendaEstimasi);
     sub.textContent = 'Denda akan tersimpan dengan status "Belum Bayar". Tandai lunas di halaman Pengaturan Denda.';
-    btn.textContent = '⚠ Kembalikan & Catat Denda';
+    btn.textContent = 'Kembalikan & Catat Denda';
     btn.className = 'btn-confirm denda';
   } else {
     box.style.display = 'block';
     box.className = 'modal-denda-box no-denda';
     label.className = 'modal-denda-label no-denda';
-    label.textContent = '✅ Tidak ada denda';
+    label.textContent = 'Tidak ada denda';
     val.className = 'modal-denda-val no-denda';
     val.textContent = 'Rp 0';
     sub.textContent = 'Buku dikembalikan tepat waktu.';
-    btn.textContent = '✅ Ya, Kembalikan';
+    btn.textContent = 'Ya, Kembalikan';
     btn.className = 'btn-confirm';
   }
 

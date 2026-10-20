@@ -97,9 +97,16 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
         $error = "Pilihan kelas wajib dipilih.";
     } elseif ($new_email === "" || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
         $error = "Alamat email tidak valid.";
-    } elseif (!str_ends_with(strtolower($new_email), "@student.smkn1rongga.sch.id")) {
-        $error = "Email wajib menggunakan akun siswa resmi (@student.smkn1rongga.sch.id).";
-    } elseif ($new_no_hp !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $new_no_hp)) {
+    } else {
+        $email_lower = strtolower($new_email);
+        $is_student  = str_ends_with($email_lower, "@student.smkn1rongga.sch.id");
+        $is_school   = str_ends_with($email_lower, "@smkn1rongga.sch.id");
+        $is_gmail    = str_ends_with($email_lower, "@gmail.com");
+        if (!$is_student && !$is_school && !$is_gmail) {
+            $error = "Email dapat menggunakan akun sekolah (@student.smkn1rongga.sch.id / @smkn1rongga.sch.id) atau akun Gmail (@gmail.com).";
+        }
+    }
+    if ($error === "" && $new_no_hp !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $new_no_hp)) {
         $error = "Nomor HP tidak valid.";
     } elseif ($want_change_password && $old_password === "") {
         $error = "Kata sandi lama wajib dimasukkan untuk mengubah kata sandi.";
@@ -811,11 +818,11 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
             <input type="text" id="noHpInput" name="no_hp" placeholder="Contoh: 081234567890" value="<?= htmlspecialchars($form_data['no_hp']) ?>">
           </div>
           <div class="field">
-            <label for="emailInput">Alamat Email Siswa</label>
+            <label for="emailInput"><?= strcasecmp($user["kelas"], "Guru") === 0 ? "Alamat Email Guru" : "Alamat Email Siswa" ?></label>
             <input type="email" id="emailInput" name="email" value="<?= htmlspecialchars($form_data['email']) ?>"
-                   pattern="[a-zA-Z0-9._%+\-]+@student\.smkn1rongga\.sch\.id$"
-                   title="Email harus menggunakan domain @student.smkn1rongga.sch.id" required>
-            <p class="field-hint" style="color:var(--accent,#d8b878);">Wajib menggunakan akun resmi berakhiran @student.smkn1rongga.sch.id</p>
+                   pattern="[a-zA-Z0-9._%+\-]+@((student\.)?smkn1rongga\.sch\.id|gmail\.com)$"
+                   title="Email dapat menggunakan akun @student.smkn1rongga.sch.id, @smkn1rongga.sch.id, atau @gmail.com" required>
+            <p class="field-hint" style="color:var(--accent,#d8b878);">Dapat menggunakan akun resmi sekolah (@student.smkn1rongga.sch.id / @smkn1rongga.sch.id) atau @gmail.com</p>
           </div>
         </div>
 
@@ -842,7 +849,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
           </div>
           <div class="readonly-item">
             <div class="readonly-label">
-              <span>NIS Terdaftar</span>
+              <span><?= strcasecmp($user["kelas"], "Guru") === 0 ? "NIP / NIK Terdaftar" : "NIS Terdaftar" ?></span>
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
             </div>
             <div class="readonly-value"><?= htmlspecialchars($user["nik"] ?: "—") ?></div>

@@ -1,7 +1,8 @@
 <?php
 // kartu_anggota.php — Menampilkan kartu anggota hasil pendaftaran (sekali tampil)
-// Bisa juga dibuka oleh admin untuk melihat kartu anggota tertentu lewat ?id=... dari daftar_anggota.php
-session_start();
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 
 $admin_view = false;
 
@@ -233,6 +234,17 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     box-shadow: 0 24px 60px rgba(0,0,0,.35);
     position: relative;
     color: #fff;
+    animation: cardSmoothIn 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+    will-change: transform, opacity;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  #kartu:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 30px 70px rgba(0,0,0,.45);
+  }
+  @keyframes cardSmoothIn {
+    from { opacity: 0; transform: translateY(16px) scale(0.98); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
   }
 
   #kartu::before {
@@ -325,15 +337,25 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 16px 24px 22px;
+    padding: 16px 24px 20px;
     position: relative;
     gap: 14px;
   }
 
-  .cred-block { display: flex; flex-direction: column; gap: 8px; }
-  .cred-row { display: flex; align-items: baseline; gap: 8px; }
+  .cred-block {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 9px;
+    min-width: 0;
+  }
+  .cred-row {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+  }
   .cred-label {
-    font-size: .6rem;
+    font-size: .62rem;
     letter-spacing: .1em;
     text-transform: uppercase;
     color: #adadc7;
@@ -342,28 +364,52 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   }
   .cred-value {
     font-family: 'JetBrains Mono', monospace;
-    font-size: .82rem;
-    font-weight: 500;
+    font-size: .84rem;
+    font-weight: 600;
     color: #fff;
     letter-spacing: .02em;
+    word-break: break-all;
+  }
+
+  .qr-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    text-align: center;
   }
 
   .qr-box {
-    background: #fff;
-    padding: 6px;
-    border-radius: 10px;
-    flex-shrink: 0;
+    background: #ffffff;
+    padding: 5px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 76px;
+    height: 76px;
+    box-sizing: border-box;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
     line-height: 0;
   }
-  .qr-box img { display: block; width: 68px; height: 68px; }
+  .qr-box img {
+    display: block;
+    width: 66px;
+    height: 66px;
+    object-fit: contain;
+    image-rendering: pixelated;
+  }
 
   .no-anggota {
     font-family: 'JetBrains Mono', monospace;
-    font-size: .68rem;
+    font-size: .65rem;
+    font-weight: 600;
     color: #d8d8e8;
     text-align: center;
-    margin-top: 6px;
+    margin-top: 5px;
     letter-spacing: .04em;
+    white-space: nowrap;
   }
 
   /* ── Aksi ── */
@@ -384,14 +430,15 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     letter-spacing: .02em;
     cursor: pointer;
     border: none;
-    transition: transform .15s, box-shadow .25s, background .25s;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.2s ease, border-color 0.2s ease;
   }
+  .btn:active { transform: scale(0.975); }
   .btn-download {
     background: var(--ink);
     color: #fff;
   }
-  .btn-download:hover { background: #1a1a2a; box-shadow: 0 8px 24px rgba(0,0,0,.28); }
-  .btn-download:active { transform: scale(.97); }
+  .btn-download:hover { background: #1a1a2a; transform: translateY(-2px); box-shadow: 0 10px 28px rgba(0,0,0,.35); }
+  .btn-download:active { transform: scale(.975); }
 
   .btn-continue {
     background: transparent;
@@ -416,9 +463,57 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   .btn-back:hover { color: var(--outline-color); }
 
   @media (max-width: 460px) {
-    .kartu-body { flex-direction: row; align-items: flex-start; }
-    .kartu-foot { flex-direction: column; align-items: flex-start; }
-    .qr-box { align-self: center; }
+    #kartu {
+      width: 100%;
+      max-width: 390px;
+    }
+    .kartu-head {
+      padding: 18px 18px 12px;
+    }
+    .kartu-body {
+      padding: 4px 18px 16px;
+      gap: 12px;
+    }
+    .avatar {
+      width: 56px;
+      height: 56px;
+    }
+    .kartu-name {
+      font-size: 1.05rem;
+    }
+    .kartu-meta {
+      font-size: .7rem;
+    }
+    .kartu-divider {
+      margin: 0 18px;
+    }
+    .kartu-foot {
+      padding: 14px 18px 18px;
+      gap: 10px;
+      flex-direction: row;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .cred-label {
+      width: 56px;
+      font-size: .58rem;
+    }
+    .cred-value {
+      font-size: .78rem;
+    }
+    .qr-box {
+      width: 70px;
+      height: 70px;
+      padding: 4px;
+    }
+    .qr-box img {
+      width: 62px;
+      height: 62px;
+    }
+    .no-anggota {
+      font-size: .6rem;
+      margin-top: 4px;
+    }
   }
 </style>
 </head>
@@ -439,48 +534,48 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
     <h1 class="page-title">Kartu Anggota: <?= htmlspecialchars($d["full_name"]) ?></h1>
     <p class="page-sub">Tampilan kartu anggota ini dilihat sebagai admin. Kata sandi anggota tidak dapat ditampilkan di sini (hanya bisa direset lewat menu Daftar Anggota).</p>
   <?php elseif ($d["reissued"]): ?>
-    <h1 class="page-title">Kartu Anggota Baru Kamu Sudah Jadi 🎉</h1>
+    <h1 class="page-title">Kartu Anggota Baru Kamu Sudah Jadi</h1>
     <p class="page-sub">Kartu lama kamu sudah tidak berlaku lagi. Unduh kartu baru ini dan simpan baik-baik. Username &amp; password di dalamnya dipakai untuk login dan meminjam buku.</p>
   <?php elseif ($d["data_updated_only"]): ?>
-    <h1 class="page-title">Kartu Anggota Kamu Sudah Diperbarui ✅</h1>
+    <h1 class="page-title">Kartu Anggota Kamu Sudah Diperbarui</h1>
     <p class="page-sub">Data pada kartu sudah diperbarui. Unduh &amp; cetak ulang kartu ini supaya data yang tercetak selalu yang terbaru.</p>
   <?php else: ?>
-    <h1 class="page-title">Kartu Anggota Kamu Sudah Jadi 🎉</h1>
+    <h1 class="page-title">Kartu Anggota Kamu Sudah Jadi</h1>
     <p class="page-sub">Unduh kartu ini dan simpan baik-baik. Username &amp; password di dalamnya dipakai untuk login dan meminjam buku.</p>
   <?php endif; ?>
 
   <?php if ($admin_view): ?>
     <?php if ($d["status"] === "pending"): ?>
     <div class="warning" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;">
-      ⏳ Status anggota ini masih <b>menunggu persetujuan</b>.
+      Status anggota ini masih <b>menunggu persetujuan</b>.
     </div>
     <?php elseif ($d["status"] === "rejected"): ?>
     <div class="warning" style="background:#fce4ec;border-color:#f5b8c8;color:#c0392b;">
-      ⛔ Akun anggota ini berstatus <b>nonaktif</b>.
+      Akun anggota ini berstatus <b>nonaktif</b>.
     </div>
     <?php endif; ?>
   <?php elseif ($d["data_updated_only"] && $d["password_changed"]): ?>
   <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
-    ✅ Data &amp; kata sandi berhasil diperbarui. Kata sandi akun kamu telah tersimpan dengan aman.
+    Data &amp; kata sandi berhasil diperbarui. Kata sandi akun kamu telah tersimpan dengan aman.
   </div>
   <?php elseif ($d["data_updated_only"]): ?>
   <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
-    ✅ Data berhasil diperbarui. Kata sandi kamu <b>tidak berubah</b>.
+    Data berhasil diperbarui. Kata sandi kamu <b>tidak berubah</b>.
   </div>
   <?php else: ?>
   <div class="warning">
-    ⚠️ Simpan kartu anggota ini baik-baik. Pastikan kamu selalu mengingat username dan kata sandi akunmu.
+    Simpan kartu anggota ini baik-baik. Pastikan kamu selalu mengingat username dan kata sandi akunmu.
   </div>
   <?php endif; ?>
 
   <?php if (!$admin_view): ?>
     <?php if ($d["status"] === "pending"): ?>
     <div class="warning" style="background:#eef2ff;border-color:#c7d2fe;color:#3730a3;">
-      ⏳ Akun kamu berstatus <b>menunggu persetujuan admin</b>. Kamu belum bisa login sampai admin perpustakaan menyetujui pendaftaran ini. Simpan kartu ini dulu, coba login setelah disetujui.
+      Akun kamu berstatus <b>menunggu persetujuan admin</b>. Kamu belum bisa login sampai admin perpustakaan menyetujui pendaftaran ini. Simpan kartu ini dulu, coba login setelah disetujui.
     </div>
     <?php elseif ($d["reissued"]): ?>
     <div class="warning" style="background:#eefaf0;border-color:#bfe8cc;color:#1a6b3a;">
-      ✅ Kartu &amp; password baru kamu sudah aktif. Gunakan kartu ini untuk login mulai sekarang, kartu lama sudah dibekukan permanen.
+      Kartu &amp; password baru kamu sudah aktif. Gunakan kartu ini untuk login mulai sekarang, kartu lama sudah dibekukan permanen.
     </div>
     <?php endif; ?>
   <?php endif; ?>
@@ -491,10 +586,10 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
         <div class="brand-mark">A</div>
         <div>
           <div class="brand-text">AKSA NOVA</div>
-          <div class="brand-tag">Kartu Anggota</div>
+          <div class="brand-tag"><?= strcasecmp($d["kelas"] ?? "", "Guru") === 0 ? "Kartu Pendidik" : "Kartu Anggota" ?></div>
         </div>
       </div>
-      <div class="kartu-label">Member<br>Card</div>
+      <div class="kartu-label"><?= strcasecmp($d["kelas"] ?? "", "Guru") === 0 ? "Teacher<br>Card" : "Member<br>Card" ?></div>
     </div>
 
     <div class="kartu-body">
@@ -511,7 +606,21 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
       <div>
         <div class="kartu-name"><?= htmlspecialchars($d["full_name"]) ?></div>
         <div class="kartu-meta">
-          Kelas&nbsp;&nbsp;<b><?= htmlspecialchars($d["kelas"]) ?></b>
+          <?php if (strcasecmp($d["kelas"] ?? "", "Guru") === 0): ?>
+            Status&nbsp;&nbsp;<b>Tenaga Pendidik / Guru</b>
+            <?php if (!empty($d["nik"])): ?>
+              &nbsp;•&nbsp;NIP: <b><?= htmlspecialchars($d["nik"]) ?></b>
+            <?php endif; ?>
+          <?php else: ?>
+            <?php
+            $raw_kelas = $d["kelas"] ?? "";
+            $display_kelas = (stripos($raw_kelas, "kelas ") === 0) ? trim(substr($raw_kelas, 6)) : $raw_kelas;
+            ?>
+            Kelas&nbsp;&nbsp;<b><?= htmlspecialchars($display_kelas ?: "Umum") ?></b>
+            <?php if (!empty($d["nik"])): ?>
+              &nbsp;•&nbsp;NIS: <b><?= htmlspecialchars($d["nik"]) ?></b>
+            <?php endif; ?>
+          <?php endif; ?>
         </div>
       </div>
     </div>
@@ -524,12 +633,21 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
           <span class="cred-label">Username</span>
           <span class="cred-value"><?= htmlspecialchars($d["username"]) ?></span>
         </div>
-        <div class="cred-row">
+        <div class="cred-row" style="align-items:center;">
           <span class="cred-label">Password</span>
-          <span class="cred-value" style="letter-spacing:3px;font-size:.85rem;color:rgba(216,184,120,.75);">••••••••</span>
+          <?php if (!$admin_view && !empty($d["password"])): ?>
+            <span class="cred-value" id="cardPasswordVal" data-pw="<?= htmlspecialchars($d["password"]) ?>" data-masked="••••••••" style="font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:600;color:#fff;letter-spacing:.02em;"><?= htmlspecialchars($d["password"]) ?></span>
+            <button type="button" id="btnToggleCardPw" data-html2canvas-ignore="true" aria-label="Sembunyikan/Tampilkan Password" title="Sembunyikan Password" style="background:none;border:none;cursor:pointer;color:rgba(216,184,120,.85);display:inline-flex;align-items:center;padding:2px 4px;margin-left:4px;border-radius:4px;">
+              <svg id="cardEyeIcon" viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          <?php else: ?>
+            <span class="cred-value" style="letter-spacing:3px;font-size:.85rem;color:rgba(216,184,120,.75);">••••••••</span>
+          <?php endif; ?>
         </div>
       </div>
-      <div>
+      <div class="qr-wrap">
         <div class="qr-box">
           <img src="<?= htmlspecialchars($qr_url) ?>" alt="QR anggota" crossorigin="anonymous">
         </div>
@@ -558,11 +676,27 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
 <script>
   document.getElementById('btnDownload').addEventListener('click', function () {
     const kartu = document.getElementById('kartu');
-    html2canvas(kartu, { backgroundColor: null, scale: 3, useCORS: true }).then(function (canvas) {
+    const origWidth = kartu.style.width;
+    const origMaxW = kartu.style.maxWidth;
+    // Kunci ukuran desktop standar untuk capture gambar super tajam, presisi & konsisten
+    kartu.style.width = '420px';
+    kartu.style.maxWidth = '420px';
+    html2canvas(kartu, {
+      backgroundColor: null,
+      scale: 3,
+      useCORS: true,
+      windowWidth: 1200
+    }).then(function (canvas) {
+      kartu.style.width = origWidth;
+      kartu.style.maxWidth = origMaxW;
       const link = document.createElement('a');
       link.download = 'kartu-anggota-<?= htmlspecialchars(preg_replace('/[^a-z0-9]/i', '', strtolower($d["username"]))) ?>.png';
       link.href = canvas.toDataURL('image/png');
       link.click();
+    }).catch(function (err) {
+      kartu.style.width = origWidth;
+      kartu.style.maxWidth = origMaxW;
+      console.error('Download error:', err);
     });
   });
 
@@ -570,6 +704,32 @@ $qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&dat
   document.getElementById('btnContinue').addEventListener('click', function () {
     navigator.sendBeacon('kartu_clear.php');
   });
+
+  // Toggle visibilitas kata sandi di kartu
+  var btnToggleCardPw = document.getElementById('btnToggleCardPw');
+  if (btnToggleCardPw) {
+    var pwVal = document.getElementById('cardPasswordVal');
+    var eyeIcon = document.getElementById('cardEyeIcon');
+    var isPwVisible = true;
+    btnToggleCardPw.addEventListener('click', function () {
+      isPwVisible = !isPwVisible;
+      if (isPwVisible) {
+        pwVal.textContent = pwVal.dataset.pw;
+        pwVal.style.letterSpacing = '.02em';
+        pwVal.style.fontSize = '.82rem';
+        pwVal.style.color = '#fff';
+        eyeIcon.innerHTML = '<path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/>';
+        btnToggleCardPw.title = 'Sembunyikan Password';
+      } else {
+        pwVal.textContent = pwVal.dataset.masked;
+        pwVal.style.letterSpacing = '3px';
+        pwVal.style.fontSize = '.85rem';
+        pwVal.style.color = 'rgba(216,184,120,.75)';
+        eyeIcon.innerHTML = '<path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/>';
+        btnToggleCardPw.title = 'Tampilkan Password';
+      }
+    });
+  }
 
   // Mode gelap / terang
   (function () {

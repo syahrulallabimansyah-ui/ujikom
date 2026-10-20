@@ -196,7 +196,6 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
   }
   html.lite .btn-musik:hover,
   html.lite .btn-mode:hover,
-  html.lite .btn-lang:hover,
   html.lite .btn-lite:hover,
   html.lite .cta-glow:hover {
     transform: none !important;
@@ -205,11 +204,9 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
   html.lite .hud-top .brand,
   html.lite .btn-musik,
   html.lite .btn-mode,
-  html.lite .btn-lang,
   html.lite .btn-lite,
   html.lite .btn-sosial,
   html.lite .hero-content,
-  html.lite .lang-dropdown,
   html.lite .sosial-dropdown,
   html.lite .ticker-bar {
     box-shadow: none !important;
@@ -225,7 +222,7 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     transition: none !important;
   }
   .frame, .ticker-bar, .hero-overlay, .slide-hero, .slide-book, .slide-rules,
-  .btn-musik, .btn-mode, .btn-lang, .dot span, .meta-chip, .ticker-icon, .ticker-reopen {
+  .btn-musik, .btn-mode, .dot span, .meta-chip, .ticker-icon, .ticker-reopen {
     transition-property: background, background-color, border-color, box-shadow, color;
     transition-duration: .35s;
     transition-timing-function: ease;
@@ -486,30 +483,6 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
   html.theme-light .btn-mode .icon-sun  { display: block; }
   html.theme-light .btn-mode { background: rgba(255,255,255,.6); }
 
-  /* ══════════════════ TOMBOL BAHASA (GLOBE) ══════════════════ */
-  .lang-wrap { position: relative; pointer-events: auto; }
-  .btn-lang {
-    appearance: none;
-    cursor: pointer;
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 1px solid var(--teal-dim);
-    background: rgba(12,17,22,.55);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--teal);
-    transition: background .2s ease, border-color .2s ease, transform .18s ease, box-shadow .2s ease;
-    box-shadow: 0 6px 18px rgba(0,0,0,.3);
-  }
-  .btn-lang:hover { transform: translateY(-1px); border-color: var(--teal); box-shadow: 0 8px 22px rgba(216,184,120,.25); }
-  .btn-lang svg { width: 18px; height: 18px; }
-  html.theme-light .btn-lang { background: rgba(255,255,255,.6); }
-  .btn-lang.open { background: rgba(216,184,120,.16); border-color: var(--teal); }
-  html.theme-light .btn-lang.open { background: rgba(169,120,47,.14); }
 
   /* ══════════════════ TOMBOL TAMPILAN RINGAN ══════════════════ */
   .btn-lite {
@@ -536,55 +509,6 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
   .btn-lite.active { background: rgba(216,184,120,.16); border-color: var(--teal); }
   html.theme-light .btn-lite.active { background: rgba(169,120,47,.14); }
 
-  .lang-dropdown {
-    position: absolute;
-    top: calc(100% + 8px);
-    right: 0;
-    z-index: 60;
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 128px;
-    padding: 5px;
-    border-radius: 12px;
-    background: rgba(12,17,22,.78);
-    border: 1px solid var(--teal-dim);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 14px 34px rgba(0,0,0,.35);
-    opacity: 0;
-    transform: translateY(-8px) scale(.94);
-    pointer-events: none;
-    transition: opacity .2s ease, transform .2s ease;
-  }
-  html.theme-light .lang-dropdown { background: rgba(255,255,255,.85); }
-  .lang-dropdown.open {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-    pointer-events: auto;
-  }
-  .lang-option {
-    appearance: none;
-    border: none;
-    cursor: pointer;
-    font: inherit;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    width: 100%;
-    padding: 5px 8px;
-    border-radius: 8px;
-    background: transparent;
-    color: var(--text);
-    font-size: .72rem;
-    text-align: left;
-    white-space: nowrap;
-    transition: background .18s ease, color .18s ease;
-  }
-  .lang-option .flag { font-size: .82rem; line-height: 1; }
-  .lang-option:hover { background: rgba(216,184,120,.14); }
-  .lang-option.active { background: var(--teal); color: var(--bg); font-weight: 600; }
-  html.theme-light .lang-option:hover { background: rgba(169,120,47,.12); }
 
   /* ══════════════════ SIDE DOT NAV ══════════════════ */
   .dot-nav {
@@ -1409,15 +1333,15 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     background: linear-gradient(180deg, #0a0e14 0%, #070a0d 100%);
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    /* dikunci pas satu layar penuh — bukan lagi height:auto seperti slide lain,
-       supaya slide 5 tidak jadi lebih tinggi dari viewport dan memicu scroll
-       internal (itu penyebab "garis hitam" scrollbar yang dikeluhkan) */
+    justify-content: space-between;
     height: 100vh;
     height: 100dvh;
     min-height: 100vh;
     min-height: 100dvh;
     overflow: hidden;
+    position: relative;
+    box-sizing: border-box;
+    padding-top: clamp(28px, 5vh, 56px);
   }
 
   /* orbs cahaya lembut, senada dengan hero, agar area atas footer tidak terasa kosong/polos */
@@ -1442,38 +1366,40 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     .footer-glow span { animation: none; }
   }
 
-  /* ── ajakan bertindak di atas footer, mengisi ruang kosong slide terakhir ── */
+  /* ── ajakan bertindak di atas footer, mengisi ruang atas slide terakhir ── */
   .footer-cta {
     position: relative;
     z-index: 1;
-    max-width: 720px;
+    max-width: 760px;
     margin: 0 auto;
-    padding: clamp(10px, 2vh, 28px) clamp(20px, 6vw, 80px) clamp(6px, 1vh, 14px);
+    padding: clamp(16px, 3vh, 32px) clamp(20px, 5vw, 60px) clamp(12px, 2vh, 20px);
     text-align: center;
+    width: 100%;
+    box-sizing: border-box;
   }
   .footer-cta h2 {
     font-family: var(--serif);
     font-weight: 700;
-    font-size: clamp(1.25rem, 2.2vw + 1vh, 2rem);
-    line-height: 1.12;
+    font-size: clamp(1.35rem, 2.5vw + 0.8vh, 2.1rem);
+    line-height: 1.2;
     color: var(--text);
-    margin-bottom: 6px;
+    margin-bottom: 8px;
     text-shadow: 0 2px 24px rgba(0,0,0,.4);
   }
   .footer-cta .lead {
-    font-size: .8rem;
+    font-size: clamp(.8rem, 1.2vw, .88rem);
     font-weight: 300;
-    line-height: 1.5;
+    line-height: 1.55;
     color: var(--text-dim);
     max-width: 52ch;
-    margin: 0 auto clamp(8px, 1.4vh, 14px);
+    margin: 0 auto clamp(12px, 2vh, 18px);
   }
   .footer-highlights {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
     gap: 8px;
-    margin-bottom: clamp(8px, 1.4vh, 14px);
+    margin-bottom: clamp(14px, 2vh, 20px);
   }
   .footer-cta-actions {
     display: flex;
@@ -1485,16 +1411,15 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     background: linear-gradient(180deg, #ffffff 0%, #f6f2e8 100%);
   }
   html.theme-light .footer-glow span { opacity: .16; }
-  @media (max-width: 520px) {
-    .footer-cta { padding-top: 14px; padding-bottom: 8px; }
-  }
 
   .site-footer {
     position: relative;
     width: 100%;
     border-top: 1px solid rgba(216,184,120,.18);
-    padding: clamp(12px, 2vh, 22px) clamp(20px, 6vw, 80px) clamp(60px, 9vh, 80px);
+    padding: clamp(16px, 2.5vh, 26px) clamp(20px, 5vw, 80px) clamp(62px, 9vh, 82px);
     overflow: hidden;
+    margin-top: auto;
+    box-sizing: border-box;
   }
   .footer-top {
     max-width: 1220px;
@@ -1577,17 +1502,128 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
   html.theme-light .footer-top { border-bottom-color: rgba(0,0,0,.08); }
   html.theme-light .footer-social-links a { background: rgba(0,0,0,.04); }
   @media (max-width: 900px) {
-    .footer-top { grid-template-columns: 1fr 1fr; row-gap: 16px; }
+    .footer-top { grid-template-columns: 1fr 1fr; row-gap: 20px; column-gap: 24px; }
     .footer-brand { grid-column: 1 / -1; }
     .footer-brand p { max-width: 100%; }
   }
-  @media (max-width: 520px) {
-    .site-footer { padding: clamp(10px, 2vh, 18px) 18px clamp(60px, 10vh, 80px); }
-    body.ticker-hidden .site-footer { padding-bottom: 18px; }
-    .footer-top { grid-template-columns: 1fr; text-align: center; row-gap: 12px; }
-    .footer-brand p { margin: 0 auto; }
-    .footer-col ul { align-items: center; }
-    .footer-social-links { justify-content: center; }
+  @media (max-width: 680px) {
+    .slide-footer {
+      height: auto !important;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-y: visible !important;
+      justify-content: flex-start !important;
+      padding-top: 50px;
+      padding-bottom: 24px;
+    }
+    .footer-cta {
+      padding: 20px 16px 20px;
+    }
+    .footer-cta h2 {
+      font-size: clamp(1.25rem, 5.5vw, 1.65rem);
+      margin-bottom: 8px;
+      line-height: 1.25;
+    }
+    .footer-cta .lead {
+      font-size: .8rem;
+      line-height: 1.5;
+      margin-bottom: 14px;
+      max-width: 100%;
+    }
+    .footer-highlights {
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .footer-highlights .meta-chip {
+      font-size: .68rem;
+      padding: 4px 10px;
+    }
+    .footer-cta-actions {
+      gap: 10px;
+      width: 100%;
+    }
+    .footer-cta-actions .cta-solid,
+    .footer-cta-actions .cta-outline {
+      padding: 11px 20px;
+      font-size: .82rem;
+    }
+    .site-footer {
+      padding: 24px 18px clamp(68px, 11vh, 88px);
+      margin-top: 24px;
+    }
+    body.ticker-hidden .site-footer {
+      padding-bottom: 24px;
+    }
+    .footer-top {
+      grid-template-columns: 1fr 1fr;
+      grid-template-areas:
+        "brand brand"
+        "nav   akun"
+        "nav   social";
+      row-gap: 18px;
+      column-gap: 20px;
+      padding-bottom: 18px;
+      text-align: left;
+    }
+    .footer-brand {
+      grid-area: brand;
+      text-align: center;
+      margin-bottom: 2px;
+    }
+    .footer-brand .brand {
+      margin-bottom: 4px;
+      font-size: 1.15rem;
+    }
+    .footer-brand p {
+      margin: 0 auto;
+      font-size: .74rem;
+      line-height: 1.45;
+      max-width: 360px;
+    }
+    .footer-nav { grid-area: nav; }
+    .footer-acc { grid-area: akun; }
+    .footer-social { grid-area: social; }
+    .footer-col h4 {
+      font-size: .66rem;
+      letter-spacing: .15em;
+      margin-bottom: 8px;
+    }
+    .footer-col ul {
+      gap: 6px;
+      align-items: flex-start;
+    }
+    .footer-col a {
+      font-size: .78rem;
+      padding: 2px 0;
+    }
+    .footer-social-links {
+      justify-content: flex-start;
+      gap: 8px;
+    }
+    .footer-social-links a {
+      width: 32px;
+      height: 32px;
+    }
+    .footer-bottom {
+      padding-top: 14px;
+    }
+    .footer-bottom p {
+      font-size: .68rem;
+      line-height: 1.45;
+    }
+  }
+  @media (max-width: 440px) {
+    .footer-cta-actions {
+      flex-direction: column;
+      align-items: stretch;
+      max-width: 290px;
+      margin: 0 auto;
+    }
+    .footer-cta-actions .cta-solid,
+    .footer-cta-actions .cta-outline {
+      width: 100%;
+      justify-content: center;
+    }
   }
 
   /* ══════════════════ BOTTOM TICKER BAR ══════════════════ */
@@ -1836,8 +1872,8 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     .hud-top { padding: 14px 16px; }
     .hud-top .brand { font-size: .78rem; letter-spacing: .16em; }
     .hud-actions { gap: 8px; }
-    .btn-musik, .btn-mode, .btn-lang, .btn-lite, .btn-sosial { width: 34px; height: 34px; }
-    .btn-musik svg, .btn-mode svg, .btn-lang svg, .btn-lite svg, .btn-sosial svg { width: 15px; height: 15px; }
+    .btn-musik, .btn-mode, .btn-lite, .btn-sosial { width: 34px; height: 34px; }
+    .btn-musik svg, .btn-mode svg, .btn-lite svg, .btn-sosial svg { width: 15px; height: 15px; }
     .slide-hero .hero-content h1 { font-size: clamp(2.15rem, 9.5vw, 3rem); }
     .hero-content { padding: 28px 18px; border-radius: 22px; }
     .hero-glow span { filter: blur(40px); }
@@ -1876,7 +1912,7 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
 
   @media (max-width: 360px) {
     .hud-top { padding: 12px 12px; }
-    .btn-musik, .btn-mode, .btn-lang, .btn-lite, .btn-sosial { width: 30px; height: 30px; }
+    .btn-musik, .btn-mode, .btn-lite, .btn-sosial { width: 30px; height: 30px; }
     .cta-glow { padding: 12px 32px; font-size: .7rem; }
   }
 
@@ -1894,41 +1930,22 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
   body.ticker-hidden .slide-about { padding-bottom: 50px; }
   body.ticker-hidden .site-footer { padding-bottom: 28px; }
 
-  /* layar dengan tinggi umum (laptop 13"–14", browser dengan toolbar) — rapikan
-     konten slide 5 lebih awal supaya tidak terpotong overflow:hidden */
-  @media (max-height: 860px) {
-    .footer-cta { padding-top: 10px; padding-bottom: 6px; }
-    .footer-cta h2 { font-size: clamp(1.1rem, 4vw, 1.6rem); margin-bottom: 4px; }
-    .footer-cta .lead {
-      font-size: .76rem;
-      line-height: 1.4;
-      margin-bottom: 8px;
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
+  /* Layar sangat pendek (misal ponsel mode landscape atau browser dengan devtools tinggi) */
+  @media (max-height: 600px) and (min-width: 681px) {
+    .slide-footer {
+      height: auto !important;
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-y: visible !important;
+      padding-top: 36px;
+      padding-bottom: 20px;
     }
+    .footer-cta { padding: 14px 20px 10px; }
+    .footer-cta h2 { font-size: 1.35rem; margin-bottom: 4px; }
+    .footer-cta .lead { margin-bottom: 10px; font-size: .78rem; }
     .footer-highlights { display: none; }
-    .footer-cta-actions { gap: 8px; }
-    .footer-cta-actions .cta-solid,
-    .footer-cta-actions .cta-outline { padding-top: 9px; padding-bottom: 9px; }
-    .site-footer { padding-top: 8px; padding-bottom: 56px; }
-    .footer-top { row-gap: 8px; padding-bottom: 8px; }
-    .footer-brand .brand { margin-bottom: 4px; }
-    .footer-brand p {
-      display: -webkit-box;
-      -webkit-line-clamp: 2;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
-    }
-    .footer-col h4 { margin-bottom: 6px; }
-    .footer-col ul { gap: 4px; }
-    .footer-bottom { padding-top: 6px; }
-  }
-  @media (max-height: 520px) {
-    .footer-cta .lead, .footer-brand p { display: none; }
-    .footer-top { grid-template-columns: 1fr 1fr; }
-    .footer-social { grid-column: 1 / -1; }
+    .site-footer { padding-top: 14px; margin-top: 16px; }
+    .footer-top { padding-bottom: 10px; row-gap: 12px; }
   }
 </style>
 </head>
@@ -1962,23 +1979,7 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
         <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"/>
       </svg>
     </button>
-    <div class="lang-wrap">
-      <button type="button" class="btn-lang" id="btnLang" aria-label="Ganti bahasa / Change language" aria-expanded="false">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-          <circle cx="12" cy="12" r="9"/>
-          <path d="M3 12h18"/>
-          <path d="M12 3c2.5 2.6 3.8 5.7 3.8 9s-1.3 6.4-3.8 9c-2.5-2.6-3.8-5.7-3.8-9s1.3-6.4 3.8-9Z"/>
-        </svg>
-      </button>
-      <div class="lang-dropdown" id="langDropdown">
-        <button type="button" class="lang-option" data-lang="id">
-           Bahasa Indonesia
-        </button>
-        <button type="button" class="lang-option" data-lang="en">
-           English
-        </button>
-      </div>
-    </div>
+
     <div class="sosial-wrap">
       <button type="button" class="btn-sosial" id="btnSosial" aria-label="Media sosial" data-id-aria="Media sosial" data-en-aria="Social media" aria-expanded="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -1987,17 +1988,17 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
         </svg>
       </button>
       <div class="sosial-dropdown" id="sosialDropdown">
-        <a href="#" target="_blank" rel="noopener" class="sosial-link" title="Instagram">
+        <a href="https://www.instagram.com/smkn1rongga/" target="_blank" rel="noopener" class="sosial-link" title="Instagram SMKN 1 Rongga">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="5"/>
             <circle cx="12" cy="12" r="4"/>
             <circle cx="17.3" cy="6.7" r="0.6" fill="currentColor" stroke="none"/>
           </svg>
         </a>
-        <a href="#" target="_blank" rel="noopener" class="sosial-link" title="TikTok">
+        <a href="https://www.tiktok.com/@jinggasmkn1rongga?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener" class="sosial-link" title="TikTok SMKN 1 Rongga">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 2c.4 2.2 1.8 3.9 4 4.4v3.1c-1.4 0-2.8-.4-4-1.2v6.4c0 3.5-2.8 6.3-6.3 6.3S3.9 18.2 3.9 14.7s2.8-6.3 6.3-6.3c.3 0 .6 0 .9.1v3.2c-.3-.1-.6-.2-.9-.2-1.8 0-3.2 1.4-3.2 3.2s1.4 3.2 3.2 3.2 3.3-1.4 3.3-3.2V2h3z"/></svg>
         </a>
-        <a href="#" target="_blank" rel="noopener" class="sosial-link" title="Facebook">
+        <a href="https://share.google/U4hL457xrbEKTbj31" target="_blank" rel="noopener" class="sosial-link" title="Facebook SMKN 1 Rongga">
           <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.6 21v-7.6h2.6l.4-3h-3V8.4c0-.9.2-1.5 1.5-1.5H16.7V4.2c-.3 0-1.2-.2-2.3-.2-2.3 0-3.9 1.4-3.9 4v2.4H7.9v3h2.6V21h3.1z"/></svg>
         </a>
         <button type="button" class="sosial-link" id="btnShare" aria-label="Bagikan halaman ini" title="Bagikan">
@@ -2102,11 +2103,11 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
         <div class="book-cover-wrap" id="bookCoverWrap" role="button" tabindex="0" aria-label="Buka cover buku" data-id-aria="Buka cover buku" data-en-aria="Open book cover">
           <span class="cover-glow"></span>
 
-          <span class="cover-icon icon-lampu" aria-hidden="true" title="Lampu">💡</span>
-          <span class="cover-icon icon-pantai" aria-hidden="true" title="Pantai">🏖️</span>
-          <span class="cover-icon icon-gunung" aria-hidden="true" title="Gunung">🏔️</span>
-          <span class="cover-icon icon-kaset" aria-hidden="true" title="Kaset">📼</span>
-          <span class="cover-icon icon-pensil" aria-hidden="true" title="Pensil">✏️</span>
+          <span class="cover-icon icon-lampu" aria-hidden="true" title="Lampu" style="color:var(--accent,#d8b878);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"/></svg></span>
+          <span class="cover-icon icon-pantai" aria-hidden="true" title="Pantai" style="color:var(--accent,#d8b878);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg></span>
+          <span class="cover-icon icon-gunung" aria-hidden="true" title="Gunung" style="color:var(--accent,#d8b878);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m8 3 4 8 5-5 5 15H2L8 3z"/></svg></span>
+          <span class="cover-icon icon-kaset" aria-hidden="true" title="Kaset" style="color:var(--accent,#d8b878);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="20" height="16" rx="2"/><circle cx="8" cy="12" r="2"/><circle cx="16" cy="12" r="2"/><path d="M8 12h8M6 18h12"/></svg></span>
+          <span class="cover-icon icon-pensil" aria-hidden="true" title="Pensil" style="color:var(--accent,#d8b878);"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg></span>
 
           <div class="book-cover" id="bookCover">
             <img id="bukuGambar"
@@ -2345,7 +2346,6 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     </div>
   </div>
 
-  <br>
   <footer class="site-footer reveal">
     <div class="footer-top reveal-stagger">
       <div class="footer-brand reveal-item">
@@ -2353,7 +2353,7 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
         <p data-id="Katalog perpustakaan digital untuk mengecek koleksi dan ketersediaan buku sebelum berkunjung langsung." data-en="A digital library catalog to check the collection and book availability before visiting in person.">Katalog perpustakaan digital untuk mengecek koleksi dan ketersediaan buku sebelum berkunjung langsung.</p>
       </div>
 
-      <div class="footer-col reveal-item">
+      <div class="footer-col footer-nav reveal-item">
         <h4 data-id="Navigasi" data-en="Navigation">Navigasi</h4>
         <ul>
           <li><a href="#slide-1" data-id="Beranda" data-en="Home">Beranda</a></li>
@@ -2364,7 +2364,7 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
         </ul>
       </div>
 
-      <div class="footer-col reveal-item">
+      <div class="footer-col footer-acc reveal-item">
         <h4 data-id="Akun" data-en="Account">Akun</h4>
         <ul>
           <li><a href="sign_in.php" data-id="Masuk Anggota" data-en="Member Sign In">Masuk Anggota</a></li>
@@ -2375,17 +2375,17 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
       <div class="footer-col footer-social reveal-item">
         <h4 data-id="Ikuti Kami" data-en="Follow Us">Ikuti Kami</h4>
         <div class="footer-social-links">
-          <a href="#" target="_blank" rel="noopener" title="TikTok">
+          <a href="https://www.tiktok.com/@jinggasmkn1rongga?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener" title="TikTok SMKN 1 Rongga">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16.5 2c.4 2.2 1.8 3.9 4 4.4v3.1c-1.4 0-2.8-.4-4-1.2v6.4c0 3.5-2.8 6.3-6.3 6.3S3.9 18.2 3.9 14.7s2.8-6.3 6.3-6.3c.3 0 .6 0 .9.1v3.2c-.3-.1-.6-.2-.9-.2-1.8 0-3.2 1.4-3.2 3.2s1.4 3.2 3.2 3.2 3.3-1.4 3.3-3.2V2h3z"/></svg>
           </a>
-          <a href="#" target="_blank" rel="noopener" title="Instagram">
+          <a href="https://www.instagram.com/smkn1rongga/" target="_blank" rel="noopener" title="Instagram SMKN 1 Rongga">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="18" height="18" rx="5"/>
               <circle cx="12" cy="12" r="4"/>
               <circle cx="17.3" cy="6.7" r="0.6" fill="currentColor" stroke="none"/>
             </svg>
           </a>
-          <a href="#" target="_blank" rel="noopener" title="Facebook">
+          <a href="https://share.google/U4hL457xrbEKTbj31" target="_blank" rel="noopener" title="Facebook SMKN 1 Rongga">
             <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.6 21v-7.6h2.6l.4-3h-3V8.4c0-.9.2-1.5 1.5-1.5H16.7V4.2c-.3 0-1.2-.2-2.3-.2-2.3 0-3.9 1.4-3.9 4v2.4H7.9v3h2.6V21h3.1z"/></svg>
           </a>
         </div>
@@ -2476,68 +2476,7 @@ $lokasi_maps_link  = "https://www.google.com/maps/search/?api=1&query=" . urlenc
     });
   })();
 
-  // Ganti bahasa (Indonesia / English) — pilihan pengunjung disimpan permanen di perangkat ini
-  (function () {
-    const btn        = document.getElementById('btnLang');
-    const dropdown   = document.getElementById('langDropdown');
-    const STORAGE_KEY = 'aksanova_lang';
 
-    function terapkanBahasa(lang) {
-      document.querySelectorAll('[data-id][data-en]').forEach((el) => {
-        const teks = lang === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-id');
-        if (teks !== null) el.textContent = teks;
-      });
-      document.querySelectorAll('[data-id-title][data-en-title]').forEach((el) => {
-        const teks = lang === 'en' ? el.getAttribute('data-en-title') : el.getAttribute('data-id-title');
-        if (teks !== null) el.setAttribute('title', teks);
-      });
-      document.querySelectorAll('[data-id-aria][data-en-aria]').forEach((el) => {
-        const teks = lang === 'en' ? el.getAttribute('data-en-aria') : el.getAttribute('data-id-aria');
-        if (teks !== null) el.setAttribute('aria-label', teks);
-      });
-      document.documentElement.setAttribute('lang', lang);
-      document.querySelectorAll('.lang-option').forEach((opt) => {
-        opt.classList.toggle('active', opt.dataset.lang === lang);
-      });
-    }
-
-    function bahasaTersimpan() {
-      try { return localStorage.getItem(STORAGE_KEY) || 'id'; } catch (e) { return 'id'; }
-    }
-
-    terapkanBahasa(bahasaTersimpan());
-
-    if (!btn || !dropdown) return;
-
-    function tutup() {
-      dropdown.classList.remove('open');
-      btn.classList.remove('open');
-      btn.setAttribute('aria-expanded', 'false');
-    }
-
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const buka = dropdown.classList.toggle('open');
-      btn.classList.toggle('open', buka);
-      btn.setAttribute('aria-expanded', buka ? 'true' : 'false');
-    });
-
-    document.addEventListener('click', (e) => {
-      if (!dropdown.contains(e.target) && e.target !== btn) tutup();
-    });
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') tutup();
-    });
-
-    dropdown.querySelectorAll('.lang-option').forEach((opt) => {
-      opt.addEventListener('click', () => {
-        const lang = opt.dataset.lang;
-        try { localStorage.setItem(STORAGE_KEY, lang); } catch (e) {}
-        terapkanBahasa(lang);
-        tutup();
-      });
-    });
-  })();
 
   // Dropdown media sosial di navbar atas
   (function () {
