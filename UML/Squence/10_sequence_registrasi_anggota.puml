@@ -1,0 +1,68 @@
+@startuml 10_sequence_registrasi_anggota
+autonumber "1:"
+skinparam sequence {
+    ArrowColor #1F4E79
+    ActorBorderColor #DC2626
+    ActorBackgroundColor #FEE2E2
+    LifeLineBorderColor #1F4E79
+    LifeLineBackgroundColor #9CC3E6
+    ParticipantBorderColor #1F4E79
+    ParticipantBackgroundColor #E2E8F0
+    BoxBorderColor #64748b
+}
+
+title 10. Sequence Diagram — Registrasi Anggota Baru Mandiri\n<i>File: sign_up.php</i>
+
+actor "Tamu\n(Guest)" as Tamu
+boundary "Halaman Registrasi\n(sign_up.php)" as Boundary
+control "RegistrasiController\n(sign_up.php)" as Control
+entity "Tabel users" as UsersEntity
+boundary "Halaman Kartu Anggota\n(kartu_anggota.php)" as KartuBoundary
+
+activate Tamu
+Tamu -> Boundary: Buka formulir pendaftaran
+activate Boundary
+Boundary -> Control: Minta token keamanan sesi
+activate Control
+Control --> Boundary: Render token CSRF & form pendaftaran
+deactivate Control
+Boundary --> Tamu: Tampilkan form pendaftaran mandiri
+deactivate Boundary
+
+Tamu -> Boundary: Isi data (NIS/NIP, Nama, Email, Sandi, Foto) & kirim (POST)
+activate Boundary
+Boundary -> Control: submitRegistrasi(POST data, csrf_token)
+activate Control
+Control -> Control: csrf_verify()
+alt Token CSRF tidak valid
+    Control --> Boundary: Tampilkan pesan error CSRF
+    Boundary --> Tamu: Tampilkan notifikasi gagal
+else Token CSRF valid
+    Control -> UsersEntity: SELECT COUNT(*) WHERE email=? OR nik=?
+    activate UsersEntity
+    UsersEntity --> Control: Hasil pengecekan duplikasi
+    deactivate UsersEntity
+    
+    alt Email atau NIS/NIP sudah terdaftar
+        Control --> Boundary: Tampilkan pesan kesalahan duplikasi
+        Boundary --> Tamu: Perbaiki isian form
+    else Data unik & valid
+        Control -> Control: password_hash(sandi, PASSWORD_BCRYPT)
+        Control -> Control: generateNoAnggota() & simpan file foto
+        Control -> UsersEntity: INSERT INTO users (nik, full_name, email, password, no_anggota, role='member', status='approved', card_status='active')
+        activate UsersEntity
+        UsersEntity --> Control: Insert ID sukses
+        deactivate UsersEntity
+        
+        Control -> Control: Set $_SESSION['kartu_data'] (Kondisi Belum Login)
+        Control --> Boundary: Redirect header("Location: kartu_anggota.php")
+        deactivate Control
+        Boundary -> KartuBoundary: Muat halaman kartu_anggota.php
+        activate KartuBoundary
+        KartuBoundary --> Tamu: Tampilkan Kartu Digital Siswa/Guru (Status: Belum Login)
+        deactivate KartuBoundary
+    end
+end
+deactivate Boundary
+deactivate Tamu
+@enduml

@@ -1,115 +1,304 @@
 <?php
-// lupa_kartu.php — Alur "Lupa Kartu": membekukan kartu/akun lama lalu membuat
-// password baru sendiri, kemudian menerbitkan kartu anggota pengganti.
-//
-// Alasan memakai EMAIL (bukan username) + password lama sebagai verifikasi:
-// username, NIK, dan password lama semuanya TERCETAK di kartu fisik, jadi kalau
-// hanya mengandalkan itu, orang yang menemukan kartu juga bisa memakainya.
-// Email terdaftar tidak dicetak di kartu, jadi dipakai sebagai faktor tambahan.
+declare(strict_types=1);
+
+/**
+ * lupa_kartu.php — Alur Pemulihan Akun / Lupa Kartu via One-Time Password (OTP)
+ * Sistem Perpustakaan Digital AKSA NOVA — SMK Negeri 1 Rongga
+ *
+ * Alur 3 Langkah:
+ * 1. Minta OTP: Masukkan email terdaftar. Sistem mengirimkan kode OTP 6-digit (atau dev log jika lokal).
+ * 2. Verifikasi OTP: Masukkan 6 digit OTP. Setelah valid, sesi diamankan & kartu LAMA baru dibekukan (frozen).
+ * 3. Sandi Baru: Buat kata sandi baru (<=10 menit sejak OTP verified). Kartu dicairkan kembali (active)
+ *    dan kartu pengganti resmi langsung diterbitkan ke kartu_anggota.php.
+ */
+
 session_start();
-require_once "db.php";
+require_once __DIR__ . '/db.php';
+require_once __DIR__ . '/includes/otp.php';
 
-$step  = ($_SESSION["lupa_kartu"]["step"] ?? 0) === 2 ? 2 : 1;
-$error = "";
-$info  = $_SESSION["lupa_kartu"]["full_name"] ?? "";
-
-$action = $_POST["action"] ?? "";
-
-// ─────────────────────────────────────────────
-//  STEP 1 — verifikasi pemilik akun & bekukan kartu lama
-// ─────────────────────────────────────────────
-if ($action === "verify" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
-    $email    = trim($_POST["email"] ?? "");
-    $password = trim($_POST["password"] ?? "");
-
-    if ($email === "" || $password === "") {
-        $error = "Email dan kata sandi lama wajib diisi.";
-    } else {
-        $stmt = mysqli_prepare($conn, "SELECT id, full_name, nik, kelas, no_hp, email, no_anggota, username, password, foto, role, status FROM users WHERE email = ?");
-        mysqli_stmt_bind_param($stmt, "s", $email);
-        mysqli_stmt_execute($stmt);
-        $result = mysqli_stmt_get_result($stmt);
-        $user   = mysqli_fetch_assoc($result);
-        mysqli_stmt_close($stmt);
-
-        if (!$user || $user["role"] !== "member" || !password_verify($password, $user["password"])) {
-            $error = "Email atau kata sandi lama tidak cocok.";
-        } elseif ($user["status"] === "pending") {
-            $error = "Akun kamu masih menunggu persetujuan admin, belum bisa memakai fitur ini.";
-        } elseif ($user["status"] === "rejected") {
-            $error = "Pendaftaran kamu ditolak oleh admin. Silakan hubungi petugas perpustakaan.";
-        } else {
-            // Bekukan kartu/akun lama supaya kartu yang hilang tidak bisa dipakai login
-            $freeze = mysqli_prepare($conn, "UPDATE users SET card_status='frozen' WHERE id=?");
-            mysqli_stmt_bind_param($freeze, "i", $user["id"]);
-            mysqli_stmt_execute($freeze);
-            mysqli_stmt_close($freeze);
-
-            $_SESSION["lupa_kartu"] = [
-                "step"       => 2,
-                "id"         => $user["id"],
-                "full_name"  => $user["full_name"],
-                "nik"        => $user["nik"],
-                "kelas"      => $user["kelas"],
-                "no_hp"      => $user["no_hp"],
-                "email"      => $user["email"],
-                "no_anggota" => $user["no_anggota"],
-                "username"   => $user["username"],
-                "foto"       => $user["foto"],
-            ];
-            header("Location: lupa_kartu.php");
-            exit;
-        }
-    }
+// Inisialisasi langkah aktif (1, 2, atau 3)
+$current_step = (int)($_SESSION["lupa_kartu"]["step"] ?? 1);
+if (!in_array($current_step, [1, 2, 3], true)) {
+    $current_step = 1;
 }
 
-// ─────────────────────────────────────────────
-//  Batalkan proses — cairkan kembali kartu lama
-// ─────────────────────────────────────────────
+$error   = "";
+$success = "";
+
+// Tangani notifikasi sesi kedaluwarsa via query parameter
+if (isset($_GET['expired']) && $_GET['expired'] === '1') {
+    $error = "Sesi verifikasi OTP Anda telah kedaluwarsa (melebihi 10 menit). Silakan ulangi dari awal.";
+}
+
+// Verifikasi CSRF untuk seluruh aksi POST
+$action = $_POST["action"] ?? "";
+if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && !csrf_verify()) {
+    $action = "";
+    $error  = "Token sesi keamanan tidak valid atau telah kedaluwarsa. Silakan muat ulang halaman.";
+}
+
+// ─────────────────────────────────────────────────────────────
+//  BATALKAN PROSES (Cancel Action)
+// ─────────────────────────────────────────────────────────────
 if ($action === "cancel" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
-    if (isset($_SESSION["lupa_kartu"]["id"])) {
-        $uid = (int)$_SESSION["lupa_kartu"]["id"];
+    // Jika kartu sudah sempat dibekukan (langkah 3), cairkan kembali sebelum keluar
+    if (!empty($_SESSION["lupa_kartu"]["user_id"])) {
+        $uid = (int)$_SESSION["lupa_kartu"]["user_id"];
         $unfreeze = mysqli_prepare($conn, "UPDATE users SET card_status='active' WHERE id=?");
-        mysqli_stmt_bind_param($unfreeze, "i", $uid);
-        mysqli_stmt_execute($unfreeze);
-        mysqli_stmt_close($unfreeze);
+        if ($unfreeze) {
+            mysqli_stmt_bind_param($unfreeze, "i", $uid);
+            mysqli_stmt_execute($unfreeze);
+            mysqli_stmt_close($unfreeze);
+        }
     }
     unset($_SESSION["lupa_kartu"]);
     header("Location: sign_in.php");
     exit;
 }
 
-// ─────────────────────────────────────────────
-//  STEP 2 — buat password baru sendiri & terbitkan kartu pengganti
-// ─────────────────────────────────────────────
-if ($action === "set_password" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
-    if (!isset($_SESSION["lupa_kartu"]["id"]) || $_SESSION["lupa_kartu"]["step"] !== 2) {
+// ─────────────────────────────────────────────────────────────
+//  GANTI EMAIL (Reset ke Langkah 1)
+// ─────────────────────────────────────────────────────────────
+if ($action === "change_email" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
+    unset($_SESSION["lupa_kartu"]);
+    header("Location: lupa_kartu.php");
+    exit;
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LANGKAH 1 — MINTA KODE OTP KE EMAIL
+// ─────────────────────────────────────────────────────────────
+if ($action === "request_otp" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
+    $email = trim((string)($_POST["email"] ?? ""));
+    $client_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+
+    if ($email === "" || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $error = "Alamat email terdaftar wajib diisi dengan format yang valid.";
+    } else {
+        // Cek rate limiting per IP terlebih dahulu
+        $rate_check_ip = otp_batas_permintaan($conn, null, $client_ip);
+        if (!$rate_check_ip['allowed']) {
+            $error = $rate_check_ip['message'];
+        } else {
+            // Cari pengguna aktif dengan role=member dan status=approved
+            $stmt = mysqli_prepare(
+                $conn,
+                "SELECT id, full_name, nik, kelas, no_hp, email, no_anggota, username, foto, role, status
+                 FROM users
+                 WHERE email = ?
+                 LIMIT 1"
+            );
+            mysqli_stmt_bind_param($stmt, "s", $email);
+            mysqli_stmt_execute($stmt);
+            $res  = mysqli_stmt_get_result($stmt);
+            $user = mysqli_fetch_assoc($res);
+            mysqli_stmt_close($stmt);
+
+            // Validasi kelayakan akun anggota
+            $is_eligible = false;
+            if ($user && $user['role'] === 'member' && $user['status'] === 'approved') {
+                $is_eligible = true;
+            }
+
+            if ($is_eligible) {
+                // Periksa batas frekuensi untuk akun pengguna ini
+                $rate_check_user = otp_batas_permintaan($conn, (int)$user['id'], $client_ip);
+                if (!$rate_check_user['allowed']) {
+                    $error = $rate_check_user['message'];
+                } else {
+                    // Buat OTP baru dan kirim via email (atau dev log)
+                    $otp_code = otp_buat($conn, (int)$user['id'], $client_ip);
+                    $kirim    = otp_kirim($user['email'], $user['full_name'], $otp_code);
+
+                    if (!$kirim['success']) {
+                        $error = "Sistem gagal mengirimkan email OTP. Silakan periksa koneksi atau hubungi admin perpustakaan.";
+                    } else {
+                        // JANGAN membekukan kartu di sini! Kartu hanya dibekukan setelah OTP valid.
+                        $_SESSION["lupa_kartu"] = [
+                            "step"        => 2,
+                            "user_id"     => (int)$user["id"],
+                            "email"       => $user["email"],
+                            "full_name"   => $user["full_name"],
+                            "nik"         => $user["nik"],
+                            "kelas"       => $user["kelas"],
+                            "no_hp"       => $user["no_hp"],
+                            "no_anggota"  => $user["no_anggota"],
+                            "username"    => $user["username"],
+                            "foto"        => $user["foto"],
+                            "otp_sent_at" => time(),
+                            "is_dummy"    => false,
+                        ];
+                        header("Location: lupa_kartu.php");
+                        exit;
+                    }
+                }
+            } else {
+                // Perlindungan Timing Attack & Enumerasi:
+                // Berikan jeda waktu acak (150ms - 250ms) serupa proses hashing/email,
+                // lalu arahkan ke langkah 2 dengan sesi dummy agar penyerang tidak dapat menebak email.
+                usleep(random_int(150000, 250000));
+
+                $_SESSION["lupa_kartu"] = [
+                    "step"        => 2,
+                    "email"       => $email,
+                    "full_name"   => "Anggota Perpustakaan",
+                    "otp_sent_at" => time(),
+                    "is_dummy"    => true,
+                ];
+                header("Location: lupa_kartu.php");
+                exit;
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LANGKAH 2 — VERIFIKASI KODE OTP
+// ─────────────────────────────────────────────────────────────
+if ($action === "verify_otp" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
+    if ($current_step !== 2 || empty($_SESSION["lupa_kartu"]["email"])) {
         header("Location: lupa_kartu.php");
         exit;
     }
 
-    $new_password    = $_POST["password"] ?? "";
-    $confirm_password = $_POST["password_confirm"] ?? "";
+    // Ambil input OTP (mendukung input gabungan maupun 6 kotak terpisah)
+    $input_otp = trim((string)($_POST["otp"] ?? ""));
+    if ($input_otp === "" && isset($_POST["otp_digits"]) && is_array($_POST["otp_digits"])) {
+        $input_otp = implode('', array_map('trim', $_POST["otp_digits"]));
+    }
+
+    $is_dummy = !empty($_SESSION["lupa_kartu"]["is_dummy"]) || empty($_SESSION["lupa_kartu"]["user_id"]);
+
+    if ($is_dummy) {
+        // Simulasi verifikasi gagal untuk email yang tidak terdaftar/tidak aktif
+        usleep(random_int(100000, 200000));
+        $error = "Kode OTP tidak valid atau telah kedaluwarsa. Silakan periksa kembali email Anda.";
+    } else {
+        $uid = (int)$_SESSION["lupa_kartu"]["user_id"];
+        $verif = otp_verifikasi($conn, $uid, $input_otp);
+
+        if ($verif['success']) {
+            // Regenerasi ID sesi untuk mencegah Session Fixation
+            session_regenerate_id(true);
+
+            // BARU SEKARANG: Bekukan kartu lama karena kepemilikan email telah terbukti
+            $freeze = mysqli_prepare($conn, "UPDATE users SET card_status='frozen' WHERE id=?");
+            if ($freeze) {
+                mysqli_stmt_bind_param($freeze, "i", $uid);
+                mysqli_stmt_execute($freeze);
+                mysqli_stmt_close($freeze);
+            }
+
+            // Catat timestamp verifikasi OTP (berlaku maks 10 menit untuk membuat sandi baru)
+            $_SESSION["lupa_kartu"]["step"] = 3;
+            $_SESSION["lupa_kartu"]["otp_verified_at"] = time();
+
+            header("Location: lupa_kartu.php");
+            exit;
+        } else {
+            $error = $verif['message'];
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LANGKAH 2 — KIRIM ULANG KODE OTP (Resend OTP)
+// ─────────────────────────────────────────────────────────────
+if ($action === "resend_otp" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
+    if ($current_step !== 2 || empty($_SESSION["lupa_kartu"]["email"])) {
+        header("Location: lupa_kartu.php");
+        exit;
+    }
+
+    $client_ip = $_SERVER['REMOTE_ADDR'] ?? '127.0.0.1';
+    $last_sent = (int)($_SESSION["lupa_kartu"]["otp_sent_at"] ?? 0);
+    $elapsed   = time() - $last_sent;
+
+    if ($elapsed < 60) {
+        $wait  = 60 - $elapsed;
+        $error = "Mohon tunggu {$wait} detik sebelum meminta kirim ulang kode OTP.";
+    } else {
+        $is_dummy = !empty($_SESSION["lupa_kartu"]["is_dummy"]) || empty($_SESSION["lupa_kartu"]["user_id"]);
+
+        if ($is_dummy) {
+            usleep(random_int(150000, 250000));
+            $_SESSION["lupa_kartu"]["otp_sent_at"] = time();
+            $success = "Jika email terdaftar, kode OTP baru telah dikirimkan ke kotak masuk Anda.";
+        } else {
+            $uid = (int)$_SESSION["lupa_kartu"]["user_id"];
+
+            // Cek batas permintaan
+            $limit_check = otp_batas_permintaan($conn, $uid, $client_ip);
+            if (!$limit_check['allowed']) {
+                $error = $limit_check['message'];
+            } else {
+                $otp_baru = otp_buat($conn, $uid, $client_ip);
+                $kirim = otp_kirim($_SESSION["lupa_kartu"]["email"], $_SESSION["lupa_kartu"]["full_name"], $otp_baru);
+
+                if ($kirim['success']) {
+                    $_SESSION["lupa_kartu"]["otp_sent_at"] = time();
+                    $success = "Kode OTP baru telah berhasil dikirimkan ke email Anda.";
+                } else {
+                    $error = "Gagal mengirimkan kode OTP baru: " . htmlspecialchars($kirim['message']);
+                }
+            }
+        }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────
+//  LANGKAH 3 — BUAT KATA SANDI BARU & TERBITKAN KARTU PENGGANTI
+// ─────────────────────────────────────────────────────────────
+if ($action === "set_password" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
+    // Validasi prasyarat: harus di langkah 3 dan otp_verified_at ada
+    $sess = $_SESSION["lupa_kartu"] ?? [];
+    if (empty($sess["user_id"]) || ($sess["step"] ?? 0) !== 3 || empty($sess["otp_verified_at"])) {
+        header("Location: lupa_kartu.php");
+        exit;
+    }
+
+    // Validasi masa aktif sesi verifikasi (maksimal 10 menit)
+    $verified_at = (int)$sess["otp_verified_at"];
+    if ((time() - $verified_at) > 600) {
+        // Kedaluwarsa: Cairkan kembali kartu lama jika ada
+        $uid = (int)$sess["user_id"];
+        $unfreeze = mysqli_prepare($conn, "UPDATE users SET card_status='active' WHERE id=?");
+        if ($unfreeze) {
+            mysqli_stmt_bind_param($unfreeze, "i", $uid);
+            mysqli_stmt_execute($unfreeze);
+            mysqli_stmt_close($unfreeze);
+        }
+        unset($_SESSION["lupa_kartu"]);
+        header("Location: lupa_kartu.php?expired=1");
+        exit;
+    }
+
+    $new_password     = (string)($_POST["password"] ?? "");
+    $confirm_password = (string)($_POST["password_confirm"] ?? "");
 
     if (strlen($new_password) < 8) {
         $error = "Kata sandi baru minimal 8 karakter.";
     } elseif (!preg_match('/[A-Za-z]/', $new_password) || !preg_match('/[0-9]/', $new_password)) {
-        $error = "Kata sandi baru harus mengandung huruf dan angka.";
+        $error = "Kata sandi baru harus mengandung kombinasi huruf dan angka.";
     } elseif ($new_password !== $confirm_password) {
-        $error = "Konfirmasi kata sandi baru tidak sama.";
+        $error = "Konfirmasi kata sandi baru tidak sama dengan kata sandi baru.";
     } else {
-        $sess   = $_SESSION["lupa_kartu"];
+        $uid = (int)$sess["user_id"];
         $hashed = password_hash($new_password, PASSWORD_DEFAULT);
+        $empty_plain = "";
 
-        $stmt = mysqli_prepare($conn, "UPDATE users SET password = ?, plain_password = ?, card_status = 'active' WHERE id = ?");
-        mysqli_stmt_bind_param($stmt, "ssi", $hashed, $new_password, $sess["id"]);
-        mysqli_stmt_execute($stmt);
-        mysqli_stmt_close($stmt);
+        // UPDATE password baru, kosongkan plain_password, dan aktifkan kembali kartu
+        $stmt_up = mysqli_prepare(
+            $conn,
+            "UPDATE users SET password = ?, plain_password = ?, card_status = 'active' WHERE id = ?"
+        );
+        mysqli_stmt_bind_param($stmt_up, "ssi", $hashed, $empty_plain, $uid);
+        mysqli_stmt_execute($stmt_up);
+        mysqli_stmt_close($stmt_up);
 
-        // Tampilkan kartu anggota pengganti (sekali tampil), pakai halaman yang sama
-        // dengan kartu hasil pendaftaran.
+        // Siapkan data sesi penerbitan kartu anggota pengganti (reissued)
         $_SESSION["kartu_data"] = [
-            "id"         => $sess["id"],
+            "id"         => $sess["user_id"],
             "full_name"  => $sess["full_name"],
             "nik"        => $sess["nik"],
             "kelas"      => $sess["kelas"],
@@ -123,13 +312,35 @@ if ($action === "set_password" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST")
             "reissued"   => true,
         ];
 
+        // Hapus seluruh sesi lupa_kartu setelah berhasil
         unset($_SESSION["lupa_kartu"]);
+
+        // Arahkan ke kartu_anggota.php untuk mengunduh kartu pengganti
         header("Location: kartu_anggota.php");
         exit;
     }
 }
 
-$page_title = "Lupa Kartu – AKSA NOVA";
+// Hitung sisa jeda kirim ulang untuk langkah 2
+$resend_wait_seconds = 0;
+if ($current_step === 2 && !empty($_SESSION["lupa_kartu"]["otp_sent_at"])) {
+    $time_since_sent = time() - (int)$_SESSION["lupa_kartu"]["otp_sent_at"];
+    if ($time_since_sent < 60) {
+        $resend_wait_seconds = 60 - $time_since_sent;
+    }
+}
+
+// Hitung sisa waktu kedaluwarsa sesi verifikasi pada langkah 3 (maks 10 menit)
+$step3_remaining_seconds = 600;
+if ($current_step === 3 && !empty($_SESSION["lupa_kartu"]["otp_verified_at"])) {
+    $elapsed_verif = time() - (int)$_SESSION["lupa_kartu"]["otp_verified_at"];
+    $step3_remaining_seconds = max(0, 600 - $elapsed_verif);
+    if ($step3_remaining_seconds <= 0) {
+        $error = "Sesi pembuatan kata sandi telah kedaluwarsa. Silakan ulangi proses dari awal.";
+    }
+}
+
+$page_title = "Pemulihan Akun & Lupa Kartu — AKSA NOVA";
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -137,11 +348,24 @@ $page_title = "Lupa Kartu – AKSA NOVA";
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title><?= htmlspecialchars($page_title) ?></title>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
   <script>
-    if (localStorage.getItem('aksanova_theme') === 'light') {
-      document.documentElement.classList.add('theme-light');
-    }
+    (function() {
+      try {
+        var t = localStorage.getItem('aksanova_theme');
+        if (!t) {
+          var s = JSON.parse(localStorage.getItem('aksanova_settings') || '{}');
+          t = s.mode;
+        }
+        if (t === 'light') {
+          document.documentElement.classList.add('theme-light', 'light');
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('theme-light', 'light');
+        }
+      } catch(e) {}
+    })();
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -180,9 +404,9 @@ $page_title = "Lupa Kartu – AKSA NOVA";
     }
 
     .card {
-      width: 880px;
+      width: 920px;
       max-width: calc(100vw - 24px);
-      min-height: 540px;
+      min-height: 560px;
       border-radius: var(--radius-lg);
       overflow: hidden;
       display: flex;
@@ -197,12 +421,12 @@ $page_title = "Lupa Kartu – AKSA NOVA";
     }
 
     .left {
-      flex: 0 0 54%;
+      flex: 0 0 56%;
       background: #10151b;
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 52px 56px;
+      padding: 48px 52px;
       position: relative;
     }
 
@@ -223,39 +447,89 @@ $page_title = "Lupa Kartu – AKSA NOVA";
 
     .form-title {
       font-family: 'Cormorant Garamond', serif;
-      font-size: 2.2rem;
+      font-size: 2.15rem;
       font-weight: 700;
       color: #d8b878;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       letter-spacing: -0.5px;
     }
 
     .form-sub {
-      font-size: .82rem;
-      color: rgba(238,243,244,.55);
+      font-size: .84rem;
+      color: rgba(238,243,244,.78);
       font-weight: 300;
-      margin-bottom: 22px;
+      margin-bottom: 20px;
       line-height: 1.6;
     }
 
-    .steps {
+    /* ── Indikator Langkah 1-2-3 Berurutan ── */
+    .steps-indicator {
       display: flex;
-      gap: 8px;
+      align-items: center;
+      gap: 10px;
       margin-bottom: 22px;
     }
-    .step-dot {
+    .step-pill {
       flex: 1;
-      height: 4px;
-      border-radius: 4px;
-      background: rgba(255,255,255,.1);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.05);
+      border: 1px solid rgba(255,255,255,.08);
+      font-size: .72rem;
+      color: rgba(238,243,244,.5);
+      transition: all var(--trans);
     }
-    .step-dot.active { background: #d8b878; }
+    .step-pill .step-num {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(255,255,255,.1);
+      font-weight: 700;
+      font-size: .7rem;
+    }
+    .step-pill.active {
+      background: rgba(216,184,120,.14);
+      border-color: rgba(216,184,120,.4);
+      color: #d8b878;
+      font-weight: 600;
+    }
+    .step-pill.active .step-num {
+      background: #d8b878;
+      color: #10151b;
+    }
+    .step-pill.completed {
+      background: rgba(39,174,96,.12);
+      border-color: rgba(39,174,96,.3);
+      color: #4ade80;
+    }
+    .step-pill.completed .step-num {
+      background: #27ae60;
+      color: #fff;
+    }
 
     .error-msg {
       width: 100%;
       background: rgba(192,57,43,.15);
       border: 1px solid rgba(192,57,43,.5);
       color: #e07070;
+      font-size: .8rem;
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      margin-bottom: 14px;
+      line-height: 1.5;
+    }
+
+    .success-msg {
+      width: 100%;
+      background: rgba(39,174,96,.15);
+      border: 1px solid rgba(39,174,96,.45);
+      color: #4ade80;
       font-size: .8rem;
       padding: 10px 14px;
       border-radius: var(--radius-md);
@@ -279,7 +553,7 @@ $page_title = "Lupa Kartu – AKSA NOVA";
     .field label {
       display: block;
       font-size: .75rem;
-      color: rgba(238,243,244,.55);
+      color: rgba(238,243,244,.65);
       margin-bottom: 6px;
       font-weight: 500;
     }
@@ -306,7 +580,7 @@ $page_title = "Lupa Kartu – AKSA NOVA";
     }
 
     .input-wrap input::placeholder,
-    .field input::placeholder { color: rgba(238,243,244,.35); }
+    .field input::placeholder { color: rgba(238,243,244,.45); }
 
     .input-wrap input:focus,
     .field input:focus {
@@ -315,26 +589,72 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       box-shadow: 0 0 0 3px rgba(216,184,120,.2);
     }
 
+    /* ── Kotak 6-Digit OTP ── */
+    .otp-grid-wrap {
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+      margin: 16px 0 12px;
+    }
+    .otp-digit-box {
+      flex: 1;
+      height: 54px;
+      text-align: center;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #f0d9a8;
+      background: rgba(255,255,255,.06);
+      border: 1.5px solid rgba(216,184,120,.2);
+      border-radius: var(--radius-md);
+      outline: none;
+      transition: all var(--trans);
+      font-family: 'Outfit', monospace;
+    }
+    .otp-digit-box:focus {
+      background: rgba(216,184,120,.1);
+      border-color: #d8b878;
+      box-shadow: 0 0 0 3px rgba(216,184,120,.25);
+      transform: translateY(-2px);
+    }
+
+    .otp-meta-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: .75rem;
+      color: rgba(238,243,244,.7);
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .otp-timer-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      color: #d8b878;
+      font-weight: 600;
+    }
+
     .toggle-eye {
       position: absolute;
       right: 14px;
       width: 18px;
       height: 18px;
-      color: rgba(238,243,244,.35);
+      color: #d8b878;
       cursor: pointer;
       transition: color var(--trans);
     }
-    .toggle-eye:hover { color: #d8b878; }
+    .toggle-eye:hover { color: #f0d9a8; }
     .toggle-eye svg { width: 100%; height: 100%; }
     .toggle-eye .eye-off { display: none; }
     .input-wrap.pw-visible .eye-on  { display: none; }
     .input-wrap.pw-visible .eye-off { display: block; }
 
-    .hint { font-size: .68rem; color: rgba(238,243,244,.4); margin-top: 4px; line-height: 1.5; }
+    .hint { font-size: .72rem; color: rgba(238,243,244,.72); margin-top: 4px; line-height: 1.5; }
 
     .btn-primary {
       width: 100%;
-      max-width: 240px;
+      max-width: 260px;
       padding: 13px 0;
       margin-top: 6px;
       border: none;
@@ -344,19 +664,42 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       font-family: 'Outfit', sans-serif;
       font-size: .88rem;
       font-weight: 700;
-      letter-spacing: .06em;
+      letter-spacing: .04em;
       cursor: pointer;
       transition: box-shadow var(--trans), transform .15s;
     }
     .btn-primary:hover { box-shadow: 0 8px 28px rgba(216,184,120,.45); transform: translateY(-1px); }
     .btn-primary:active { transform: scale(.97); }
 
+    .btn-secondary {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(216,184,120,.2);
+      color: #eef3f4;
+      font-family: 'Outfit', sans-serif;
+      font-size: .8rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      transition: all var(--trans);
+    }
+    .btn-secondary:hover:not(:disabled) {
+      background: rgba(216,184,120,.14);
+      border-color: #d8b878;
+      color: #d8b878;
+    }
+    .btn-secondary:disabled {
+      opacity: .45;
+      cursor: not-allowed;
+      border-color: rgba(255,255,255,.1);
+    }
+
     .btn-text {
       background: none;
       border: none;
       font-family: 'Outfit', sans-serif;
       font-size: .78rem;
-      color: rgba(238,243,244,.5);
+      color: rgba(238,243,244,.55);
       cursor: pointer;
       text-decoration: none;
       padding: 0;
@@ -366,7 +709,7 @@ $page_title = "Lupa Kartu – AKSA NOVA";
     .actions-row {
       display: flex;
       align-items: center;
-      gap: 18px;
+      gap: 16px;
       margin-top: 14px;
       flex-wrap: wrap;
     }
@@ -375,7 +718,7 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       display: inline-block;
       margin-top: 18px;
       font-size: .78rem;
-      color: rgba(238,243,244,.45);
+      color: rgba(238,243,244,.75); font-weight: 600;
       text-decoration: none;
     }
     .back-link:hover { color: #d8b878; text-decoration: underline; }
@@ -420,8 +763,8 @@ $page_title = "Lupa Kartu – AKSA NOVA";
 
     .right-sub {
       font-size: .84rem;
-      font-weight: 300;
-      color: rgba(238,243,244,.68);
+      font-weight: 400;
+      color: rgba(238,243,244,.85);
       line-height: 1.85;
     }
 
@@ -430,17 +773,14 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       text-align: left;
       margin-top: 22px;
       font-size: .8rem;
-      color: rgba(238,243,244,.68);
+      color: rgba(238,243,244,.85); font-weight: 500;
       line-height: 2.1;
     }
     .right-list li::before { content: '✓  '; font-weight: 600; color: #d8b878; }
 
     /* ══════════════════ RESPONSIVE MOBILE ══════════════════ */
     @media (max-width: 860px) {
-      html, body {
-        padding: 24px 14px;
-        min-height: 100vh;
-      }
+      html, body { padding: 24px 14px; min-height: 100vh; }
       .card {
         flex-direction: column;
         width: 100%;
@@ -464,24 +804,13 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       .right {
         order: -1;
         flex: none;
-        padding: 36px 28px 28px;
+        padding: 34px 28px 26px;
         border-bottom: 1px solid rgba(216,184,120,.16);
       }
-      .right-title {
-        font-size: 1.85rem;
-        margin-bottom: 8px;
-      }
-      .right-title br {
-        display: none;
-      }
-      .right-sub {
-        font-size: .84rem;
-        margin-bottom: 12px;
-        line-height: 1.5;
-      }
-      .right-sub br {
-        display: none;
-      }
+      .right-title { font-size: 1.85rem; margin-bottom: 8px; }
+      .right-title br { display: none; }
+      .right-sub { font-size: .84rem; margin-bottom: 12px; line-height: 1.5; }
+      .right-sub br { display: none; }
       .right-list {
         display: flex;
         flex-wrap: wrap;
@@ -489,7 +818,6 @@ $page_title = "Lupa Kartu – AKSA NOVA";
         gap: 8px 12px;
         margin-top: 14px;
         font-size: .78rem;
-        line-height: 1.4;
       }
       .right-list li {
         display: inline-flex;
@@ -499,105 +827,24 @@ $page_title = "Lupa Kartu – AKSA NOVA";
         padding: 5px 12px;
         border-radius: 20px;
       }
-      .right-list li::before {
-        content: '✓ ';
-        font-weight: 700;
-        color: #d8b878;
-        margin-right: 4px;
-      }
-      .left {
-        flex: none;
-        padding: 32px 28px 38px;
-      }
-      .left::before {
-        display: none;
-      }
-      .form-title {
-        font-size: 1.8rem;
-      }
-      .form-sub {
-        font-size: .8rem;
-        margin-bottom: 20px;
-      }
-      .btn-primary {
-        max-width: 100%;
-        width: 100%;
-        padding: 13px 0;
-      }
-      .btn-secondary {
-        max-width: 100%;
-        width: 100%;
-        padding: 13px 0;
-      }
-      .back-link {
-        display: block;
-        text-align: center;
-        margin-top: 18px;
-      }
+      .left { flex: none; padding: 32px 28px 38px; }
+      .left::before { display: none; }
+      .form-title { font-size: 1.8rem; }
+      .form-sub { font-size: .8rem; margin-bottom: 18px; }
+      .btn-primary { max-width: 100%; width: 100%; padding: 13px 0; }
+      .back-link { display: block; text-align: center; margin-top: 18px; }
     }
 
     @media (max-width: 600px) {
-      html, body {
-        padding: 16px 10px;
-      }
-      .card {
-        border-radius: 18px;
-      }
-      .right {
-        padding: 26px 18px 22px;
-      }
-      .right-title {
-        font-size: 1.6rem;
-      }
-      .right-sub {
-        font-size: .78rem;
-      }
-      .right-list {
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-      }
-      .right-list li {
-        width: 100%;
-        max-width: 280px;
-        justify-content: center;
-        font-size: .75rem;
-      }
-      .left {
-        padding: 24px 18px 30px;
-      }
-      .form-title {
-        font-size: 1.55rem;
-      }
-      .form-sub {
-        font-size: .76rem;
-        margin-bottom: 18px;
-      }
-    }
-
-    @media (max-width: 380px) {
-      html, body {
-        padding: 12px 6px;
-      }
-      .card {
-        border-radius: 16px;
-      }
-      .right {
-        padding: 22px 14px 18px;
-      }
-      .right-title {
-        font-size: 1.4rem;
-      }
-      .left {
-        padding: 20px 14px 26px;
-      }
-      .form-title {
-        font-size: 1.4rem;
-      }
-      .input-wrap input {
-        padding: 11px 13px 11px 40px;
-        font-size: .84rem;
-      }
+      html, body { padding: 16px 10px; }
+      .card { border-radius: 18px; }
+      .left { padding: 24px 18px 30px; }
+      .right { padding: 26px 18px 22px; }
+      .right-title { font-size: 1.55rem; }
+      .form-title { font-size: 1.55rem; }
+      .otp-digit-box { height: 46px; font-size: 1.25rem; }
+      .steps-indicator { gap: 6px; }
+      .step-pill { padding: 5px 8px; font-size: .65rem; }
     }
 
     /* ══════════════════ TOMBOL MODE GELAP / TERANG ══════════════════ */
@@ -627,135 +874,246 @@ $page_title = "Lupa Kartu – AKSA NOVA";
       border-color: #d8b878;
       box-shadow: 0 8px 24px rgba(216,184,120,.3);
     }
-    .btn-mode svg { width: 19px; height: 19px; transition: transform .4s cubic-bezier(.22,1,.36,1); }
+    .btn-mode svg { width: 19px; height: 19px; }
     .btn-mode .icon-sun { display: none; }
 
-    /* ══════════════════ LIGHT THEME OVERRIDES ══════════════════ */
-    html.theme-light {
-      --ink:       #1a1714;
-      --dim:       #6b645b;
-      --ghost:     #9c9489;
+    /* ══════════════════ LIGHT THEME OVERRIDES (HIGH CONTRAST & ACCESSIBILITY) ══════════════════ */
+    html.theme-light, html.light {
+      --ink:       #1a140d;
+      --dim:       #4a4237;
+      --ghost:     #6b6154;
       --surface:   #ffffff;
-      --field:     rgba(0,0,0,.04);
-      --field-foc: rgba(0,0,0,.07);
-      --panel-bg:  linear-gradient(148deg, #f5efe6 0%, #ece2d0 50%, #f9f5ee 100%);
-      --accent:    #9a7328;
-      --ring:      rgba(154,115,40,.28);
-      --shadow:    0 32px 80px rgba(70,50,20,.14);
+      --field:     #fdfbf7;
+      --field-foc: #ffffff;
+      --panel-bg:  linear-gradient(148deg, #f5efe6 0%, #ebe2d2 50%, #f6f0e7 100%);
+      --accent:    #8a5815;
+      --ring:      rgba(138,88,21,.25);
+      --shadow:    0 24px 60px rgba(60,40,15,.12);
     }
-    html.theme-light, html.theme-light body {
-      background: linear-gradient(135deg, #f6f2e9 0%, #ece4d4 50%, #f7f3ec 100%);
+    html.theme-light, html.theme-light body,
+    html.light, html.light body {
+      background: linear-gradient(135deg, #f5efe6 0%, #ebe2d2 50%, #f6f0e7 100%) !important;
+      color: #1a140d !important;
     }
-    html.theme-light .btn-mode {
-      background: rgba(255,255,255,.85);
-      border-color: rgba(154,115,40,.3);
-      color: #9a7328;
-      box-shadow: 0 6px 20px rgba(60,45,20,.12);
+    html.theme-light .btn-mode, html.light .btn-mode {
+      background: #ffffff !important;
+      border-color: rgba(138,88,21,.38) !important;
+      color: #784807 !important;
+      box-shadow: 0 4px 16px rgba(60,40,15,.12) !important;
     }
-    html.theme-light .btn-mode:hover {
-      border-color: #9a7328;
-      box-shadow: 0 8px 24px rgba(154,115,40,.22);
+    html.theme-light .btn-mode:hover, html.light .btn-mode:hover {
+      border-color: #8a5815 !important;
+      box-shadow: 0 6px 20px rgba(138,88,21,.25) !important;
     }
-    html.theme-light .btn-mode .icon-moon { display: none; }
-    html.theme-light .btn-mode .icon-sun  { display: block; }
-    html.theme-light .card {
-      background: #ffffff;
-      border-color: rgba(154,115,40,.2);
-      box-shadow: 0 24px 60px rgba(60,45,20,.12);
+    html.theme-light .btn-mode .icon-moon, html.light .btn-mode .icon-moon { display: none !important; }
+    html.theme-light .btn-mode .icon-sun, html.light .btn-mode .icon-sun   { display: block !important; }
+
+    html.theme-light .card, html.light .card {
+      background: #ffffff !important;
+      border-color: rgba(138,88,21,.22) !important;
+      box-shadow: 0 24px 60px rgba(60,40,15,.12) !important;
     }
-    html.theme-light .left {
-      background: #ffffff;
+    html.theme-light .left, html.light .left { background: #ffffff !important; }
+    html.theme-light .form-title, html.light .form-title {
+      color: #784807 !important;
+      font-weight: 700 !important;
     }
-    html.theme-light .form-title {
-      color: #8a6323;
+    html.theme-light .form-sub, html.light .form-sub {
+      color: #4a4237 !important;
+      font-weight: 400 !important;
     }
-    html.theme-light .form-sub {
-      color: #6b645b;
+    html.theme-light .form-sub b, html.light .form-sub b {
+      color: #1a140d !important;
+      font-weight: 700 !important;
     }
-    html.theme-light .field label {
-      color: #3b352b;
+    html.theme-light .field label, html.light .field label {
+      color: #241c14 !important;
+      font-weight: 700 !important;
     }
-    html.theme-light .field input,
-    html.theme-light .input-wrap input {
-      background: #fdfbf7;
-      border-color: rgba(154,115,40,.22);
-      color: #1a1714;
+    html.theme-light .field input, html.theme-light .input-wrap input,
+    html.light .field input, html.light .input-wrap input {
+      background: #fdfbf7 !important;
+      border-color: rgba(138,88,21,.32) !important;
+      color: #1a140d !important;
+      font-weight: 600 !important;
     }
+    html.theme-light .field input:focus, html.theme-light .input-wrap input:focus,
+    html.light .field input:focus, html.light .input-wrap input:focus {
+      background: #ffffff !important;
+      border-color: #8a5815 !important;
+      box-shadow: 0 0 0 3px rgba(138,88,21,.2) !important;
+    }
+    html.theme-light .input-wrap input::placeholder,
     html.theme-light .field input::placeholder,
-    html.theme-light .input-wrap input::placeholder {
-      color: #9c9489;
+    html.light .input-wrap input::placeholder,
+    html.light .field input::placeholder {
+      color: #7d7265 !important;
+      opacity: 1 !important;
+      font-weight: 400 !important;
     }
-    html.theme-light .field input:focus,
-    html.theme-light .input-wrap input:focus {
-      background: #ffffff;
-      border-color: #9a7328;
-      box-shadow: 0 0 0 3px rgba(154,115,40,.18);
+    html.theme-light .hint, html.light .hint {
+      color: #5c5245 !important;
+      font-weight: 500 !important;
+      font-size: 0.74rem !important;
     }
-    html.theme-light .hint {
-      color: #7b7163;
+    html.theme-light .otp-digit-box, html.light .otp-digit-box {
+      background: #ffffff !important;
+      border-color: rgba(138,88,21,.35) !important;
+      color: #452b06 !important;
+      font-weight: 800 !important;
+      box-shadow: 0 2px 6px rgba(60,40,15,.06) !important;
     }
-    html.theme-light .toggle-eye {
-      color: #9c9489;
+    html.theme-light .otp-digit-box:focus, html.light .otp-digit-box:focus {
+      background: #ffffff !important;
+      border-color: #8a5815 !important;
+      box-shadow: 0 0 0 3px rgba(138,88,21,.25) !important;
+      color: #2b1800 !important;
     }
-    html.theme-light .toggle-eye:hover {
-      color: #9a7328;
+    html.theme-light .otp-meta-bar, html.light .otp-meta-bar {
+      color: #4a4237 !important;
+      font-weight: 500 !important;
     }
-    html.theme-light .back-link {
-      color: #6b645b;
+    html.theme-light .otp-timer-box, html.light .otp-timer-box {
+      color: #854d0e !important;
+      font-weight: 700 !important;
+      background: rgba(138,88,21,.08) !important;
+      border: 1px solid rgba(138,88,21,.22) !important;
+      padding: 4px 10px !important;
+      border-radius: 14px !important;
     }
-    html.theme-light .back-link:hover {
-      color: #9a7328;
+    html.theme-light .otp-timer-box svg, html.light .otp-timer-box svg {
+      stroke: #854d0e !important;
     }
-    html.theme-light .btn-primary {
-      background: linear-gradient(135deg, #d8b878, #caa055);
-      color: #1a1205;
-      box-shadow: 0 6px 20px rgba(154,115,40,.25);
+    html.theme-light .toggle-eye, html.light .toggle-eye {
+      color: #8a5815 !important;
     }
-    html.theme-light .btn-primary:hover {
-      box-shadow: 0 8px 28px rgba(154,115,40,.38);
+    html.theme-light .toggle-eye:hover, html.light .toggle-eye:hover {
+      color: #452b06 !important;
     }
-    html.theme-light .btn-text {
-      color: #7b7163;
+    html.theme-light .step-pill, html.light .step-pill {
+      background: rgba(138,88,21,.07) !important;
+      border-color: rgba(138,88,21,.22) !important;
+      color: #5c5245 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .btn-text:hover {
-      color: #b91c1c;
+    html.theme-light .step-pill .step-num, html.light .step-pill .step-num {
+      background: rgba(138,88,21,.14) !important;
+      color: #524738 !important;
+      border: 1px solid rgba(138,88,21,.28) !important;
+      font-weight: 700 !important;
     }
-    html.theme-light .step-dot {
-      background: rgba(0,0,0,.08);
+    html.theme-light .step-pill.active, html.light .step-pill.active {
+      background: rgba(138,88,21,.16) !important;
+      border-color: #8a5815 !important;
+      color: #6e460a !important;
+      font-weight: 700 !important;
     }
-    html.theme-light .step-dot.active {
-      background: #9a7328;
+    html.theme-light .step-pill.active .step-num, html.light .step-pill.active .step-num {
+      background: #8a5815 !important;
+      color: #ffffff !important;
+      border: none !important;
     }
-    html.theme-light .frozen-notice {
-      background: rgba(245,158,11,.1);
-      border-color: rgba(245,158,11,.3);
-      color: #92400e;
+    html.theme-light .step-pill.completed, html.light .step-pill.completed {
+      background: #eefaf0 !important;
+      border-color: rgba(21,128,61,.35) !important;
+      color: #15803d !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .right {
-      background: linear-gradient(148deg, #f8f4ec 0%, #ece1ce 50%, #f4ede0 100%);
-      border-bottom-color: rgba(154,115,40,.2);
+    html.theme-light .step-pill.completed .step-num, html.light .step-pill.completed .step-num {
+      background: #16a34a !important;
+      color: #ffffff !important;
+      border: none !important;
     }
-    html.theme-light .right-title {
-      color: #8a6323;
+    html.theme-light .btn-primary, html.light .btn-primary {
+      background: linear-gradient(135deg, #d4a34b, #b8832a) !important;
+      color: #ffffff !important;
+      box-shadow: 0 6px 20px rgba(138,88,21,.35) !important;
+      text-shadow: 0 1px 2px rgba(0,0,0,.25);
     }
-    html.theme-light .right-sub {
-      color: #6b645b;
+    html.theme-light .btn-primary:hover, html.light .btn-primary:hover {
+      box-shadow: 0 8px 26px rgba(138,88,21,.45) !important;
+      filter: brightness(1.04);
     }
-    html.theme-light .right-list {
-      color: #4a433a;
+    html.theme-light .btn-secondary, html.light .btn-secondary {
+      background: #fbf5eb !important;
+      border-color: rgba(138,88,21,.35) !important;
+      color: #784807 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .right-list li {
-      background: rgba(154,115,40,.08);
-      border-color: rgba(154,115,40,.22);
-      color: #4a433a;
+    html.theme-light .btn-secondary:hover:not(:disabled), html.light .btn-secondary:hover:not(:disabled) {
+      background: rgba(138,88,21,.15) !important;
+      border-color: #8a5815 !important;
+      color: #452b06 !important;
     }
-    html.theme-light .right-list li::before {
-      color: #8a6323;
+    html.theme-light .btn-secondary:disabled, html.light .btn-secondary:disabled {
+      background: #f3eee6 !important;
+      border-color: rgba(138,88,21,.2) !important;
+      color: #7d7265 !important;
+      opacity: 0.8 !important;
     }
-    html.theme-light .error-msg {
-      background: rgba(220,38,38,.08);
-      border-color: rgba(220,38,38,.25);
-      color: #b91c1c;
+    html.theme-light .btn-text, html.light .btn-text {
+      color: #5c5245 !important;
+      font-weight: 600 !important;
+    }
+    html.theme-light .btn-text:hover, html.light .btn-text:hover {
+      color: #b91c1c !important;
+    }
+    html.theme-light .back-link, html.light .back-link {
+      color: #635849 !important;
+      font-weight: 600 !important;
+    }
+    html.theme-light .back-link:hover, html.light .back-link:hover {
+      color: #8a5815 !important;
+    }
+    html.theme-light .frozen-notice, html.light .frozen-notice {
+      background: #fef8ee !important;
+      border-color: rgba(217,119,6,.38) !important;
+      color: #854d0e !important;
+    }
+    html.theme-light .frozen-notice b, html.light .frozen-notice b {
+      color: #451a03 !important;
+      font-weight: 800 !important;
+    }
+    html.theme-light .right, html.light .right {
+      background: linear-gradient(148deg, #f8f4ec 0%, #ece1ce 50%, #f4ede0 100%) !important;
+      border-left: 1px solid rgba(138,88,21,.18) !important;
+    }
+    @media (max-width: 860px) {
+      html.theme-light .right, html.light .right {
+        border-left: none !important;
+        border-bottom: 1px solid rgba(138,88,21,.18) !important;
+      }
+    }
+    html.theme-light .right-title, html.light .right-title {
+      color: #6c4207 !important;
+      font-weight: 700 !important;
+    }
+    html.theme-light .right-sub, html.light .right-sub {
+      color: #3d352a !important;
+      font-weight: 400 !important;
+    }
+    html.theme-light .right-list, html.light .right-list {
+      color: #2c251d !important;
+    }
+    html.theme-light .right-list li, html.light .right-list li {
+      background: rgba(138,88,21,.07) !important;
+      border-color: rgba(138,88,21,.2) !important;
+      color: #2c251d !important;
+      font-weight: 500 !important;
+    }
+    html.theme-light .right-list li::before, html.light .right-list li::before {
+      color: #8a5815 !important;
+      font-weight: 700 !important;
+    }
+    html.theme-light .error-msg, html.light .error-msg {
+      background: #fef2f2 !important;
+      border-color: rgba(220,38,38,.35) !important;
+      color: #991b1b !important;
+    }
+    html.theme-light .success-msg, html.light .success-msg {
+      background: #f0fdf4 !important;
+      border-color: rgba(22,163,74,.35) !important;
+      color: #166534 !important;
     }
   </style>
 </head>
@@ -774,63 +1132,140 @@ $page_title = "Lupa Kartu – AKSA NOVA";
 
 <div class="card">
   <div class="left">
-    <div class="steps">
-      <div class="step-dot active"></div>
-      <div class="step-dot <?= $step === 2 ? 'active' : '' ?>"></div>
+
+    <!-- Indikator Langkah 1 - 2 - 3 -->
+    <div class="steps-indicator">
+      <div class="step-pill <?= $current_step === 1 ? 'active' : ($current_step > 1 ? 'completed' : '') ?>">
+        <span class="step-num"><?= $current_step > 1 ? '✓' : '1' ?></span>
+        <span>Minta OTP</span>
+      </div>
+      <div class="step-pill <?= $current_step === 2 ? 'active' : ($current_step > 2 ? 'completed' : '') ?>">
+        <span class="step-num"><?= $current_step > 2 ? '✓' : '2' ?></span>
+        <span>Verifikasi OTP</span>
+      </div>
+      <div class="step-pill <?= $current_step === 3 ? 'active' : '' ?>">
+        <span class="step-num">3</span>
+        <span>Sandi Baru</span>
+      </div>
     </div>
 
-    <?php if ($step === 1): ?>
-      <h1 class="form-title">Lupa Kartu</h1>
-      <p class="form-sub">Kartu anggota hilang atau ditemukan orang lain? Verifikasi dulu identitasmu, kartu lama akan langsung dibekukan supaya tidak bisa dipakai login.</p>
+    <?php if ($error !== ""): ?>
+      <div class="error-msg"><?= htmlspecialchars($error) ?></div>
+    <?php endif; ?>
 
-      <?php if ($error): ?><div class="error-msg"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+    <?php if ($success !== ""): ?>
+      <div class="success-msg"><?= htmlspecialchars($success) ?></div>
+    <?php endif; ?>
 
-      <form method="POST" action="lupa_kartu.php">
-        <input type="hidden" name="action" value="verify">
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  LANGKAH 1 — MINTA KODE OTP EMAIL                           -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <?php if ($current_step === 1): ?>
+      <h1 class="form-title">Lupa Kartu / Sandi</h1>
+      <p class="form-sub">Masukkan alamat email anggota yang terdaftar di perpustakaan. Kami akan mengirimkan 6 digit kode OTP verifikasi.</p>
+
+      <form method="POST" action="lupa_kartu.php" novalidate>
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="request_otp">
         <div class="field">
-          <label>Email Terdaftar</label>
+          <label for="emailInput">Alamat Email Terdaftar</label>
           <div class="input-wrap">
             <input type="email" name="email" id="emailInput" placeholder="nama@email.com"
-                   value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required style="padding-right:16px;">
+                   value="<?= htmlspecialchars($_POST['email'] ?? '') ?>" required autofocus style="padding-right:16px;">
           </div>
-        </div>
-        <div class="field">
-          <label>Kata Sandi Lama</label>
-          <div class="input-wrap" id="pwWrap1">
-            <input type="password" name="password" id="pwInput1" placeholder="Kata sandi yang tertera di kartu lama" autocomplete="current-password" required>
-            <span class="toggle-eye" data-target="pwInput1" data-wrap="pwWrap1" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">
-              <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-              <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
-            </span>
-          </div>
-          <p class="hint">Kamu tetap perlu tahu kata sandi lama sebagai bukti pemilik akun.</p>
+          <p class="hint">Kode One-Time Password (OTP) akan dikirimkan ke alamat email ini.</p>
         </div>
 
-        <button type="submit" class="btn-primary">Bekukan Kartu Lama &amp; Lanjut</button>
+        <button type="submit" class="btn-primary">Kirim Kode OTP</button>
       </form>
 
       <a href="sign_in.php" class="back-link">&larr; Kembali ke halaman masuk</a>
 
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  LANGKAH 2 — MASUKKAN 6 DIGIT KODE OTP                     -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <?php elseif ($current_step === 2): ?>
+      <h1 class="form-title">Verifikasi OTP</h1>
+      <p class="form-sub">
+        Jika email terdaftar, kode OTP telah dikirim ke <b><?= htmlspecialchars($_SESSION["lupa_kartu"]["email"] ?? "email Anda") ?></b>. Masukkan 6 digit kode di bawah:
+      </p>
+
+      <form method="POST" action="lupa_kartu.php" id="formOtp">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="verify_otp">
+        <input type="hidden" name="otp" id="otpCombined" value="">
+
+        <div class="field">
+          <label>Kode Verifikasi 6 Digit</label>
+          <div class="otp-grid-wrap" id="otpContainer">
+            <input type="text" class="otp-digit-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autocomplete="one-time-code" autofocus data-idx="0">
+            <input type="text" class="otp-digit-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" data-idx="1">
+            <input type="text" class="otp-digit-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" data-idx="2">
+            <input type="text" class="otp-digit-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" data-idx="3">
+            <input type="text" class="otp-digit-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" data-idx="4">
+            <input type="text" class="otp-digit-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" data-idx="5">
+          </div>
+        </div>
+
+        <div class="otp-meta-bar">
+          <div class="otp-timer-box" id="expiryTimerBox">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span id="expiryTimerText">Berlaku: 10:00</span>
+          </div>
+
+          <div>
+            <button type="button" class="btn-secondary" id="btnResend" <?= $resend_wait_seconds > 0 ? 'disabled' : '' ?>>
+              Kirim Ulang (<span id="resendCountdown"><?= $resend_wait_seconds > 0 ? $resend_wait_seconds : '60' ?></span>s)
+            </button>
+          </div>
+        </div>
+
+        <div class="actions-row">
+          <button type="submit" class="btn-primary" id="btnSubmitOtp">Verifikasi Kode OTP</button>
+        </div>
+      </form>
+
+      <!-- Form Tersembunyi Kirim Ulang OTP -->
+      <form method="POST" action="lupa_kartu.php" id="formResendOtp" style="display:none;">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="resend_otp">
+      </form>
+
+      <!-- Form Ganti Email -->
+      <form method="POST" action="lupa_kartu.php" style="margin-top:14px;">
+        <?= csrf_field() ?>
+        <input type="hidden" name="action" value="change_email">
+        <button type="submit" class="btn-text">&larr; Salah memasukkan email? Ganti alamat email</button>
+      </form>
+
+    <!-- ═══════════════════════════════════════════════════════════ -->
+    <!--  LANGKAH 3 — BUAT SANDI BARU & TERBITKAN KARTU PENGGANTI     -->
+    <!-- ═══════════════════════════════════════════════════════════ -->
     <?php else: ?>
       <h1 class="form-title">Buat Kata Sandi Baru</h1>
-      <p class="form-sub">Kartu lama atas nama <b><?= htmlspecialchars($info) ?></b> sudah dibekukan. Buat kata sandi baru sendiri, lalu kartu penggantimu akan langsung diterbitkan.</p>
+      <p class="form-sub">
+        Kode OTP berhasil diverifikasi untuk akun <b><?= htmlspecialchars($_SESSION["lupa_kartu"]["full_name"] ?? "") ?></b>. Kartu lama telah dibekukan demi keamanan. Silakan buat kata sandi baru untuk menerbitkan kartu pengganti.
+      </p>
 
-      <div class="frozen-notice">Kartu lama sedang dibekukan sementara sampai kamu menyelesaikan langkah ini.</div>
-
-      <?php if ($error): ?><div class="error-msg"><?= htmlspecialchars($error) ?></div><?php endif; ?>
+      <div class="frozen-notice">
+        Kartu lama sedang dibekukan sementara. Selesaikan pembuatan sandi baru ini dalam waktu <b id="step3TimerText">10:00</b> untuk menerbitkan kartu pengganti aktif.
+      </div>
 
       <form method="POST" action="lupa_kartu.php">
+        <?= csrf_field() ?>
         <input type="hidden" name="action" value="set_password">
         <div class="field">
           <label>Kata Sandi Baru</label>
           <div class="input-wrap" id="pwWrap2">
-            <input type="password" name="password" id="pwInput2" placeholder="Minimal 8 karakter, huruf & angka" autocomplete="new-password" required>
+            <input type="password" name="password" id="pwInput2" placeholder="Minimal 8 karakter, huruf &amp; angka" autocomplete="new-password" required autofocus>
             <span class="toggle-eye" data-target="pwInput2" data-wrap="pwWrap2" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">
               <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
               <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
             </span>
           </div>
+          <p class="hint">Minimal 8 karakter dan wajib memuat kombinasi huruf serta angka.</p>
         </div>
+
         <div class="field">
           <label>Konfirmasi Kata Sandi Baru</label>
           <div class="input-wrap" id="pwWrap3">
@@ -843,33 +1278,37 @@ $page_title = "Lupa Kartu – AKSA NOVA";
         </div>
 
         <div class="actions-row">
-          <button type="submit" class="btn-primary">Simpan &amp; Terbitkan Kartu Baru</button>
+          <button type="submit" class="btn-primary">Simpan Sandi &amp; Terbitkan Kartu</button>
         </div>
       </form>
 
-      <form method="POST" action="lupa_kartu.php" style="margin-top:10px;">
+      <form method="POST" action="lupa_kartu.php" style="margin-top:12px;">
+        <?= csrf_field() ?>
         <input type="hidden" name="action" value="cancel">
         <button type="submit" class="btn-text">Batalkan, cairkan kembali kartu lama</button>
       </form>
     <?php endif; ?>
+
   </div>
 
   <div class="right">
     <div class="orb orb-1"></div>
     <div class="orb orb-2"></div>
     <div class="right-content">
-      <h2 class="right-title">Kartu Hilang?<br>Aman Kok.</h2>
-      <p class="right-sub">Kartu lama langsung dibekukan begitu<br>kamu memulai proses ini.</p>
+      <h2 class="right-title">Pemulihan Aman<br>Dengan Kode OTP</h2>
+      <p class="right-sub">Verifikasi identitas anggota kini lebih aman<br>langsung melalui email terdaftar.</p>
       <ul class="right-list">
-        <li>Kartu lama tidak bisa dipakai login lagi</li>
-        <li>Kamu buat sendiri password barunya</li>
-        <li>Kartu pengganti langsung bisa diunduh &amp; dicetak</li>
+        <li>Verifikasi aman 6-digit One-Time Password</li>
+        <li>Kartu lama baru dibekukan setelah OTP valid</li>
+        <li>Buat sendiri kata sandi baru akun Anda</li>
+        <li>Kartu anggota pengganti langsung diterbitkan</li>
       </ul>
     </div>
   </div>
 </div>
 
 <script>
+  // Toggle Visibility Password
   document.querySelectorAll('.toggle-eye').forEach(function (toggle) {
     var input = document.getElementById(toggle.dataset.target);
     var wrap  = document.getElementById(toggle.dataset.wrap);
@@ -884,23 +1323,191 @@ $page_title = "Lupa Kartu – AKSA NOVA";
     });
   });
 
-  // Mode gelap / terang
+  // Skrip Interaktif Kotak 6-Digit OTP (Langkah 2)
+  var otpInputs = document.querySelectorAll('.otp-digit-box');
+  if (otpInputs.length === 6) {
+    var formOtp = document.getElementById('formOtp');
+    var otpCombined = document.getElementById('otpCombined');
+
+    function syncOtpValue() {
+      var val = '';
+      otpInputs.forEach(function (inp) { val += inp.value; });
+      otpCombined.value = val;
+      return val;
+    }
+
+    otpInputs.forEach(function (input, idx) {
+      input.addEventListener('input', function (e) {
+        var val = this.value.replace(/[^0-9]/g, '');
+        this.value = val.slice(0, 1);
+
+        if (this.value !== '' && idx < 5) {
+          otpInputs[idx + 1].focus();
+        }
+        var code = syncOtpValue();
+        if (code.length === 6) {
+          // Otomatis submit ketika 6 digit terisi penuh
+          formOtp.requestSubmit ? formOtp.requestSubmit() : formOtp.submit();
+        }
+      });
+
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Backspace' && this.value === '' && idx > 0) {
+          otpInputs[idx - 1].focus();
+        }
+      });
+
+      // Dukungan Paste 6-Digit ke dalam kotak mana saja
+      input.addEventListener('paste', function (e) {
+        e.preventDefault();
+        var pasteData = (e.clipboardData || window.clipboardData).getData('text');
+        var digits = pasteData.replace(/[^0-9]/g, '').slice(0, 6);
+        if (digits.length > 0) {
+          digits.split('').forEach(function (d, i) {
+            if (otpInputs[i]) {
+              otpInputs[i].value = d;
+            }
+          });
+          syncOtpValue();
+          var nextFocus = Math.min(digits.length, 5);
+          otpInputs[nextFocus].focus();
+          if (digits.length === 6) {
+            formOtp.requestSubmit ? formOtp.requestSubmit() : formOtp.submit();
+          }
+        }
+      });
+    });
+
+    formOtp.addEventListener('submit', function (e) {
+      var val = syncOtpValue();
+      if (val.length !== 6) {
+        e.preventDefault();
+        alert('Mohon lengkapi 6 digit kode OTP sebelum melanjutkan.');
+        var firstEmpty = Array.from(otpInputs).find(function (inp) { return inp.value === ''; });
+        if (firstEmpty) firstEmpty.focus();
+      }
+    });
+
+    // Hitung Mundur Jeda Kirim Ulang (60 detik)
+    var resendBtn = document.getElementById('btnResend');
+    var resendCountdownSpan = document.getElementById('resendCountdown');
+    var resendWait = <?= (int)$resend_wait_seconds ?>;
+
+    if (resendBtn) {
+      function updateResendTimer() {
+        if (resendWait > 0) {
+          resendBtn.disabled = true;
+          resendBtn.innerHTML = 'Kirim Ulang (' + resendWait + 's)';
+          resendWait--;
+          setTimeout(updateResendTimer, 1000);
+        } else {
+          resendBtn.disabled = false;
+          resendBtn.innerHTML = 'Kirim Ulang OTP';
+        }
+      }
+      updateResendTimer();
+
+      resendBtn.addEventListener('click', function () {
+        if (!this.disabled) {
+          document.getElementById('formResendOtp').submit();
+        }
+      });
+    }
+
+    // Hitung Mundur Masa Berlaku OTP (10 Menit = 600 Detik)
+    var expiryTimerText = document.getElementById('expiryTimerText');
+    if (expiryTimerText) {
+      var sentAt = <?= (int)($_SESSION["lupa_kartu"]["otp_sent_at"] ?? time()) ?>;
+      var nowEpoch = Math.floor(Date.now() / 1000);
+      var remainingSec = Math.max(0, 600 - (nowEpoch - sentAt));
+
+      function updateExpiryTimer() {
+        if (remainingSec > 0) {
+          var m = Math.floor(remainingSec / 60);
+          var s = remainingSec % 60;
+          expiryTimerText.textContent = 'Berlaku: ' + (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+          remainingSec--;
+          setTimeout(updateExpiryTimer, 1000);
+        } else {
+          expiryTimerText.textContent = 'Kode OTP Telah Kedaluwarsa';
+          expiryTimerText.style.color = '#e07070';
+        }
+      }
+      updateExpiryTimer();
+    }
+  }
+
+  // Hitung Mundur Langkah 3 (Sandi Baru, maks 10 menit)
+  var step3TimerText = document.getElementById('step3TimerText');
+  if (step3TimerText) {
+    var step3Sec = <?= (int)$step3_remaining_seconds ?>;
+    function updateStep3Timer() {
+      if (step3Sec > 0) {
+        var m = Math.floor(step3Sec / 60);
+        var s = step3Sec % 60;
+        step3TimerText.textContent = (m < 10 ? '0' : '') + m + ':' + (s < 10 ? '0' : '') + s;
+        step3Sec--;
+        setTimeout(updateStep3Timer, 1000);
+      } else {
+        step3TimerText.textContent = 'Kedaluwarsa';
+        alert('Sesi verifikasi OTP Anda telah berakhir. Anda akan diarahkan kembali ke langkah awal.');
+        window.location.href = 'lupa_kartu.php?expired=1';
+      }
+    }
+    updateStep3Timer();
+  }
+
+  // Pengaturan Mode Gelap / Terang
   (function () {
-    var btn  = document.getElementById('btnMode');
+    var btn = document.getElementById('btnMode');
     if (!btn) return;
     var root = document.documentElement;
     var STORAGE_KEY = 'aksanova_theme';
 
-    function updatePressed() {
-      btn.setAttribute('aria-pressed', root.classList.contains('theme-light') ? 'true' : 'false');
+    function updateThemeUI() {
+      var isLight = root.classList.contains('theme-light') || root.classList.contains('light');
+      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+      var iconMoon = btn.querySelector('.icon-moon');
+      var iconSun  = btn.querySelector('.icon-sun');
+      if (iconMoon) iconMoon.style.display = isLight ? 'none' : 'block';
+      if (iconSun)  iconSun.style.display  = isLight ? 'block' : 'none';
+      if (isLight) {
+        root.style.backgroundColor = '#f6f2e9';
+      } else {
+        root.style.backgroundColor = '#090c10';
+      }
     }
-    updatePressed();
+    updateThemeUI();
 
     btn.addEventListener('click', function () {
-      root.classList.toggle('theme-light');
-      var isLight = root.classList.contains('theme-light');
-      try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
-      updatePressed();
+      var isCurrentlyLight = root.classList.contains('theme-light') || root.classList.contains('light');
+      var newMode = isCurrentlyLight ? 'dark' : 'light';
+
+      if (newMode === 'light') {
+        root.classList.remove('dark');
+        root.classList.add('light', 'theme-light');
+      } else {
+        root.classList.remove('light', 'theme-light');
+        root.classList.add('dark');
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEY, newMode);
+        var s = JSON.parse(localStorage.getItem('aksanova_settings') || '{}');
+        s.mode = newMode;
+        localStorage.setItem('aksanova_settings', JSON.stringify(s));
+      } catch (e) {}
+
+      updateThemeUI();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if ((e.altKey && (e.key === 'd' || e.key === 'D')) || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'd' || e.key === 'D'))) {
+        e.preventDefault();
+        btn.click();
+      }
     });
   })();
 </script>

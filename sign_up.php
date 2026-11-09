@@ -3,9 +3,9 @@
 session_start();
 require_once "db.php";
 
-// Jika sudah login, langsung arahkan ke beranda
+// Jika sudah login, langsung arahkan ke halaman sesuai peran
 if (isset($_SESSION["user_id"])) {
-    header("Location: beranda.php");
+    header("Location: " . (($_SESSION["role"] ?? "") === "admin" ? "dashboard.php" : "beranda.php"));
     exit;
 }
 
@@ -19,17 +19,6 @@ $old = [
     "email"        => "",
     "saved_foto"   => "",
 ];
-
-// Ambil daftar kelas dari tabel kelas untuk opsi dropdown (khusus rombel siswa)
-$daftar_kelas = [];
-$res_k = mysqli_query($conn, "SELECT nama_kelas FROM kelas ORDER BY nama_kelas ASC");
-if ($res_k) {
-    while ($row_k = mysqli_fetch_assoc($res_k)) {
-        if (strcasecmp($row_k["nama_kelas"], "Guru") !== 0) {
-            $daftar_kelas[] = $row_k["nama_kelas"];
-        }
-    }
-}
 
 // Folder tempat menyimpan foto profil anggota
 $foto_dir = __DIR__ . "/uploads/anggota";
@@ -45,12 +34,15 @@ if (is_dir($foto_dir)) {
 }
 
 if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
+    if (!csrf_verify()) {
+        $errors[] = "Token sesi keamanan tidak valid atau kedaluwarsa. Silakan muat ulang halaman.";
+    }
 
     $tipe_anggota        = trim($_POST["tipe_anggota"] ?? "siswa");
     $old["tipe_anggota"] = ($tipe_anggota === "guru") ? "guru" : "siswa";
     $old["full_name"]    = trim($_POST["full_name"] ?? "");
     $old["nik"]          = trim($_POST["nik"] ?? "");
-    $old["kelas"]        = ($old["tipe_anggota"] === "guru") ? "Guru" : trim($_POST["kelas"] ?? "");
+    $old["kelas"]        = ($old["tipe_anggota"] === "guru") ? "Guru" : "Siswa";
     $old["no_hp"]        = trim($_POST["no_hp"] ?? "");
     $old["email"]        = strtolower(trim($_POST["email"] ?? ""));
     $old["saved_foto"]   = trim($_POST["saved_foto"] ?? "");
@@ -73,9 +65,6 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
             $errors[] = "Nomor Induk Siswa (NIS) wajib diisi.";
         } elseif (!preg_match('/^[0-9]{3,20}$/', $old["nik"])) {
             $errors[] = "NIS harus berupa angka (minimal 3 digit).";
-        }
-        if ($old["kelas"] === "") {
-            $errors[] = "Pilihan kelas wajib dipilih.";
         }
     }
 
@@ -221,6 +210,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
         }
 
         // ── Simpan ke database (langsung approved, tanpa perlu approval admin) ──
+        $empty_plain = "";
         $stmt = mysqli_prepare($conn,
             "INSERT INTO users (full_name, nik, kelas, no_hp, no_anggota, username, email, password, plain_password, foto, role, status)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'member', 'approved')"
@@ -228,7 +218,7 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
         mysqli_stmt_bind_param(
             $stmt, "ssssssssss",
             $old["full_name"], $old["nik"], $old["kelas"], $old["no_hp"],
-            $no_anggota, $username, $old["email"], $hashed, $password, $foto_relative_path
+            $no_anggota, $username, $old["email"], $hashed, $empty_plain, $foto_relative_path
         );
 
         if (mysqli_stmt_execute($stmt)) {
@@ -274,9 +264,22 @@ $page_title = "Daftar Anggota – AKSA NOVA";
   <title><?= htmlspecialchars($page_title) ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <script>
-    if (localStorage.getItem('aksanova_theme') === 'light') {
-      document.documentElement.classList.add('theme-light');
-    }
+    (function() {
+      try {
+        var t = localStorage.getItem('aksanova_theme');
+        if (!t) {
+          var s = JSON.parse(localStorage.getItem('aksanova_settings') || '{}');
+          t = s.mode;
+        }
+        if (t === 'light') {
+          document.documentElement.classList.add('theme-light', 'light');
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('theme-light', 'light');
+        }
+      } catch(e) {}
+    })();
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -384,10 +387,37 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
     .field { margin-bottom: 12px; }
 
+        .form-info-wajib {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 14px;
+      margin-bottom: 18px;
+      border-radius: 10px;
+      background: rgba(216,184,120,.08);
+      border: 1px solid rgba(216,184,120,.25);
+      font-size: .75rem;
+      color: rgba(238,243,244,.88);
+      line-height: 1.4;
+    }
+    .form-info-wajib svg {
+      color: var(--accent, #d8b878);
+      flex-shrink: 0;
+    }
+    html.theme-light .form-info-wajib {
+      background: rgba(154,115,40,.08);
+      border-color: rgba(154,115,40,.22);
+      color: #3d352a;
+    }
+    .req-star {
+      color: #ef4444;
+      font-weight: 700;
+      margin-left: 3px;
+    }
     .field > label {
       display: block;
       font-size: .76rem;
-      color: rgba(238,243,244,.72);
+      color: rgba(238,243,244,.88); font-weight: 500;
       margin-bottom: 6px;
       font-weight: 500;
       letter-spacing: .01em;
@@ -395,8 +425,8 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
     .badge-opt {
       font-size: .72rem;
-      font-weight: 400;
-      color: rgba(238,243,244,.45);
+      font-weight: 500;
+      color: rgba(238,243,244,.65);
       margin-left: 4px;
     }
 
@@ -456,11 +486,11 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       box-shadow: 0 0 0 3px rgba(216,184,120,.2);
     }
 
-    .field input::placeholder { color: rgba(238,243,244,.38); }
+    .field input::placeholder { color: rgba(238,243,244,.55); }
 
     .hint {
       font-size: .72rem;
-      color: rgba(238,243,244,.62);
+      color: rgba(238,243,244,.75);
       margin-top: 6px;
       line-height: 1.45;
     }
@@ -482,7 +512,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       display: block;
       font-size: .76rem;
       font-weight: 600;
-      color: rgba(238,243,244,.78);
+      color: rgba(238,243,244,.9);
       margin-bottom: 6px;
     }
     .tipe-segmented {
@@ -532,7 +562,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       width: 18px;
       height: 18px;
       flex-shrink: 0;
-      color: rgba(238, 243, 244, 0.45);
+      color: #d8b878;
       transition: color .2s, transform .2s;
     }
     .tipe-btn:hover:not(.active) {
@@ -602,11 +632,11 @@ $page_title = "Daftar Anggota – AKSA NOVA";
     .foto-preview-wrap:hover { border-color: #d8b878; }
     .foto-preview-wrap.has-photo { border-style: solid; border-color: #d8b878; }
     .foto-preview-wrap img { width: 100%; height: 100%; object-fit: cover; display: none; }
-    .foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; color: rgba(238,243,244,.4); }
+    .foto-placeholder { display: flex; flex-direction: column; align-items: center; gap: 4px; color: #d8b878; }
     .foto-placeholder svg { width: 26px; height: 26px; }
-    .foto-placeholder span { font-size: .58rem; text-align: center; line-height: 1.3; padding: 0 6px; }
-    .foto-info-text { font-size: .78rem; color: rgba(238,243,244,.65); font-weight: 500; margin-bottom: 4px; }
-    .foto-hint { font-size: .68rem; color: rgba(238,243,244,.4); line-height: 1.5; }
+    .foto-placeholder span { font-size: .58rem; text-align: center; line-height: 1.3; padding: 0 6px; color: rgba(238,243,244,.85); font-weight: 600; }
+    .foto-info-text { font-size: .78rem; color: rgba(238,243,244,.88); font-weight: 600; margin-bottom: 4px; }
+    .foto-hint { font-size: .68rem; color: rgba(238,243,244,.7); line-height: 1.5; }
     .foto-error { font-size: .7rem; color: #e07070; margin-top: 4px; display: none; }
     .foto-error.show { display: block; }
 
@@ -617,7 +647,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       right: 14px;
       width: 18px;
       height: 18px;
-      color: rgba(238,243,244,.35);
+      color: #d8b878;
       cursor: pointer;
       transition: color var(--trans);
     }
@@ -650,7 +680,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       display: inline-block;
       margin-top: 16px;
       font-size: .78rem;
-      color: rgba(238,243,244,.45);
+      color: rgba(238,243,244,.75); font-weight: 600;
       text-decoration: none;
     }
     .back-link:hover { color: #d8b878; text-decoration: underline; }
@@ -703,8 +733,8 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
     .right-sub {
       font-size: .84rem;
-      font-weight: 300;
-      color: rgba(238,243,244,.68);
+      font-weight: 400;
+      color: rgba(238,243,244,.85);
       line-height: 1.8;
       margin-bottom: 8px;
     }
@@ -714,7 +744,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       text-align: left;
       margin-top: 22px;
       font-size: .8rem;
-      color: rgba(238,243,244,.68);
+      color: rgba(238,243,244,.85); font-weight: 500;
       line-height: 2.1;
     }
     .right-list li::before { content: '✓  '; font-weight: 600; color: #d8b878; }
@@ -923,6 +953,54 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       }
     }
 
+        /* ══════════════════ TOMBOL KEMBALI KE BERANDA ══════════════════ */
+    .btn-back-home {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 999;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 50px;
+      border: 1px solid rgba(216,184,120,.3);
+      background: rgba(16,21,27,.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #d8b878;
+      text-decoration: none;
+      font-size: .84rem;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,.4);
+      transition: background .2s ease, border-color .2s ease, transform .18s ease, box-shadow .2s ease;
+    }
+    .btn-back-home:hover {
+      transform: translateX(-2px);
+      border-color: #d8b878;
+      background: rgba(216,184,120,.15);
+      box-shadow: 0 8px 24px rgba(216,184,120,.3);
+      color: #f0d9a8;
+    }
+    .btn-back-home svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+    }
+    @media (max-width: 500px) {
+      .btn-back-home {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
+      }
+      .btn-back-home span {
+        display: none;
+      }
+    }
+
     /* ══════════════════ TOMBOL MODE GELAP / TERANG ══════════════════ */
     .btn-mode {
       position: fixed;
@@ -954,7 +1032,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
     .btn-mode .icon-sun { display: none; }
 
     /* ══════════════════ LIGHT THEME OVERRIDES ══════════════════ */
-    html.theme-light {
+    html.theme-light, html.light {
       --ink:       #1a1714;
       --dim:       #524b42;
       --ghost:     #7a7267;
@@ -962,225 +1040,331 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       --field:     #fdfbf7;
       --field-foc: #ffffff;
       --panel-bg:  linear-gradient(148deg, #f5efe6 0%, #ece2d0 50%, #f9f5ee 100%);
-      --accent:    #9a7328;
-      --ring:      rgba(154,115,40,.28);
+      --accent:    #8a6323;
+      --ring:      rgba(138,99,35,.25);
       --shadow:    0 32px 80px rgba(70,50,20,.14);
     }
-    html.theme-light, html.theme-light body {
-      background: linear-gradient(135deg, #f6f2e9 0%, #ece4d4 50%, #f7f3ec 100%);
-      color: #1a1714;
+    html.theme-light, html.theme-light body,
+    html.light, html.light body {
+      background: linear-gradient(135deg, #f6f2e9 0%, #ece4d4 50%, #f7f3ec 100%) !important;
+      color: #1a1714 !important;
     }
-    html.theme-light .btn-mode {
-      background: rgba(255,255,255,.9);
-      border-color: rgba(154,115,40,.35);
-      color: #9a7328;
-      box-shadow: 0 6px 20px rgba(60,45,20,.12);
+    html.theme-light .btn-back-home,
+    html.light .btn-back-home {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
     }
-    html.theme-light .btn-mode:hover {
-      border-color: #9a7328;
-      box-shadow: 0 8px 24px rgba(154,115,40,.22);
+    html.theme-light .btn-back-home svg,
+    html.light .btn-back-home svg {
+      color: #8a6323 !important;
     }
-    html.theme-light .btn-mode .icon-moon { display: none; }
-    html.theme-light .btn-mode .icon-sun  { display: block; }
-    html.theme-light .card {
-      background: #ffffff;
-      border-color: rgba(154,115,40,.22);
-      box-shadow: 0 24px 60px rgba(60,45,20,.12);
+    html.theme-light .btn-back-home:hover,
+    html.light .btn-back-home:hover {
+      background: rgba(138,99,35,.12) !important;
+      border-color: #8a6323 !important;
+      color: #5a3c08 !important;
     }
-    html.theme-light .left {
-      background: #ffffff;
+    html.theme-light .btn-mode,
+    html.light .btn-mode {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(60,45,20,.12) !important;
     }
-    html.theme-light .form-title {
-      color: #8a6323;
+    html.theme-light .btn-mode svg,
+    html.light .btn-mode svg {
+      color: #8a6323 !important;
     }
-    html.theme-light .form-sub {
-      color: #524b42;
+    html.theme-light .btn-mode:hover,
+    html.light .btn-mode:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 8px 24px rgba(138,99,35,.22) !important;
     }
-    html.theme-light .field > label {
-      color: #2e2820;
-      font-weight: 600;
+    html.theme-light .btn-mode .icon-moon,
+    html.light .btn-mode .icon-moon { display: none !important; }
+    html.theme-light .btn-mode .icon-sun,
+    html.light .btn-mode .icon-sun  { display: block !important; }
+
+    html.theme-light .card,
+    html.light .card {
+      background: #ffffff !important;
+      border-color: rgba(138,99,35,.22) !important;
+      box-shadow: 0 24px 60px rgba(60,45,20,.12) !important;
     }
-    html.theme-light .tipe-label {
-      color: #2e2820;
-      font-weight: 600;
+    html.theme-light .left,
+    html.light .left {
+      background: #ffffff !important;
     }
-    html.theme-light .badge-req {
-      color: #8a6323;
+    html.theme-light .form-title,
+    html.light .form-title {
+      color: #8a6323 !important;
     }
-    html.theme-light .badge-opt {
-      color: #7a7267;
+    html.theme-light .form-sub,
+    html.light .form-sub {
+      color: #524b42 !important;
+      font-weight: 400 !important;
     }
-    html.theme-light .field input,
-    html.theme-light .field select {
-      background: #fdfbf7;
-      border-color: rgba(154,115,40,.26);
-      color: #1a1714;
+    html.theme-light .form-info-wajib,
+    html.light .form-info-wajib {
+      background: rgba(138,99,35,.08) !important;
+      border-color: rgba(138,99,35,.25) !important;
+      color: #3d352a !important;
+      font-weight: 500 !important;
     }
-    html.theme-light .select-arrow {
-      color: #9a7328;
+    html.theme-light .form-info-wajib svg,
+    html.light .form-info-wajib svg {
+      color: #8a6323 !important;
     }
-    html.theme-light .field select option {
-      background: #ffffff;
-      color: #1a1714;
+    html.theme-light .req-star,
+    html.light .req-star {
+      color: #dc2626 !important;
+      font-weight: 700 !important;
     }
-    html.theme-light .field input::placeholder {
-      color: #8c8479;
+    html.theme-light .foto-preview-wrap,
+    html.light .foto-preview-wrap {
+      background: #fbf8f2 !important;
+      border: 1.5px dashed rgba(138,99,35,.35) !important;
     }
-    html.theme-light .field input:focus,
-    html.theme-light .field select:focus {
-      background: #ffffff;
-      border-color: #9a7328;
-      box-shadow: 0 0 0 3px rgba(154,115,40,.18);
+    html.theme-light .foto-preview-wrap:hover,
+    html.light .foto-preview-wrap:hover {
+      border-color: #8a6323 !important;
     }
-    html.theme-light .field-icon {
-      color: #8c8479;
+    html.theme-light .foto-placeholder,
+    html.light .foto-placeholder {
+      background: #fbf8f2 !important;
+      border-color: rgba(138,99,35,.3) !important;
+      color: #8a6323 !important;
     }
-    html.theme-light .field:focus-within .field-icon {
-      color: #9a7328;
+    html.theme-light .foto-placeholder svg,
+    html.light .foto-placeholder svg {
+      color: #8a6323 !important;
     }
-    html.theme-light .toggle-eye {
-      color: #8c8479;
+    html.theme-light .foto-placeholder span,
+    html.light .foto-placeholder span {
+      color: #6b4d13 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .toggle-eye:hover {
-      color: #9a7328;
+    html.theme-light .foto-info-text,
+    html.light .foto-info-text {
+      color: #2e2820 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .foto-info-text {
-      color: #2e2820;
+    html.theme-light .foto-hint,
+    html.light .foto-hint {
+      color: #524b42 !important;
     }
-    html.theme-light .foto-hint {
-      color: #524b42;
+    html.theme-light .badge-opt,
+    html.light .badge-opt {
+      color: #6b645b !important;
     }
-    html.theme-light .hint {
-      color: #524b42;
+    html.theme-light .badge-req,
+    html.light .badge-req {
+      color: #8a6323 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .hint-email {
-      color: #7d5b1d;
+    html.theme-light .tipe-label,
+    html.light .tipe-label {
+      color: #2e2820 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .hint-email b {
-      color: #553c0e;
-    }
-    html.theme-light .foto-error {
-      color: #c0392b;
-    }
-    html.theme-light .foto-placeholder {
-      background: #fbf8f2;
-      border-color: rgba(154,115,40,.3);
-      color: #8a6323;
-    }
-    html.theme-light .foto-preview-wrap {
-      border-color: rgba(154,115,40,.3);
-    }
-    html.theme-light .foto-preview-wrap:hover {
-      border-color: #9a7328;
-    }
-    html.theme-light .guru-status-pill {
-      background: #fbf8f2;
-      border-color: rgba(154,115,40,.35);
-      color: #8a6323;
-    }
-    html.theme-light .guru-pill-icon {
-      color: #8a6323;
-    }
-    html.theme-light .tipe-segmented {
-      background: #eee8dc;
-      border-color: rgba(154, 115, 40, 0.28);
+    html.theme-light .tipe-segmented,
+    html.light .tipe-segmented {
+      background: #eee8dc !important;
+      border-color: rgba(138, 99, 35, 0.28) !important;
     }
     html.theme-light .field .tipe-segmented label.tipe-btn,
-    html.theme-light .tipe-btn {
-      color: #635b50;
-      margin-bottom: 0 !important;
-      border: 1.5px solid transparent;
-      background: transparent;
-      font-weight: 500;
+    html.theme-light .tipe-btn,
+    html.light .field .tipe-segmented label.tipe-btn,
+    html.light .tipe-btn {
+      color: #4a4237 !important;
+      background: transparent !important;
+      border: 1.5px solid transparent !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .tipe-btn .tipe-icon {
-      color: #7a7267;
+    html.theme-light .tipe-btn .tipe-icon,
+    html.light .tipe-btn .tipe-icon {
+      color: #7a684b !important;
     }
-    html.theme-light .tipe-btn:hover:not(.active) {
-      color: #1a1714;
-      background: rgba(154, 115, 40, 0.08);
+    html.theme-light .tipe-btn:hover:not(.active),
+    html.light .tipe-btn:hover:not(.active) {
+      color: #1a1714 !important;
+      background: rgba(138, 99, 35, 0.1) !important;
     }
-    html.theme-light .tipe-btn:hover:not(.active) .tipe-icon {
-      color: #1a1714;
+    html.theme-light .tipe-btn:hover:not(.active) .tipe-icon,
+    html.light .tipe-btn:hover:not(.active) .tipe-icon {
+      color: #1a1714 !important;
     }
     html.theme-light .field .tipe-segmented label.tipe-btn.active,
-    html.theme-light .tipe-btn.active {
+    html.theme-light .tipe-btn.active,
+    html.light .field .tipe-segmented label.tipe-btn.active,
+    html.light .tipe-btn.active {
       background: #ffffff !important;
       border: 1.5px solid #b88b36 !important;
       color: #8a6323 !important;
       font-weight: 700 !important;
-      box-shadow: 0 3px 10px rgba(154, 115, 40, 0.22) !important;
+      box-shadow: 0 3px 10px rgba(138, 99, 35, 0.22) !important;
     }
     html.theme-light .field .tipe-segmented label.tipe-btn.active .tipe-icon,
-    html.theme-light .tipe-btn.active .tipe-icon {
+    html.theme-light .tipe-btn.active .tipe-icon,
+    html.light .field .tipe-segmented label.tipe-btn.active .tipe-icon,
+    html.light .tipe-btn.active .tipe-icon {
       color: #8a6323 !important;
       transform: scale(1.08);
     }
     html.theme-light .field .tipe-segmented label.tipe-btn.active span,
-    html.theme-light .tipe-btn.active span {
+    html.theme-light .tipe-btn.active span,
+    html.light .field .tipe-segmented label.tipe-btn.active span,
+    html.light .tipe-btn.active span {
       color: #8a6323 !important;
       font-weight: 700 !important;
     }
-    html.theme-light .btn-submit {
-      background: linear-gradient(135deg, #d8b878, #caa055);
-      color: #1a1205;
-      box-shadow: 0 6px 20px rgba(154,115,40,.25);
+    html.theme-light .field > label,
+    html.light .field > label {
+      color: #2e2820 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .btn-submit:hover {
-      box-shadow: 0 8px 28px rgba(154,115,40,.38);
+    html.theme-light .field input,
+    html.theme-light .field select,
+    html.light .field input,
+    html.light .field select {
+      background: #fdfbf7 !important;
+      border-color: rgba(138, 99, 35, 0.28) !important;
+      color: #1a1714 !important;
+      font-weight: 500 !important;
     }
-    html.theme-light .right {
-      background: linear-gradient(148deg, #f8f4ec 0%, #ece1ce 50%, #f4ede0 100%);
-      border-bottom-color: rgba(154,115,40,.2);
+    html.theme-light .select-arrow,
+    html.light .select-arrow {
+      color: #8a6323 !important;
     }
-    html.theme-light .right-title {
-      color: #8a6323;
+    html.theme-light .field select option,
+    html.light .field select option {
+      background: #ffffff !important;
+      color: #1a1714 !important;
     }
-    html.theme-light .right-sub {
-      color: #524b42;
+    html.theme-light .field input::placeholder,
+    html.light .field input::placeholder {
+      color: #6d6457 !important;
+      opacity: 1 !important;
     }
-    html.theme-light .right-list {
-      color: #4a433a;
+    html.theme-light .field input:focus,
+    html.theme-light .field select:focus,
+    html.light .field input:focus,
+    html.light .field select:focus {
+      background: #ffffff !important;
+      border-color: #8a6323 !important;
+      box-shadow: 0 0 0 3px rgba(138, 99, 35, 0.18) !important;
     }
-    html.theme-light .right-list li {
-      background: rgba(154,115,40,.08);
-      border-color: rgba(154,115,40,.22);
-      color: #4a433a;
+    html.theme-light .toggle-eye,
+    html.light .toggle-eye {
+      color: #8a6323 !important;
+      opacity: 1 !important;
     }
-    html.theme-light .right-list li::before {
-      color: #8a6323;
+    html.theme-light .toggle-eye:hover,
+    html.light .toggle-eye:hover {
+      color: #5a3c08 !important;
     }
-    html.theme-light .btn-primary {
-      background: linear-gradient(135deg, #d8b878, #caa055);
-      color: #1a1205;
-      box-shadow: 0 6px 20px rgba(154,115,40,.25);
+    html.theme-light .guru-status-pill,
+    html.light .guru-status-pill {
+      background: #fbf8f2 !important;
+      border-color: rgba(138, 99, 35, 0.35) !important;
+      color: #8a6323 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .btn-primary:hover {
-      box-shadow: 0 8px 28px rgba(154,115,40,.38);
+    html.theme-light .guru-pill-icon,
+    html.light .guru-pill-icon {
+      color: #8a6323 !important;
     }
-    html.theme-light .back-link {
-      color: #524b42;
+    html.theme-light .hint,
+    html.light .hint {
+      color: #524b42 !important;
     }
-    html.theme-light .back-link:hover {
-      color: #8a6323;
+    html.theme-light .hint-email,
+    html.light .hint-email {
+      color: #6b4d13 !important;
+      font-weight: 500 !important;
     }
-    html.theme-light .btn-outline {
-      border-color: rgba(154,115,40,.45);
-      color: #8a6323;
+    html.theme-light .hint-email b,
+    html.light .hint-email b {
+      color: #432e08 !important;
+      font-weight: 700 !important;
     }
-    html.theme-light .btn-outline:hover {
-      background: rgba(154,115,40,.12);
-      border-color: #8a6323;
-      box-shadow: 0 6px 20px rgba(154,115,40,.2);
+    html.theme-light .btn-primary,
+    html.light .btn-primary {
+      background: linear-gradient(135deg, #d8b878, #caa055) !important;
+      color: #1a1205 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 6px 20px rgba(138, 99, 35, 0.25) !important;
     }
-    html.theme-light .error-box {
-      background: rgba(220,38,38,.08);
-      border-color: rgba(220,38,38,.25);
-      color: #b91c1c;
+    html.theme-light .btn-primary:hover,
+    html.light .btn-primary:hover {
+      box-shadow: 0 8px 28px rgba(138, 99, 35, 0.38) !important;
+    }
+    html.theme-light .back-link,
+    html.light .back-link {
+      color: #524b42 !important;
+      font-weight: 600 !important;
+    }
+    html.theme-light .back-link:hover,
+    html.light .back-link:hover {
+      color: #8a6323 !important;
+    }
+    html.theme-light .right,
+    html.light .right {
+      background: linear-gradient(148deg, #f8f4ec 0%, #ece1ce 50%, #f4ede0 100%) !important;
+      border-bottom-color: rgba(138, 99, 35, 0.2) !important;
+    }
+    html.theme-light .right-title,
+    html.light .right-title {
+      color: #8a6323 !important;
+    }
+    html.theme-light .right-sub,
+    html.light .right-sub {
+      color: #524b42 !important;
+      font-weight: 400 !important;
+    }
+    html.theme-light .right-list,
+    html.light .right-list {
+      color: #3d352a !important;
+      font-weight: 500 !important;
+    }
+    html.theme-light .right-list li,
+    html.light .right-list li {
+      background: rgba(138, 99, 35, 0.08) !important;
+      border-color: rgba(138, 99, 35, 0.22) !important;
+      color: #3d352a !important;
+    }
+    html.theme-light .right-list li::before,
+    html.light .right-list li::before {
+      color: #8a6323 !important;
+      font-weight: 700 !important;
+    }
+    html.theme-light .btn-hapus-foto,
+    html.light .btn-hapus-foto {
+      background: #fef2f2 !important;
+      border-color: #fca5a5 !important;
+      color: #b91c1c !important;
+    }
+    html.theme-light .error-box,
+    html.light .error-box {
+      background: rgba(220,38,38,.08) !important;
+      border-color: rgba(220,38,38,.25) !important;
+      color: #b91c1c !important;
     }
   </style>
+  <?php require_once 'settings_include.php'; ?>
 </head>
 <body>
+
+<!-- Tombol Kembali ke Halaman Utama -->
+<a href="index.php" class="btn-back-home" title="Kembali ke Halaman Utama" aria-label="Kembali ke Halaman Utama">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+  <span>Halaman Utama</span>
+</a>
 
 <!-- Tombol Ganti Mode Gelap / Terang -->
 <button type="button" class="btn-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
@@ -1199,6 +1383,13 @@ $page_title = "Daftar Anggota – AKSA NOVA";
     <h1 class="form-title">Buat Kartu Anggota</h1>
     <p class="form-sub">Isi data diri kamu, username dibuat otomatis &amp; password kamu tentukan sendiri</p>
 
+    <div class="form-info-wajib">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      <span>Kolom bertanda <b class="req-star">*</b> wajib diisi untuk penerbitan kartu anggota.</span>
+    </div>
+
     <?php if (!empty($errors)): ?>
       <div class="error-box">
         <ul>
@@ -1210,6 +1401,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
     <?php endif; ?>
 
     <form method="POST" action="sign_up.php" enctype="multipart/form-data" id="signupForm">
+      <?= csrf_field() ?>
       <div class="foto-field">
         <input type="hidden" name="saved_foto" id="savedFotoInput" value="<?= htmlspecialchars($old['saved_foto']) ?>">
         <?php $has_saved_foto = (!empty($old['saved_foto']) && file_exists(__DIR__ . '/' . $old['saved_foto'])); ?>
@@ -1238,7 +1430,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
       <!-- Pilihan Jenis Anggota: Siswa vs Guru -->
       <div class="field tipe-field">
-        <label class="tipe-label">Jenis Anggota</label>
+        <label class="tipe-label">Jenis Anggota <span class="req-star">*</span></label>
         <div class="tipe-segmented" role="radiogroup" aria-label="Pilihan Jenis Anggota">
           <label class="tipe-btn <?= ($old['tipe_anggota'] ?? 'siswa') === 'siswa' ? 'active' : '' ?>" id="btnTipeSiswa">
             <input type="radio" name="tipe_anggota" value="siswa" id="radioSiswa" <?= ($old['tipe_anggota'] ?? 'siswa') === 'siswa' ? 'checked' : '' ?>>
@@ -1262,56 +1454,45 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       </div>
 
       <div class="field">
-        <label>Nama Lengkap</label>
+        <label>Nama Lengkap <span class="req-star">*</span></label>
         <input type="text" name="full_name" placeholder="Contoh: Budi Santoso"
                value="<?= htmlspecialchars($old['full_name']) ?>" required>
       </div>
 
       <div class="row2">
         <div class="field">
-          <label id="lblNik"><?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'NIP / NUPTK / NIK Guru' : 'Nomor Induk Siswa (NIS)' ?></label>
+          <label id="lblNik"><?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'NIP / NUPTK / NIK Guru' : 'Nomor Induk Siswa (NIS)' ?> <span class="req-star">*</span></label>
           <input type="text" name="nik" id="inputNik" placeholder="<?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'Contoh: 198503152010011005' : 'Contoh: 212210045' ?>"
                  pattern="<?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? '.{3,30}' : '[0-9]{3,20}' ?>"
                  title="<?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'NIP / NIK minimal 3 karakter' : 'NIS harus berupa angka (minimal 3 digit)' ?>"
                  value="<?= htmlspecialchars($old['nik']) ?>" required>
         </div>
-        <div class="field" id="fieldKelasWrap" style="<?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'display:none;' : '' ?>">
-          <label>Pilihan Kelas</label>
-          <div class="select-wrap">
-            <select name="kelas" id="selectKelas" <?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? '' : 'required' ?>>
-              <option value="" disabled <?= empty($old['kelas']) || $old['kelas'] === 'Guru' ? 'selected' : '' ?>>-- Pilih Kelas --</option>
-              <?php foreach ($daftar_kelas as $k): ?>
-                <option value="<?= htmlspecialchars($k) ?>" <?= $old['kelas'] === $k ? 'selected' : '' ?>>
-                  <?= htmlspecialchars($k) ?>
-                </option>
-              <?php endforeach; ?>
-            </select>
-            <svg class="select-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="m6 9 6 6 6-6"/>
-            </svg>
-          </div>
-        </div>
-        <div class="field" id="fieldGuruInfoWrap" style="<?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'display:block;' : 'display:none;' ?>">
+        <div class="field" id="fieldStatusInfoWrap">
           <label>Status Keanggotaan</label>
-          <div class="guru-status-pill">
-            <svg class="guru-pill-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-              <circle cx="12" cy="7" r="4"/>
+          <div class="guru-status-pill" id="statusPill">
+            <svg class="guru-pill-icon" id="statusPillIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <?php if (($old['tipe_anggota'] ?? 'siswa') === 'guru'): ?>
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              <?php else: ?>
+                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
+                <path d="M6 12v5c3 3 9 3 12 0v-5"/>
+              <?php endif; ?>
             </svg>
-            <span>Tenaga Pendidik / Guru</span>
+            <span id="statusPillText"><?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'Tenaga Pendidik / Guru' : 'Siswa / Peserta Didik' ?></span>
           </div>
         </div>
       </div>
 
       <div class="field">
-        <label>Nomor HP / WhatsApp <span class="badge-req">(Wajib)</span></label>
+        <label>Nomor HP / WhatsApp <span class="req-star">*</span></label>
         <input type="tel" name="no_hp" placeholder="Contoh: 081234567890"
                pattern="[\d+\-\s]{8,20}" title="Nomor HP minimal 8 digit angka"
                value="<?= htmlspecialchars($old['no_hp']) ?>" required>
       </div>
 
       <div class="field">
-        <label id="lblEmail"><?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'Email Guru' : 'Email Siswa' ?></label>
+        <label id="lblEmail"><?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'Email Guru' : 'Email Siswa' ?> <span class="req-star">*</span></label>
         <input type="email" name="email" id="inputEmail" placeholder="<?= ($old['tipe_anggota'] ?? 'siswa') === 'guru' ? 'guru@smkn1rongga.sch.id atau nama@gmail.com' : 'nama@student.smkn1rongga.sch.id atau nama@gmail.com' ?>"
                pattern="[a-zA-Z0-9._%+\-]+@((student\.)?smkn1rongga\.sch\.id|gmail\.com)$"
                title="Email dapat menggunakan akun @student.smkn1rongga.sch.id, @smkn1rongga.sch.id, atau @gmail.com"
@@ -1323,7 +1504,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
       <div class="row2">
         <div class="field">
-          <label>Buat Kata Sandi</label>
+          <label>Buat Kata Sandi <span class="req-star">*</span></label>
           <div class="input-wrap" id="pwWrap1">
             <input type="password" name="password" id="pwInput1" placeholder="Min. 8 karakter (huruf &amp; angka)" autocomplete="new-password" required>
             <span class="toggle-eye" data-target="pwInput1" data-wrap="pwWrap1" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">
@@ -1333,7 +1514,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
           </div>
         </div>
         <div class="field">
-          <label>Konfirmasi Kata Sandi</label>
+          <label>Konfirmasi Kata Sandi <span class="req-star">*</span></label>
           <div class="input-wrap" id="pwWrap2">
             <input type="password" name="password_confirm" id="pwInput2" placeholder="Ulangi kata sandi" autocomplete="new-password" required>
             <span class="toggle-eye" data-target="pwInput2" data-wrap="pwWrap2" role="button" tabindex="0" aria-label="Tampilkan/sembunyikan kata sandi">
@@ -1344,7 +1525,7 @@ $page_title = "Daftar Anggota – AKSA NOVA";
         </div>
       </div>
 
-      <p class="hint">Username dibuat otomatis oleh sistem. Kata sandi kamu tentukan sendiri &mdash; ingat baik-baik, karena kata sandi ini juga tercetak pada kartu anggota yang bisa kamu unduh/cetak setelah pendaftaran.</p>
+      <p class="hint">Username dibuat otomatis oleh sistem. Kata sandi ditentukan sendiri &mdash; catat dan ingat baik-baik untuk masuk ke akun dan meminjam buku di perpustakaan.</p>
 
       <button type="submit" class="btn-primary">Daftar &amp; Buat Kartu</button>
     </form>
@@ -1426,12 +1607,14 @@ $page_title = "Daftar Anggota – AKSA NOVA";
   var btnTipeGuru  = document.getElementById('btnTipeGuru');
   var lblNik       = document.getElementById('lblNik');
   var inputNik     = document.getElementById('inputNik');
-  var wrapKelas    = document.getElementById('fieldKelasWrap');
-  var selectKelas  = document.getElementById('selectKelas');
-  var wrapGuru     = document.getElementById('fieldGuruInfoWrap');
+  var statusIcon   = document.getElementById('statusPillIcon');
+  var statusText   = document.getElementById('statusPillText');
   var lblEmail     = document.getElementById('lblEmail');
   var inputEmail   = document.getElementById('inputEmail');
   var hintEmail    = document.getElementById('hintEmail');
+
+  var iconSvgSiswa = '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>';
+  var iconSvgGuru  = '<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>';
 
   function updateTipeUI() {
     if (!radioSiswa || !radioGuru) return;
@@ -1440,32 +1623,32 @@ $page_title = "Daftar Anggota – AKSA NOVA";
       if (btnTipeGuru) btnTipeGuru.classList.add('active');
       if (btnTipeSiswa) btnTipeSiswa.classList.remove('active');
 
-      if (lblNik) lblNik.textContent = 'NIP / NUPTK / NIK Guru';
+      if (lblNik) lblNik.innerHTML = 'NIP / NUPTK / NIK Guru <span class="req-star">*</span>';
       if (inputNik) {
         inputNik.placeholder = 'Contoh: 198503152010011005';
         inputNik.title = 'NIP / NIK Guru minimal 3 karakter';
         inputNik.pattern = '.{3,30}';
       }
-      if (wrapKelas) wrapKelas.style.display = 'none';
-      if (selectKelas) selectKelas.removeAttribute('required');
-      if (wrapGuru) wrapGuru.style.display = 'block';
-      if (lblEmail) lblEmail.textContent = 'Email Guru';
+      if (statusIcon) statusIcon.innerHTML = iconSvgGuru;
+      if (statusText) statusText.textContent = 'Tenaga Pendidik / Guru';
+
+      if (lblEmail) lblEmail.innerHTML = 'Email Guru <span class="req-star">*</span>';
       if (inputEmail) inputEmail.placeholder = 'guru@smkn1rongga.sch.id atau nama@gmail.com';
       if (hintEmail) hintEmail.innerHTML = 'Dapat menggunakan akun resmi sekolah (<b>@smkn1rongga.sch.id</b>) atau <b>@gmail.com</b>';
     } else {
       if (btnTipeSiswa) btnTipeSiswa.classList.add('active');
       if (btnTipeGuru) btnTipeGuru.classList.remove('active');
 
-      if (lblNik) lblNik.textContent = 'Nomor Induk Siswa (NIS)';
+      if (lblNik) lblNik.innerHTML = 'Nomor Induk Siswa (NIS) <span class="req-star">*</span>';
       if (inputNik) {
         inputNik.placeholder = 'Contoh: 212210045';
         inputNik.title = 'NIS harus berupa angka (minimal 3 digit)';
         inputNik.pattern = '[0-9]{3,20}';
       }
-      if (wrapKelas) wrapKelas.style.display = 'block';
-      if (selectKelas) selectKelas.setAttribute('required', 'required');
-      if (wrapGuru) wrapGuru.style.display = 'none';
-      if (lblEmail) lblEmail.textContent = 'Email Siswa';
+      if (statusIcon) statusIcon.innerHTML = iconSvgSiswa;
+      if (statusText) statusText.textContent = 'Siswa / Peserta Didik';
+
+      if (lblEmail) lblEmail.innerHTML = 'Email Siswa <span class="req-star">*</span>';
       if (inputEmail) inputEmail.placeholder = 'nama@student.smkn1rongga.sch.id atau nama@gmail.com';
       if (hintEmail) hintEmail.innerHTML = 'Dapat menggunakan akun resmi sekolah (<b>@student.smkn1rongga.sch.id</b>) atau <b>@gmail.com</b>';
     }
@@ -1487,19 +1670,19 @@ $page_title = "Daftar Anggota – AKSA NOVA";
 
     if (!noHp) {
       e.preventDefault();
-      alert('Nomor HP / WhatsApp wajib diisi.');
+      AksaAlert({ title: 'Nomor WhatsApp Diperlukan', message: 'Nomor HP / WhatsApp wajib diisi untuk notifikasi peminjaman dan denda.', type: 'warning' });
       document.querySelector('input[name="no_hp"]').focus();
       return;
     }
     if (pw1.length < 8 || !/[A-Za-z]/.test(pw1) || !/[0-9]/.test(pw1)) {
       e.preventDefault();
-      alert('Kata sandi minimal 8 karakter dan harus mengandung kombinasi huruf serta angka.');
+      AksaAlert({ title: 'Kata Sandi Kurang Kuat', message: 'Kata sandi minimal 8 karakter dan harus mengandung kombinasi huruf serta angka.', type: 'warning' });
       document.getElementById('pwInput1').focus();
       return;
     }
     if (pw1 !== pw2) {
       e.preventDefault();
-      alert('Konfirmasi kata sandi tidak sama dengan kata sandi.');
+      AksaAlert({ title: 'Konfirmasi Sandi Berbeda', message: 'Konfirmasi kata sandi tidak sama dengan kata sandi yang Anda masukkan.', type: 'warning' });
       document.getElementById('pwInput2').focus();
       return;
     }
@@ -1526,16 +1709,50 @@ $page_title = "Daftar Anggota – AKSA NOVA";
     var root = document.documentElement;
     var STORAGE_KEY = 'aksanova_theme';
 
-    function updatePressed() {
-      btn.setAttribute('aria-pressed', root.classList.contains('theme-light') ? 'true' : 'false');
+    function updateThemeUI() {
+      var isLight = root.classList.contains('theme-light') || root.classList.contains('light');
+      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+      var iconMoon = btn.querySelector('.icon-moon');
+      var iconSun  = btn.querySelector('.icon-sun');
+      if (iconMoon) iconMoon.style.display = isLight ? 'none' : 'block';
+      if (iconSun)  iconSun.style.display  = isLight ? 'block' : 'none';
+      if (isLight) {
+        root.style.backgroundColor = '#f6f2e9';
+      } else {
+        root.style.backgroundColor = '#090c10';
+      }
     }
-    updatePressed();
+    updateThemeUI();
 
     btn.addEventListener('click', function () {
-      root.classList.toggle('theme-light');
-      var isLight = root.classList.contains('theme-light');
-      try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
-      updatePressed();
+      var isCurrentlyLight = root.classList.contains('theme-light') || root.classList.contains('light');
+      var newMode = isCurrentlyLight ? 'dark' : 'light';
+
+      if (newMode === 'light') {
+        root.classList.remove('dark');
+        root.classList.add('light', 'theme-light');
+      } else {
+        root.classList.remove('light', 'theme-light');
+        root.classList.add('dark');
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEY, newMode);
+        var s = JSON.parse(localStorage.getItem('aksanova_settings') || '{}');
+        s.mode = newMode;
+        localStorage.setItem('aksanova_settings', JSON.stringify(s));
+      } catch (e) {}
+
+      updateThemeUI();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if ((e.altKey && (e.key === 'd' || e.key === 'D')) || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'd' || e.key === 'D'))) {
+        e.preventDefault();
+        btn.click();
+      }
     });
   })();
 </script>

@@ -20,6 +20,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 <style>
 /* ═══════════════════════════════════════════════════════════════════
    ── NOTIFIKASI BESAR: PENGAJUAN PINJAMAN BUKU (ADMIN REALTIME) ──
+   Mendukung penuh Mode Gelap (Dark) & Mode Terang (Light)
 ═══════════════════════════════════════════════════════════════════ */
 .notif-pengajuan-overlay {
   position: fixed;
@@ -67,18 +68,104 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   }
 }
 
+@keyframes notifGlowBorderLight {
+  0%, 100% {
+    box-shadow: 0 20px 60px rgba(0,0,0,0.14), 0 0 30px rgba(216,184,120,0.25);
+    border-color: rgba(216,184,120,0.85);
+  }
+  50% {
+    box-shadow: 0 25px 70px rgba(0,0,0,0.2), 0 0 45px rgba(245,158,11,0.4);
+    border-color: rgba(217,119,6,0.9);
+  }
+}
+
+/* ── MODAL CARD (DEFAULT / DARK MODE) ── */
 .notif-pengajuan-card {
-  background: linear-gradient(150deg, #161e27 0%, #10151c 65%, #0d1117 100%);
-  border: 2px solid var(--accent, #d8b878);
+  --notif-bg: linear-gradient(150deg, #161e27 0%, #10151c 65%, #0d1117 100%);
+  --notif-border: rgba(216,184,120,0.8);
+  --notif-title: #ffffff;
+  --notif-subtitle: rgba(238,243,244,0.72);
+  --notif-box-bg: rgba(255, 255, 255, 0.035);
+  --notif-box-border: rgba(216,184,120,0.22);
+  --notif-cover-bg: #161e27;
+  --notif-cover-border: rgba(216,184,120,0.25);
+  --notif-cover-shadow: rgba(0,0,0,0.55);
+  --notif-book-title: var(--accent, #d8b878);
+  --notif-book-author: rgba(238,243,244,0.65);
+  --notif-label: rgba(238,243,244,0.6);
+  --notif-val: #f8fafc;
+  --notif-val-highlight: #4ade80;
+  --notif-btn-sec-bg: rgba(255,255,255,0.06);
+  --notif-btn-sec-border: rgba(216,184,120,0.25);
+  --notif-btn-sec-color: rgba(238,243,244,0.85);
+  --notif-btn-sec-hover-bg: rgba(255,255,255,0.12);
+  --notif-btn-sec-hover-color: #ffffff;
+  --notif-antrean-bg: rgba(216, 184, 120, 0.08);
+  --notif-antrean-border: rgba(216, 184, 120, 0.28);
+  --notif-antrean-color: var(--accent, #d8b878);
+  --notif-pill-bg: rgba(245, 158, 11, 0.16);
+  --notif-pill-border: rgba(245, 158, 11, 0.4);
+  --notif-pill-color: #fbbf24;
+  --notif-close-bg: rgba(255,255,255,0.08);
+  --notif-close-border: rgba(255,255,255,0.12);
+  --notif-close-color: rgba(238,243,244,0.7);
+
+  background: var(--notif-bg);
+  border: 2px solid var(--notif-border);
   border-radius: 24px;
   width: 100%;
   max-width: 530px;
   padding: 28px;
   box-sizing: border-box;
-  color: var(--text, #eef3f4);
+  color: var(--notif-val);
   font-family: var(--font-family, 'Outfit', sans-serif);
   animation: notifPopIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both, notifGlowBorder 3s infinite ease-in-out;
   position: relative;
+}
+
+/* ── LIGHT MODE ADAPTATION ── */
+html.theme-light .notif-pengajuan-overlay,
+html.light .notif-pengajuan-overlay,
+.theme-light .notif-pengajuan-overlay,
+[data-theme="light"] .notif-pengajuan-overlay {
+  background: rgba(15, 23, 42, 0.48);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+html.theme-light .notif-pengajuan-card,
+html.light .notif-pengajuan-card,
+.theme-light .notif-pengajuan-card,
+[data-theme="light"] .notif-pengajuan-card {
+  --notif-bg: linear-gradient(155deg, #ffffff 0%, #fdfbf7 70%, #f8f4ec 100%);
+  --notif-border: rgba(216,184,120,0.9);
+  --notif-title: #0f172a;
+  --notif-subtitle: #475569;
+  --notif-box-bg: rgba(245, 240, 230, 0.65);
+  --notif-box-border: rgba(184, 134, 11, 0.3);
+  --notif-cover-bg: #f1f5f9;
+  --notif-cover-border: rgba(184, 134, 11, 0.35);
+  --notif-cover-shadow: rgba(0,0,0,0.12);
+  --notif-book-title: #8a6323;
+  --notif-book-author: #64748b;
+  --notif-label: #64748b;
+  --notif-val: #0f172a;
+  --notif-val-highlight: #047857;
+  --notif-btn-sec-bg: #f1f5f9;
+  --notif-btn-sec-border: rgba(0, 0, 0, 0.14);
+  --notif-btn-sec-color: #334155;
+  --notif-btn-sec-hover-bg: #e2e8f0;
+  --notif-btn-sec-hover-color: #0f172a;
+  --notif-antrean-bg: rgba(245, 158, 11, 0.08);
+  --notif-antrean-border: rgba(217, 119, 6, 0.35);
+  --notif-antrean-color: #92400e;
+  --notif-pill-bg: rgba(245, 158, 11, 0.12);
+  --notif-pill-border: rgba(217, 119, 6, 0.35);
+  --notif-pill-color: #b45309;
+  --notif-close-bg: rgba(0, 0, 0, 0.05);
+  --notif-close-border: rgba(0, 0, 0, 0.1);
+  --notif-close-color: #64748b;
+  animation: notifPopIn 0.32s cubic-bezier(0.22, 1, 0.36, 1) both, notifGlowBorderLight 3s infinite ease-in-out;
 }
 
 .notif-top-bar {
@@ -94,9 +181,9 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   gap: 8px;
   padding: 5px 13px;
   border-radius: 30px;
-  background: rgba(245, 158, 11, 0.16);
-  border: 1px solid rgba(245, 158, 11, 0.4);
-  color: #fbbf24;
+  background: var(--notif-pill-bg);
+  border: 1px solid var(--notif-pill-border);
+  color: var(--notif-pill-color);
   font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.6px;
@@ -107,15 +194,15 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: #fbbf24;
-  box-shadow: 0 0 8px #fbbf24;
+  background: var(--notif-pill-color);
+  box-shadow: 0 0 8px var(--notif-pill-color);
   animation: notifPulse 1.3s infinite;
 }
 
 .notif-close-btn {
-  background: rgba(255,255,255,0.08);
-  border: 1px solid rgba(255,255,255,0.12);
-  color: var(--muted, rgba(238,243,244,0.7));
+  background: var(--notif-close-bg);
+  border: 1px solid var(--notif-close-border);
+  color: var(--notif-close-color);
   width: 34px;
   height: 34px;
   border-radius: 10px;
@@ -126,9 +213,9 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   transition: all 0.2s;
 }
 .notif-close-btn:hover {
-  background: rgba(220, 38, 38, 0.2);
+  background: rgba(220, 38, 38, 0.18);
   border-color: rgba(220, 38, 38, 0.45);
-  color: #f87171;
+  color: #ef4444;
   transform: rotate(90deg);
 }
 
@@ -136,27 +223,28 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   font-family: 'Cormorant Garamond', 'Outfit', serif;
   font-size: 1.65rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--notif-title);
   margin: 0 0 6px 0;
   line-height: 1.25;
 }
 
 .notif-subheading {
   font-size: 0.88rem;
-  color: var(--muted, rgba(238,243,244,0.7));
+  color: var(--notif-subtitle);
   margin: 0 0 20px 0;
   line-height: 1.45;
 }
 
 .notif-book-box {
-  background: rgba(255, 255, 255, 0.035);
-  border: 1px solid var(--border-color, rgba(216,184,120,0.18));
+  background: var(--notif-box-bg);
+  border: 1px solid var(--notif-box-border);
   border-radius: 16px;
   padding: 16px;
   display: flex;
   gap: 16px;
   align-items: flex-start;
   margin-bottom: 16px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
 }
 
 .notif-cover-wrap {
@@ -165,9 +253,9 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   flex-shrink: 0;
   border-radius: 10px;
   overflow: hidden;
-  background: var(--book-card, #161e27);
-  border: 1px solid rgba(216,184,120,0.25);
-  box-shadow: 0 6px 18px rgba(0,0,0,0.55);
+  background: var(--notif-cover-bg);
+  border: 1px solid var(--notif-cover-border);
+  box-shadow: 0 6px 18px var(--notif-cover-shadow);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,8 +269,8 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 }
 
 .notif-cover-wrap svg {
-  color: var(--accent, #d8b878);
-  opacity: 0.7;
+  color: var(--notif-book-title);
+  opacity: 0.8;
 }
 
 .notif-details {
@@ -193,7 +281,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 .notif-book-title {
   font-size: 1.05rem;
   font-weight: 700;
-  color: var(--accent, #d8b878);
+  color: var(--notif-book-title);
   margin-bottom: 4px;
   line-height: 1.35;
   word-break: break-word;
@@ -201,8 +289,13 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 
 .notif-book-author {
   font-size: 0.8rem;
-  color: var(--muted, rgba(238,243,244,0.65));
+  color: var(--notif-book-author);
   margin-bottom: 12px;
+}
+
+.notif-rak-text {
+  color: var(--notif-book-title);
+  font-weight: 700;
 }
 
 .notif-grid-info {
@@ -224,19 +317,21 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
 
 .notif-label {
   font-size: 0.7rem;
-  color: var(--muted, rgba(238,243,244,0.55));
+  color: var(--notif-label);
   text-transform: uppercase;
   letter-spacing: 0.4px;
+  font-weight: 600;
 }
 
 .notif-value {
   font-weight: 600;
-  color: var(--text, #eef3f4);
+  color: var(--notif-val) !important;
   word-break: break-word;
 }
 
 .notif-value.highlight {
-  color: #4ade80;
+  color: var(--notif-val-highlight) !important;
+  font-weight: 700;
 }
 
 .notif-badge-waktu {
@@ -248,23 +343,46 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   width: fit-content;
 }
 .notif-badge-waktu.sekarang {
-  background: rgba(216,184,120,0.15);
-  color: var(--accent, #d8b878);
-  border: 1px solid rgba(216,184,120,0.3);
+  background: rgba(216,184,120,0.18);
+  color: var(--notif-book-title);
+  border: 1px solid var(--notif-box-border);
 }
+html.theme-light .notif-badge-waktu.sekarang,
+html.light .notif-badge-waktu.sekarang,
+.theme-light .notif-badge-waktu.sekarang,
+[data-theme="light"] .notif-badge-waktu.sekarang {
+  background: rgba(216,184,120,0.22);
+  color: #78541a;
+  border: 1px solid rgba(184, 134, 11, 0.4);
+}
+
 .notif-badge-waktu.nanti {
   background: rgba(59, 130, 246, 0.15);
   color: #93c5fd;
   border: 1px solid rgba(59, 130, 246, 0.3);
 }
+html.theme-light .notif-badge-waktu.nanti,
+html.light .notif-badge-waktu.nanti,
+.theme-light .notif-badge-waktu.nanti,
+[data-theme="light"] .notif-badge-waktu.nanti {
+  background: rgba(59, 130, 246, 0.12);
+  color: #1d4ed8;
+  border: 1px solid rgba(59, 130, 246, 0.35);
+}
+
+.notif-catatan-text {
+  font-size: .78rem;
+  color: var(--notif-subtitle);
+  margin-left: 4px;
+}
 
 .notif-antrean-badge {
-  background: rgba(216, 184, 120, 0.08);
-  border: 1px dashed rgba(216, 184, 120, 0.28);
+  background: var(--notif-antrean-bg);
+  border: 1px dashed var(--notif-antrean-border);
   border-radius: 10px;
   padding: 10px 14px;
   font-size: 0.82rem;
-  color: var(--accent, #d8b878);
+  color: var(--notif-antrean-color);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -289,7 +407,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: 8px;
   box-shadow: 0 6px 20px rgba(216,184,120,0.35);
   cursor: pointer;
   transition: transform 0.18s, box-shadow 0.18s, filter 0.18s;
@@ -300,12 +418,35 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   box-shadow: 0 8px 26px rgba(216,184,120,0.5);
   filter: brightness(1.06);
 }
+html.theme-light .notif-btn-primary:hover,
+html.light .notif-btn-primary:hover,
+.theme-light .notif-btn-primary:hover,
+[data-theme="light"] .notif-btn-primary:hover {
+  box-shadow: 0 8px 26px rgba(184,134,11,0.45);
+}
+
+.notif-btn-count-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 20px;
+  background: rgba(13, 17, 23, 0.16);
+  border: 1px solid rgba(13, 17, 23, 0.22);
+  color: #0d1117;
+  font-size: 0.75rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-left: 2px;
+}
 
 .notif-btn-secondary {
   flex: 1;
-  background: rgba(255,255,255,0.06);
-  border: 1.5px solid var(--border-color, rgba(216,184,120,0.22));
-  color: var(--muted, rgba(238,243,244,0.75));
+  background: var(--notif-btn-sec-bg);
+  border: 1.5px solid var(--notif-btn-sec-border);
+  color: var(--notif-btn-sec-color);
   font-weight: 600;
   font-size: 0.9rem;
   padding: 14px 18px;
@@ -315,8 +456,8 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   text-align: center;
 }
 .notif-btn-secondary:hover {
-  background: rgba(255,255,255,0.12);
-  color: var(--text, #eef3f4);
+  background: var(--notif-btn-sec-hover-bg);
+  color: var(--notif-btn-sec-hover-color);
   border-color: var(--accent, #d8b878);
 }
 
@@ -332,6 +473,9 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     flex-direction: column;
     align-items: center;
     text-align: center;
+  }
+  .notif-details {
+    width: 100%;
   }
   .notif-grid-info {
     text-align: left;
@@ -381,7 +525,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
             <span class="notif-value" id="notifNamaPeminjam">-</span>
           </div>
           <div class="notif-info-item">
-            <span class="notif-label">Kelas / No. HP</span>
+            <span class="notif-label">NIS/NIP / No. HP</span>
             <span class="notif-value" id="notifKelasHp">-</span>
           </div>
           <div class="notif-info-item">
@@ -411,6 +555,7 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
       <a href="pengajuan_buku.php" class="notif-btn-primary" id="notifBtnAction" onclick="handleBukaPengajuan(event)">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
         <span>Buka & Proses Pengajuan</span>
+        <span class="notif-btn-count-badge" id="notifBtnCountBadge" style="display:none;"></span>
       </a>
       <button type="button" class="notif-btn-secondary" onclick="tutupNotifPengajuan()">
         Nanti Saja
@@ -471,37 +616,39 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   }
 
   function updateSidebarBadge(count) {
+    // Hanya targetkan tautan sidebar admin, JANGAN pernah memodifikasi tombol modal notifikasi
     var links = document.querySelectorAll([
-      'a.sidebar-btn[href*="pengajuan_buku.php"]',
+      'aside.sidebar a[href*="pengajuan_buku.php"]',
       '.sidebar a[href*="pengajuan_buku.php"]',
-      'a[href="pengajuan_buku.php"]'
+      'a.sidebar-btn[href*="pengajuan_buku.php"]',
+      '.nav a[href*="pengajuan_buku.php"]'
     ].join(', '));
 
     links.forEach(function(link) {
-      // Cari semua elemen badge yang mungkin ada (baik dari PHP atau JS)
+      if (link.closest('#modalNotifPengajuan') || link.classList.contains('notif-btn-primary')) {
+        return;
+      }
       var badges = link.querySelectorAll('.aksa-notif-badge, .badge-nav, span[style*="border-radius:20px"], span[style*="border-radius: 20px"]');
 
       if (count > 0) {
         if (badges.length > 0) {
-          // Pakai badge pertama
           var badge = badges[0];
-          badge.className = 'aksa-notif-badge';
-          badge.textContent = count;
-          badge.style.display = 'inline-block';
-          // Hapus badge duplikat bila ada lebih dari satu
+          badge.classList.add('aksa-notif-badge');
+          if (badge.textContent !== String(count)) {
+            badge.textContent = String(count);
+          }
+          badge.style.display = 'inline-flex';
           for (var i = 1; i < badges.length; i++) {
             badges[i].remove();
           }
         } else {
-          // Buat badge baru jika belum ada
           var span = document.createElement('span');
           span.className = 'aksa-notif-badge';
-          span.style.cssText = "margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;";
-          span.textContent = count;
+          span.style.display = 'inline-flex';
+          span.textContent = String(count);
           link.appendChild(span);
         }
       } else {
-        // Jika count 0, sembunyikan semua badge
         badges.forEach(function(b) {
           b.style.display = 'none';
         });
@@ -510,17 +657,18 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
   }
 
   function renderModalContent(data, countMenunggu) {
-    var imgCover = document.getElementById('notifImgCover');
-    var phCover  = document.getElementById('notifCoverPlaceholder');
-    var bookTitle= document.getElementById('notifBookTitle');
-    var bookAuth = document.getElementById('notifBookAuthor');
-    var namaPem  = document.getElementById('notifNamaPeminjam');
-    var kelasHp  = document.getElementById('notifKelasHp');
-    var totalBuku= document.getElementById('notifTotalBuku');
-    var batasKem = document.getElementById('notifBatasKembali');
-    var waktuAmb = document.getElementById('notifWaktuAmbil');
-    var antreanWrap = document.getElementById('notifAntreanWrap');
-    var antreanText = document.getElementById('notifAntreanText');
+    var imgCover     = document.getElementById('notifImgCover');
+    var phCover      = document.getElementById('notifCoverPlaceholder');
+    var bookTitle    = document.getElementById('notifBookTitle');
+    var bookAuth     = document.getElementById('notifBookAuthor');
+    var namaPem      = document.getElementById('notifNamaPeminjam');
+    var kelasHp      = document.getElementById('notifKelasHp');
+    var totalBuku    = document.getElementById('notifTotalBuku');
+    var batasKem     = document.getElementById('notifBatasKembali');
+    var waktuAmb     = document.getElementById('notifWaktuAmbil');
+    var antreanWrap  = document.getElementById('notifAntreanWrap');
+    var antreanText  = document.getElementById('notifAntreanText');
+    var btnCountBadge= document.getElementById('notifBtnCountBadge');
 
     if (!data) return;
 
@@ -536,21 +684,21 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     bookTitle.textContent = data.judul || 'Judul Buku Tidak Diketahui';
     var authText = data.penulis ? ('Penulis: ' + data.penulis) : '-';
     if (data.rak) {
-      bookAuth.innerHTML = escapeHtml(authText) + ' &middot; <span style="color:var(--accent,#d8b878);font-weight:700;">' + escapeHtml(data.rak) + '</span>';
+      bookAuth.innerHTML = escapeHtml(authText) + ' &middot; <span class="notif-rak-text">' + escapeHtml(data.rak) + '</span>';
     } else {
       bookAuth.textContent = authText;
     }
     namaPem.textContent   = data.nama_peminjam || '-';
 
-    var infoKelas = data.kelas ? data.kelas : '';
+    var infoNik   = data.nik ? data.nik : '';
     var infoHp    = data.no_hp ? data.no_hp : '';
-    kelasHp.textContent   = (infoKelas && infoHp) ? (infoKelas + ' • ' + infoHp) : (infoKelas || infoHp || '-');
+    kelasHp.textContent   = (infoNik && infoHp) ? (infoNik + ' · ' + infoHp) : (infoNik || infoHp || '-');
 
     totalBuku.textContent = (data.total_buku || 1) + ' Eksemplar';
     batasKem.textContent  = data.batas_kembali_fmt || data.batas_kembali || '-';
 
     if (data.waktu_pengambilan === 'nanti') {
-      waktuAmb.innerHTML = '<span class="notif-badge-waktu nanti">Ambil Nanti</span>' + (data.catatan_pengambilan ? ' <span style="font-size:.78rem;color:var(--muted);margin-left:4px;">(' + escapeHtml(data.catatan_pengambilan) + ')</span>' : '');
+      waktuAmb.innerHTML = '<span class="notif-badge-waktu nanti">Ambil Nanti</span>' + (data.catatan_pengambilan ? ' <span class="notif-catatan-text">(' + escapeHtml(data.catatan_pengambilan) + ')</span>' : '');
     } else {
       waktuAmb.innerHTML = '<span class="notif-badge-waktu sekarang">Ambil Sekarang</span>';
     }
@@ -561,6 +709,15 @@ if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
       antreanWrap.style.display = 'flex';
     } else {
       antreanWrap.style.display = 'none';
+    }
+
+    if (btnCountBadge) {
+      if (countMenunggu > 0) {
+        btnCountBadge.textContent = countMenunggu;
+        btnCountBadge.style.display = 'inline-flex';
+      } else {
+        btnCountBadge.style.display = 'none';
+      }
     }
   }
 

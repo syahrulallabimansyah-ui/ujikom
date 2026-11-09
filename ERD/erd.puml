@@ -1,0 +1,176 @@
+@startuml
+!theme plain
+skinparam linetype ortho
+skinparam shadowing false
+skinparam roundcorner 5
+skinparam class {
+    BackgroundColor white
+    BorderColor #475569
+    HeaderBackgroundColor #f1f5f9
+}
+
+entity "users" as users {
+    * id : int <<PK, AI>>
+    --
+    * full_name : varchar(100)
+    nik : varchar(30) <<NIS/NIP>>
+    kelas : varchar(50)
+    no_hp : varchar(20)
+    * no_anggota : varchar(30) <<UK>>
+    * username : varchar(50) <<UK>>
+    * email : varchar(100) <<UK>>
+    * password : varchar(255)
+    plain_password : varchar(255) <<Legacy, Kosong>>
+    foto : varchar(255)
+    role : enum('admin','member')
+    status : enum('pending','approved','rejected')
+    card_status : enum('active','frozen')
+    created_at : timestamp
+}
+
+entity "admin_profile" as admin_profile {
+    * id : int <<PK, AI>>
+    --
+    * user_id : int <<FK, UK>>
+    display_name : varchar(100)
+    foto : varchar(255)
+    updated_at : timestamp
+}
+
+entity "password_otp" as password_otp {
+    * id : int <<PK, AI>>
+    --
+    * user_id : int <<FK>>
+    * otp_hash : char(64)
+    * expires_at : datetime
+    * attempts : tinyint
+    used_at : datetime
+    * last_sent_at : datetime
+    * created_at : timestamp
+    request_ip : varchar(45)
+}
+
+entity "buku" as buku {
+    * id : int <<PK, AI>>
+    --
+    * judul : varchar(255)
+    penulis : varchar(255)
+    isbn : varchar(50)
+    genre : varchar(100)
+    sinopsis : text
+    stok : int
+    rak : varchar(100)
+    gambar : varchar(500)
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "peminjaman" as peminjaman {
+    * id : int <<PK, AI>>
+    --
+    * buku_id : int <<FK>>
+    user_id : int <<FK, Nullable>>
+    * nama_peminjam : varchar(150)
+    * waktu_pinjam : datetime
+    * batas_kembali : datetime
+    waktu_kembali : datetime
+    terlambat_hari : int
+    denda : decimal(12,0)
+    status_denda : enum('tidak_ada','belum_bayar','lunas')
+    status : enum('dipinjam','dikembalikan')
+    created_at : timestamp
+}
+
+entity "pengajuan_peminjaman" as pengajuan_peminjaman {
+    * id : int <<PK, AI>>
+    --
+    user_id : int <<Relasi Logis Tanpa FK DB>>
+    buku_id : int <<Relasi Logis Tanpa FK DB>>
+    * nama_peminjam : varchar(150)
+    * file_kartu : varchar(255)
+    total_buku : int
+    * batas_kembali : date
+    waktu_pengambilan : enum('sekarang','nanti')
+    catatan_pengambilan : varchar(255)
+    status : enum('menunggu','disetujui','ditolak')
+    alasan_penolakan : text
+    approved_at : datetime
+    created_at : timestamp
+}
+
+entity "buku_favorites" as buku_favorites {
+    * id : int <<PK, AI>>
+    --
+    * buku_id : int <<FK, UK>>
+    * user_id : int <<FK, UK>>
+    created_at : timestamp
+}
+
+entity "buku_likes" as buku_likes {
+    * id : int <<PK, AI>>
+    --
+    * buku_id : int <<FK, UK>>
+    * user_id : int <<FK, UK>>
+    created_at : timestamp
+}
+
+entity "buku_ratings" as buku_ratings {
+    * id : int <<PK, AI>>
+    --
+    * user_id : int <<FK, UK>>
+    * buku_id : int <<FK, UK>>
+    * rating : tinyint
+    created_at : datetime
+    updated_at : datetime
+}
+
+entity "reminder_log" as reminder_log {
+    * id : int <<PK, AI>>
+    --
+    * peminjaman_id : int <<FK, UK>>
+    * tanggal : date <<UK>>
+    terlambat_hari : int
+    wa_terkirim : tinyint(1)
+    wa_terkirim_at : datetime
+    created_at : timestamp
+}
+
+entity "banner" as banner {
+    * id : int <<PK, AI>>
+    --
+    judul : varchar(150)
+    subjudul : varchar(255)
+    gambar : varchar(500)
+    link_url : varchar(255)
+    urutan : int
+    aktif : tinyint(1)
+    created_at : timestamp
+    updated_at : timestamp
+}
+
+entity "pengaturan" as pengaturan {
+    * id : int <<PK, AI>>
+    --
+    * kunci : varchar(100) <<UK>>
+    nilai : text
+    keterangan : varchar(255)
+    updated_at : timestamp
+}
+
+users ||--o| admin_profile : "user_id (1:1, CASCADE)"
+users ||--o{ password_otp : "user_id (1:N, CASCADE)"
+users ||--o{ peminjaman : "user_id (1:N, SET NULL)"
+users ||..o{ pengajuan_peminjaman : "user_id (Relasi Logis Tanpa FK DB)"
+users ||--o{ buku_favorites : "user_id (1:N, CASCADE)"
+users ||--o{ buku_likes : "user_id (1:N, CASCADE)"
+users ||--o{ buku_ratings : "user_id (1:N, CASCADE)"
+
+buku ||--o{ peminjaman : "buku_id (1:N, RESTRICT)"
+buku ||..o{ pengajuan_peminjaman : "buku_id (Relasi Logis Tanpa FK DB)"
+buku ||--o{ buku_favorites : "buku_id (1:N, CASCADE)"
+buku ||--o{ buku_likes : "buku_id (1:N, CASCADE)"
+buku ||--o{ buku_ratings : "buku_id (1:N, CASCADE)"
+
+peminjaman ||--o{ reminder_log : "peminjaman_id (1:N, CASCADE)"
+
+@enduml

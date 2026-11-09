@@ -24,12 +24,15 @@ if (!function_exists('jsonResponse')) {
 $is_guest = !isset($_SESSION['user_id']);
 
 require_once 'db.php';
+require_once 'config.php';
 
 // $conn harus berupa mysqli (pastikan db.php mengembalikan instance mysqli)
 assert($conn instanceof mysqli);
 
 // ── Validasi input ────────────────────────────────────────────────────────────
-$id  = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT, ['options' => ['min_range' => 1]]);
+$raw_id = $_GET['id'] ?? '';
+$id = unmask_id($raw_id);
+if ($id <= 0) { $id = false; }
 $uid = $is_guest ? 0 : (int) $_SESSION['user_id'];
 
 if ($id === false || $id === null) {

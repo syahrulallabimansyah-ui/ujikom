@@ -1,0 +1,54 @@
+@startuml 01_activity_registrasi_anggota
+skinparam activity {
+    BackgroundColor #FFF4C2
+    BorderColor #6B5A1E
+    DiamondBackgroundColor #FFE9A3
+    DiamondBorderColor #C0282D
+}
+skinparam ArrowColor #6B5A1E
+
+title Activity Diagram 01 — Registrasi Anggota Baru Mandiri\n<i>File: sign_up.php</i>
+
+|#FEE2E2|Tamu (Guest)|
+|#F1F5F9|Sistem AKSA NOVA|
+
+|Tamu (Guest)|
+start
+:Membuka halaman Sign Up;
+
+|Sistem AKSA NOVA|
+:Menampilkan formulir registrasi & token CSRF;
+
+|Tamu (Guest)|
+:Memilih jenis anggota (Siswa/Guru);
+:Mengisi NIS/NIP, Nama, Email, Sandi, & Upload Foto;
+:Klik tombol "Daftar Sekarang";
+
+|Sistem AKSA NOVA|
+:Validasi Token Keamanan CSRF;
+if (Token CSRF Valid?) then (<color:green>Ya</color>)
+    :Pengecekan keunikan Email & NIS/NIP di database;
+    if (Email & NIS/NIP Belum Terdaftar?) then (<color:green>Ya</color>)
+        :Hash password dengan Bcrypt;
+        :Generate Nomor Anggota unik (AN-YYYY-XXXXX);
+        :Simpan file foto & masukkan record ke tabel users\n(role='member', status='approved', card_status='active');
+        :Siapkan data kartu di $_SESSION['kartu_data']\n(Tanpa login sesi otomatis);
+        :Redirect ke halaman kartu_anggota.php;
+        |Tamu (Guest)|
+        :Melihat dan mengunduh Kartu Anggota Digital;
+        stop
+    else (<color:red>Tidak</color>)
+        |Sistem AKSA NOVA|
+        :Tampilkan notifikasi error (Duplikasi Data);
+        |Tamu (Guest)|
+        :Memperbaiki isian formulir;
+        stop
+    endif
+else (<color:red>Tidak</color>)
+    |Sistem AKSA NOVA|
+    :Tolak permintaan & tampilkan error sesi CSRF;
+    |Tamu (Guest)|
+    :Memuat ulang halaman registrasi;
+    stop
+endif
+@enduml

@@ -1,6 +1,6 @@
 <?php
 // pengaturan_musik.php — Panel admin untuk mengatur musik latar halaman index (AKSA NOVA)
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 // Cek login & role admin
 if (!isset($_SESSION["user_id"]) || ($_SESSION["role"] ?? "") !== "admin") {
@@ -60,17 +60,139 @@ if ($res) {
 //  AKSI: simpan pengaturan (upload / pilih file, toggle aktif, judul)
 // ─────────────────────────────────────────────
 if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
-    $action = $_POST["action"] ?? "simpan";
+    $is_ajax = (isset($_POST["is_ajax"]) && $_POST["is_ajax"] === "1") ||
+               (isset($_SERVER["HTTP_X_REQUESTED_WITH"]) && strtolower($_SERVER["HTTP_X_REQUESTED_WITH"]) === "xmlhttprequest");
+    $action  = $_POST["action"] ?? "simpan";
 
     if ($action === "hapus_file") {
-        // Hapus file musik yang tersimpan & matikan fitur
         if ($musik_file && file_exists($musik_file)) {
             @unlink($musik_file);
         }
         simpanPengaturan($conn, "musik_file", "");
         simpanPengaturan($conn, "musik_aktif", "0");
-        $msg = "Musik latar dihapus dan fitur dinonaktifkan."; $msg_type = "success";
-        $musik_file = ""; $musik_aktif = 0;
+        $musik_file  = "";
+        $musik_aktif = 0;
+        if ($is_ajax) {
+            header("Content-Type: application/json; charset=utf-8");
+            echo json_encode([
+                "success" => true,
+                "message" => "Berkas musik berhasil dihapus dan fitur dinonaktifkan."
+            ]);
+            exit;
+        }
+        $msg = "Musik latar dihapus dan fitur dinonaktifkan.";
+        $msg_type = "success";
+    } elseif ($action === "toggle_musik") {
+        $aktif_baru = (isset($_POST["musik_aktif"]) && (int)$_POST["musik_aktif"] === 1) ? 1 : 0;
+        if ($aktif_baru === 1 && empty($musik_file)) {
+            if ($is_ajax) {
+                header("Content-Type: application/json; charset=utf-8");
+                echo json_encode([
+                    "success" => false,
+                    "message" => "Silakan pilih berkas musik terlebih dahulu sebelum mengaktifkan tombol musik."
+                ]);
+                exit;
+            }
+            $msg = "Aktifkan musik memerlukan berkas musik. Silakan unggah berkas terlebih dahulu.";
+            $msg_type = "error";
+        } else {
+            simpanPengaturan($conn, "musik_aktif", (string)$aktif_baru);
+            $musik_aktif = $aktif_baru;
+            if ($is_ajax) {
+                header("Content-Type: application/json; charset=utf-8");
+                echo json_encode([
+                    "success"     => true,
+                    "musik_aktif" => $musik_aktif,
+                    "message"     => $musik_aktif ? "Tombol musik aktif di halaman utama" : "Tombol musik dinonaktifkan"
+                ]);
+                exit;
+            }
+            $msg = "Status musik berhasil diperbarui!";
+            $msg_type = "success";
+        }
+    } elseif ($action === "simpan_judul") {
+        $judul_baru = trim($_POST["musik_judul"] ?? "");
+        simpanPengaturan($conn, "musik_judul", $judul_baru);
+        $musik_judul = $judul_baru;
+        if ($is_ajax) {
+            header("Content-Type: application/json; charset=utf-8");
+            echo json_encode([
+                "success"     => true,
+                "musik_judul" => $musik_judul,
+                "message"     => "Nama musik berhasil disimpan"
+            ]);
+            exit;
+        }
+        $msg = "Nama musik berhasil disimpan!";
+        $msg_type = "success";
+    } elseif ($action === "upload_file") {
+        $upload_error = "";
+        $file_final   = $musik_file;
+
+        if (!isset($_FILES["musik_file"]) || $_FILES["musik_file"]["error"] === UPLOAD_ERR_NO_FILE) {
+            $upload_error = "Tidak ada berkas yang dipilih.";
+        } else {
+            $file = $_FILES["musik_file"];
+            if ($file["error"] !== UPLOAD_ERR_OK) {
+                $upload_error = "Unggah berkas gagal (kode error {$file['error']}).";
+            } elseif ($file["size"] > 15 * 1024 * 1024) {
+                $upload_error = "Ukuran berkas melebihi batas 15 MB.";
+            } else {
+                $ext     = strtolower(pathinfo($file["name"], PATHINFO_EXTENSION));
+                $allowed = ["mp3", "ogg", "wav", "m4a"];
+                $mime    = function_exists("mime_content_type") ? mime_content_type($file["tmp_name"]) : "";
+                $allowed_mimes = [
+                    "audio/mpeg", "audio/mp3", "audio/ogg", "audio/wav", "audio/x-wav",
+                    "audio/x-m4a", "audio/mp4", "audio/aac", "application/ogg", "audio/vnd.wave"
+                ];
+
+                if (!in_array($ext, $allowed)) {
+                    $upload_error = "Format tidak didukung (hanya MP3, OGG, WAV, M4A).";
+                } elseif ($mime !== "" && !in_array($mime, $allowed_mimes, true)) {
+                    $upload_error = "Berkas yang diunggah bukan berkas audio yang valid.";
+                } else {
+                    $dir = "uploads/musik/";
+                    if (!is_dir($dir)) mkdir($dir, 0775, true);
+                    if ($musik_file && file_exists($musik_file)) @unlink($musik_file);
+                    $filename   = uniqid("musik_") . "." . $ext;
+                    move_uploaded_file($file["tmp_name"], $dir . $filename);
+                    $file_final = $dir . $filename;
+                }
+            }
+        }
+
+        if ($upload_error !== "") {
+            if ($is_ajax) {
+                header("Content-Type: application/json; charset=utf-8");
+                echo json_encode(["success" => false, "message" => $upload_error]);
+                exit;
+            }
+            $msg = $upload_error; $msg_type = "error";
+        } else {
+            $judul_baru = trim($_POST["musik_judul"] ?? "");
+            if ($judul_baru === "" && empty($musik_judul)) {
+                $judul_baru = pathinfo($_FILES["musik_file"]["name"], PATHINFO_FILENAME);
+            }
+            simpanPengaturan($conn, "musik_file", $file_final);
+            if ($judul_baru !== "") {
+                simpanPengaturan($conn, "musik_judul", $judul_baru);
+                $musik_judul = $judul_baru;
+            }
+            $musik_file = $file_final;
+            if ($is_ajax) {
+                header("Content-Type: application/json; charset=utf-8");
+                echo json_encode([
+                    "success"   => true,
+                    "file_url"  => $file_final,
+                    "file_name" => basename($file_final),
+                    "judul"     => $musik_judul ?: basename($file_final),
+                    "message"   => "Berkas musik berhasil diunggah!"
+                ]);
+                exit;
+            }
+            $msg = "Berkas musik berhasil diunggah!";
+            $msg_type = "success";
+        }
     } else {
         $aktif_baru = isset($_POST["musik_aktif"]) ? 1 : 0;
         $judul_baru = trim($_POST["musik_judul"] ?? "");
@@ -100,7 +222,6 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
                 } else {
                     $dir = "uploads/musik/";
                     if (!is_dir($dir)) mkdir($dir, 0775, true);
-                    // Hapus file lama supaya tidak menumpuk
                     if ($musik_file && file_exists($musik_file)) @unlink($musik_file);
                     $filename   = uniqid("musik_") . "." . $ext;
                     move_uploaded_file($file["tmp_name"], $dir . $filename);
@@ -231,6 +352,24 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     }
     .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
     .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn.sidebar-btn-logout {
+      color: #e74c3c !important;
+      margin-top: 10px;
+    }
+    .sidebar-btn.sidebar-btn-logout svg {
+      color: #e74c3c !important;
+      stroke: #e74c3c !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover {
+      background: rgba(231,76,60,.14) !important;
+      border-color: #e74c3c !important;
+      color: #ff6b6b !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover svg {
+      color: #ff6b6b !important;
+      stroke: #ff6b6b !important;
+      transform: translateX(2px);
+    }
     .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
@@ -294,26 +433,138 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   .field .file-drop .file-drop-text { font-size:.82rem; color: var(--muted); }
   .field .file-drop .file-name { font-size:.82rem; font-weight:700; color: var(--text); margin-top:4px; }
 
-  /* Toggle switch */
+  /* Toggle switch - Kontras Tinggi di Light & Dark Mode */
   .toggle-row {
     display:flex; align-items:center; justify-content:space-between;
     padding: 4px 0 18px;
   }
   .toggle-row .toggle-label { font-size:.9rem; font-weight:700; color: var(--text); }
   .toggle-row .toggle-desc  { font-size:.78rem; color: var(--muted); margin-top:2px; }
-  .switch { position:relative; display:inline-block; width:46px; height:26px; flex-shrink:0; }
+  .switch { position:relative; display:inline-block; width:48px; height:26px; flex-shrink:0; }
   .switch input { opacity:0; width:0; height:0; }
   .switch .slider {
     position:absolute; cursor:pointer; inset:0;
-    background:rgba(255,255,255,.15); border-radius:999px; transition: background .2s ease;
+    background:#cbd5e1;
+    border:1.5px solid #94a3b8;
+    border-radius:999px;
+    transition:background .25s ease, border-color .25s ease, box-shadow .25s ease;
+  }
+  html:not(.light) .switch .slider {
+    background:#334155;
+    border:1.5px solid #475569;
   }
   .switch .slider::before {
-    content:''; position:absolute; width:20px; height:20px; left:3px; top:3px;
-    background:#fff; border-radius:50%; transition: transform .2s ease;
-    box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    content:''; position:absolute; width:18px; height:18px; left:3px; top:2.5px;
+    background:#ffffff; border-radius:50%;
+    transition:transform .25s cubic-bezier(0.22, 1, 0.36, 1), background .25s ease;
+    box-shadow:0 2px 5px rgba(0,0,0,.25);
   }
-  .switch input:checked + .slider { background: var(--accent, #d8b878); }
-  .switch input:checked + .slider::before { transform: translateX(20px); }
+  .switch input:checked + .slider {
+    background:var(--accent, #d8b878);
+    border-color:var(--accent, #d8b878);
+  }
+  .switch input:checked + .slider::before {
+    transform:translateX(22px);
+    background:#ffffff;
+  }
+  .switch input:focus-visible + .slider {
+    box-shadow:0 0 0 3px rgba(216,184,120,.35);
+  }
+
+  /* Floating Toast Notification Auto-Save */
+  .autosave-toast {
+    position: fixed;
+    top: 24px;
+    right: 28px;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 18px;
+    border-radius: 12px;
+    background: #0f172a;
+    color: #ffffff;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+    font-size: .84rem;
+    font-weight: 600;
+    opacity: 0;
+    transform: translateY(-12px);
+    transition: opacity .25s ease, transform .25s ease;
+    pointer-events: none;
+  }
+  body.dark .autosave-toast, html:not(.light) .autosave-toast {
+    background: #1e293b;
+    color: #f1f5f9;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+  }
+  .autosave-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .toast-icon-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    flex-shrink: 0;
+    position: relative;
+  }
+  .toast-icon-wrap svg {
+    width: 16px;
+    height: 16px;
+  }
+  .toast-icon-wrap .toast-icon-check {
+    display: block !important;
+    color: #10b981;
+  }
+  .toast-icon-wrap .toast-icon-warn {
+    display: none !important;
+    color: #ef4444;
+  }
+  .autosave-toast.toast-error {
+    background: #7f1d1d;
+    color: #fef2f2;
+  }
+  .autosave-toast.toast-error .toast-icon-wrap .toast-icon-check {
+    display: none !important;
+  }
+  .autosave-toast.toast-error .toast-icon-wrap .toast-icon-warn {
+    display: block !important;
+  }
+
+  .autosave-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: .72rem;
+    font-weight: 700;
+    background: rgba(16, 185, 129, 0.12);
+    color: #10b981;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+    transition: all .2s ease;
+  }
+  .autosave-pill .dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #10b981;
+  }
+  .autosave-pill.saving {
+    background: rgba(245, 158, 11, 0.12);
+    color: #f59e0b;
+    border-color: rgba(245, 158, 11, 0.25);
+  }
+  .autosave-pill.saving .dot {
+    background: #f59e0b;
+    animation: autosavePulse 1s infinite;
+  }
+  @keyframes autosavePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.85); }
+  }
 
   .current-preview {
     display:flex; align-items:center; gap:14px;
@@ -464,9 +715,9 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
     ?>
     <a class="sidebar-btn" href="pengajuan_buku.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-      Pengajuan Buku
+      Pengajuan Pinjam
       <?php if ($cnt_aju_badge > 0): ?>
-        <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+        <span class="aksa-notif-badge"><?= $cnt_aju_badge ?></span>
       <?php endif; ?>
     </a>
     <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -487,19 +738,38 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
       </svg>
       Pengaturan Musik
     </a>
+    <a class="sidebar-btn" href="pengaturan_lokasi.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+      </svg>
+      Peta & Jam Buka
+    </a>
     
-    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Tema & Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </button>
-    <a class="sidebar-btn" href="beranda.php">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      Kembali
+    <a class="sidebar-btn sidebar-btn-logout" href="logout.php" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Keluar
     </a>
   </nav>
 </aside>
 
 <main class="main">
+
+  <!-- Floating Toast Notifikasi Auto-Save -->
+  <div id="autoSaveToast" class="autosave-toast" aria-live="polite">
+    <div class="toast-icon-wrap">
+      <svg class="toast-icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg class="toast-icon-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <span class="toast-text">Perubahan tersimpan otomatis</span>
+  </div>
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
@@ -508,83 +778,298 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
   <?php endif; ?>
 
   <div class="content-header">
-    <div class="content-title">Pengaturan Musik</div>
-    <div class="content-sub">Atur musik latar yang diputar di halaman utama (index) untuk pengunjung.</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div class="content-title">Pengaturan Musik</div>
+        <div class="content-sub">Atur musik latar yang diputar di halaman utama (index) untuk pengunjung.</div>
+      </div>
+      <div id="autoSavePill" class="autosave-pill">
+        <span class="dot"></span>
+        <span class="text">Otomatis Tersimpan</span>
+      </div>
+    </div>
   </div>
 
-  <?php if ($musik_file): ?>
-  <div class="current-preview">
-    <div class="icon-wrap">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+  <!-- Pratinjau Audio Dinamis -->
+  <div id="previewContainer">
+    <?php if ($musik_file): ?>
+    <div class="current-preview" id="currentPreviewCard">
+      <div class="icon-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      </div>
+      <div class="info">
+        <div class="name" id="previewTitle"><?= htmlspecialchars($musik_judul ?: basename($musik_file)) ?></div>
+        <div class="status" id="previewStatus">Status saat ini: <?= $musik_aktif ? "Aktif — tombol musik tampil di halaman utama" : "Nonaktif — tombol musik disembunyikan" ?></div>
+      </div>
+      <audio id="previewAudio" controls src="<?= htmlspecialchars($musik_file) ?>"></audio>
     </div>
-    <div class="info">
-      <div class="name"><?= htmlspecialchars($musik_judul ?: basename($musik_file)) ?></div>
-      <div class="status">Status saat ini: <?= $musik_aktif ? "Aktif — tombol musik tampil di halaman utama" : "Nonaktif — tombol musik disembunyikan" ?></div>
-    </div>
-    <audio controls src="<?= htmlspecialchars($musik_file) ?>"></audio>
+    <?php endif; ?>
   </div>
-  <?php endif; ?>
 
-  <form method="POST" enctype="multipart/form-data">
-    <input type="hidden" name="action" value="simpan">
+  <div class="card">
+    <h2>Nyalakan Musik Latar</h2>
+    <p class="hint">Jika diaktifkan, pengunjung akan melihat tombol musik di halaman utama (di samping tombol Masuk) yang bisa mereka nyalakan/matikan sendiri. Pengaturan tersimpan otomatis tanpa perlu tombol simpan.</p>
 
-    <div class="card">
-      <h2>Nyalakan Musik Latar</h2>
-      <p class="hint">Jika diaktifkan, pengunjung akan melihat tombol musik di halaman utama (di samping tombol Masuk) yang bisa mereka nyalakan/matikan sendiri.</p>
-
-      <div class="toggle-row">
-        <div>
-          <div class="toggle-label">Tampilkan tombol musik</div>
-          <div class="toggle-desc">Memerlukan file musik terunggah di bawah.</div>
-        </div>
-        <label class="switch">
-          <input type="checkbox" name="musik_aktif" <?= $musik_aktif ? "checked" : "" ?>>
-          <span class="slider"></span>
-        </label>
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Tampilkan tombol musik</div>
+        <div class="toggle-desc">Memerlukan berkas musik yang diunggah di bawah ini.</div>
       </div>
+      <label class="switch">
+        <input type="checkbox" id="musikAktifToggle" name="musik_aktif" <?= $musik_aktif ? "checked" : "" ?>>
+        <span class="slider"></span>
+      </label>
+    </div>
 
-      <div class="field">
-        <label for="musik_judul">Nama / Judul Musik</label>
-        <input type="text" id="musik_judul" name="musik_judul" placeholder="Contoh: Lo-fi Perpustakaan" value="<?= htmlspecialchars($musik_judul) ?>">
-      </div>
+    <div class="field">
+      <label for="musik_judul">Nama / Judul Musik</label>
+      <input type="text" id="musik_judul" name="musik_judul" placeholder="Contoh: Lo-fi Perpustakaan" value="<?= htmlspecialchars($musik_judul) ?>" autocomplete="off">
+    </div>
 
-      <div class="field">
-        <label>File Musik (MP3 / OGG / WAV / M4A, maks 15 MB)</label>
-        <div class="file-drop" id="fileDrop">
-          <input type="file" name="musik_file" id="musikFileInput" accept=".mp3,.ogg,.wav,.m4a,audio/*">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
-          <div class="file-drop-text">Klik untuk memilih file, atau seret file ke sini</div>
-          <div class="file-name" id="fileNameLabel"><?= $musik_file ? "Saat ini: " . htmlspecialchars(basename($musik_file)) : "" ?></div>
-        </div>
-      </div>
-
-      <div class="btn-row">
-        <button type="submit" class="btn-simpan">Simpan Pengaturan</button>
+    <div class="field">
+      <label>Berkas Musik (MP3 / OGG / WAV / M4A, maks 15 MB)</label>
+      <div class="file-drop" id="fileDrop">
+        <input type="file" name="musik_file" id="musikFileInput" accept=".mp3,.ogg,.wav,.m4a,audio/*">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 21h14"/></svg>
+        <div class="file-drop-text">Klik untuk memilih file, atau seret file ke sini untuk unggah otomatis</div>
+        <div class="file-name" id="fileNameLabel"><?= $musik_file ? "Saat ini: " . htmlspecialchars(basename($musik_file)) : "" ?></div>
       </div>
     </div>
-  </form>
 
-  <?php if ($musik_file): ?>
-  <form method="POST" onsubmit="return confirm('Hapus file musik ini dan matikan fitur musik di halaman utama?');">
-    <input type="hidden" name="action" value="hapus_file">
-    <div class="btn-row">
-      <button type="submit" class="btn-hapus-file">Hapus File Musik</button>
+    <div id="hapusFileWrap" class="btn-row" style="<?= $musik_file ? '' : 'display:none;' ?>">
+      <button type="button" id="btnHapusMusik" class="btn-hapus-file">Hapus Berkas Musik</button>
     </div>
-  </form>
-  <?php endif; ?>
+  </div>
 
 </main>
 
 <script>
-  // Sidebar mobile toggle dikelola terpusat oleh settings_include.php
+  // ── Auto-Save Pengaturan Musik AKSA NOVA ──
+  const musikAktifToggle = document.getElementById('musikAktifToggle');
+  const musikJudulInput  = document.getElementById('musik_judul');
+  const musikFileInput   = document.getElementById('musikFileInput');
+  const fileNameLabel    = document.getElementById('fileNameLabel');
+  const previewContainer = document.getElementById('previewContainer');
+  const hapusFileWrap    = document.getElementById('hapusFileWrap');
+  const btnHapusMusik    = document.getElementById('btnHapusMusik');
+  const autoSaveToast    = document.getElementById('autoSaveToast');
+  const autoSavePill     = document.getElementById('autoSavePill');
 
-  const musikFileInput = document.getElementById('musikFileInput');
-  const fileNameLabel  = document.getElementById('fileNameLabel');
-  musikFileInput.addEventListener('change', () => {
-    if (musikFileInput.files && musikFileInput.files[0]) {
-      fileNameLabel.textContent = "Dipilih: " + musikFileInput.files[0].name;
+  let currentFileExists = <?= $musik_file ? 'true' : 'false' ?>;
+  let toastTimer = null;
+
+  function showAutoSaveToast(msg, isError = false) {
+    if (!autoSaveToast) return;
+    autoSaveToast.querySelector('.toast-text').textContent = msg;
+    autoSaveToast.classList.toggle('toast-error', isError);
+    autoSaveToast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      autoSaveToast.classList.remove('show');
+    }, 3200);
+  }
+
+  function setAutoSavePill(state, text) {
+    if (!autoSavePill) return;
+    autoSavePill.className = 'autosave-pill ' + (state === 'saving' ? 'saving' : '');
+    autoSavePill.querySelector('.text').textContent = text || (state === 'saving' ? 'Menyimpan...' : 'Otomatis Tersimpan');
+  }
+
+  // 1. Toggle switch auto-save
+  musikAktifToggle.addEventListener('change', function() {
+    const isChecked = this.checked;
+
+    if (isChecked && !currentFileExists) {
+      this.checked = false;
+      showAutoSaveToast('Silakan pilih berkas musik terlebih dahulu sebelum mengaktifkan tombol musik.', true);
+      return;
+    }
+
+    setAutoSavePill('saving', 'Memperbarui status...');
+    const fd = new FormData();
+    fd.append('action', 'toggle_musik');
+    fd.append('is_ajax', '1');
+    fd.append('musik_aktif', isChecked ? '1' : '0');
+
+    fetch('pengaturan_musik.php', {
+      method: 'POST',
+      body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+      setAutoSavePill('saved', 'Otomatis Tersimpan');
+      if (data.success) {
+        showAutoSaveToast(data.message);
+        const statusEl = document.getElementById('previewStatus');
+        if (statusEl) {
+          statusEl.textContent = isChecked
+            ? 'Status saat ini: Aktif — tombol musik tampil di halaman utama'
+            : 'Status saat ini: Nonaktif — tombol musik disembunyikan';
+        }
+      } else {
+        musikAktifToggle.checked = !isChecked;
+        showAutoSaveToast(data.message || 'Gagal menyimpan status musik', true);
+      }
+    })
+    .catch(() => {
+      setAutoSavePill('saved', 'Gagal Tersimpan');
+      musikAktifToggle.checked = !isChecked;
+      showAutoSaveToast('Koneksi terputus saat menyimpan status musik', true);
+    });
+  });
+
+  // 2. Debounced music title auto-save
+  let titleDebounceTimer = null;
+  function saveJudulMusik() {
+    const judul = musikJudulInput.value.trim();
+    setAutoSavePill('saving', 'Menyimpan nama...');
+
+    const fd = new FormData();
+    fd.append('action', 'simpan_judul');
+    fd.append('is_ajax', '1');
+    fd.append('musik_judul', judul);
+
+    fetch('pengaturan_musik.php', {
+      method: 'POST',
+      body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+      setAutoSavePill('saved', 'Otomatis Tersimpan');
+      if (data.success) {
+        showAutoSaveToast(data.message);
+        const titleEl = document.getElementById('previewTitle');
+        if (titleEl && judul) {
+          titleEl.textContent = judul;
+        }
+      } else {
+        showAutoSaveToast(data.message || 'Gagal menyimpan nama musik', true);
+      }
+    })
+    .catch(() => {
+      setAutoSavePill('saved', 'Gagal Tersimpan');
+      showAutoSaveToast('Koneksi terputus saat menyimpan nama musik', true);
+    });
+  }
+
+  musikJudulInput.addEventListener('input', function() {
+    if (titleDebounceTimer) clearTimeout(titleDebounceTimer);
+    titleDebounceTimer = setTimeout(saveJudulMusik, 600);
+  });
+  musikJudulInput.addEventListener('blur', function() {
+    if (titleDebounceTimer) {
+      clearTimeout(titleDebounceTimer);
+      saveJudulMusik();
     }
   });
+
+  // 3. Instant file upload upon selection
+  musikFileInput.addEventListener('change', function() {
+    if (!this.files || !this.files[0]) return;
+    const file = this.files[0];
+
+    // Validasi ukuran client-side
+    if (file.size > 15 * 1024 * 1024) {
+      showAutoSaveToast('Ukuran berkas melebihi batas 15 MB.', true);
+      this.value = '';
+      return;
+    }
+
+    fileNameLabel.textContent = 'Mengunggah: ' + file.name + '...';
+    setAutoSavePill('saving', 'Mengunggah berkas...');
+    showAutoSaveToast('Mengunggah berkas musik...');
+
+    const fd = new FormData();
+    fd.append('action', 'upload_file');
+    fd.append('is_ajax', '1');
+    fd.append('musik_file', file);
+    fd.append('musik_judul', musikJudulInput.value.trim());
+
+    fetch('pengaturan_musik.php', {
+      method: 'POST',
+      body: fd
+    })
+    .then(r => r.json())
+    .then(data => {
+      setAutoSavePill('saved', 'Otomatis Tersimpan');
+      if (data.success) {
+        currentFileExists = true;
+        fileNameLabel.textContent = 'Saat ini: ' + data.file_name;
+        showAutoSaveToast(data.message);
+
+        // Perbarui kartu pratinjau audio secara dinamis
+        const statusText = musikAktifToggle.checked
+          ? 'Status saat ini: Aktif — tombol musik tampil di halaman utama'
+          : 'Status saat ini: Nonaktif — tombol musik disembunyikan';
+
+        previewContainer.innerHTML = `
+          <div class="current-preview" id="currentPreviewCard">
+            <div class="icon-wrap">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+            </div>
+            <div class="info">
+              <div class="name" id="previewTitle">${data.judul || data.file_name}</div>
+              <div class="status" id="previewStatus">${statusText}</div>
+            </div>
+            <audio id="previewAudio" controls src="${data.file_url}"></audio>
+          </div>
+        `;
+        if (hapusFileWrap) hapusFileWrap.style.display = 'flex';
+      } else {
+        fileNameLabel.textContent = '';
+        showAutoSaveToast(data.message || 'Gagal mengunggah berkas musik', true);
+      }
+    })
+    .catch(() => {
+      setAutoSavePill('saved', 'Gagal Mengunggah');
+      fileNameLabel.textContent = '';
+      showAutoSaveToast('Koneksi terputus saat mengunggah berkas musik', true);
+    });
+  });
+
+  // 4. Hapus Berkas Musik via AJAX
+  if (btnHapusMusik) {
+    btnHapusMusik.addEventListener('click', function() {
+      AksaConfirm({
+        title: 'Hapus Berkas Musik?',
+        icon: 'music',
+        message: 'Apakah Anda yakin ingin menghapus berkas musik latar ini dan mematikan fitur musik di halaman utama?',
+        confirmText: 'Ya, Hapus Musik',
+        cancelText: 'Batal',
+        type: 'danger'
+      }).then(function(confirmed) {
+        if (!confirmed) return;
+        setAutoSavePill('saving', 'Menghapus berkas...');
+      const fd = new FormData();
+      fd.append('action', 'hapus_file');
+      fd.append('is_ajax', '1');
+
+      fetch('pengaturan_musik.php', {
+        method: 'POST',
+        body: fd
+      })
+      .then(r => r.json())
+      .then(data => {
+        setAutoSavePill('saved', 'Otomatis Tersimpan');
+        if (data.success) {
+          currentFileExists = false;
+          musikAktifToggle.checked = false;
+          fileNameLabel.textContent = '';
+          musikFileInput.value = '';
+          previewContainer.innerHTML = '';
+          if (hapusFileWrap) hapusFileWrap.style.display = 'none';
+          showAutoSaveToast(data.message);
+        } else {
+          showAutoSaveToast(data.message || 'Gagal menghapus berkas musik', true);
+        }
+      })
+      .catch(() => {
+        setAutoSavePill('saved', 'Gagal Menghapus');
+        showAutoSaveToast('Koneksi terputus saat menghapus berkas musik', true);
+      });
+      });
+    });
+  }
 </script>
 
 <?php require_once 'modal_profil_admin.php';

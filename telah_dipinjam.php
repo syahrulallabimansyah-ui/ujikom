@@ -70,102 +70,87 @@ if (!function_exists('hitungDenda')) {
 }
 
 // ─────────────────────────────────────────────
-//  AKSI: Kembalikan Buku
+//  AKSI POST: Sirkulasi & Denda
 // ─────────────────────────────────────────────
 $action = $_POST['action'] ?? '';
 
-if ($action === 'kembalikan') {
-    $pem_id = (int)($_POST['pem_id'] ?? 0);
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!csrf_verify()) {
+        $msg = 'Sesi keamanan formulir kedaluwarsa. Silakan muat ulang halaman.';
+        $msg_type = 'error';
+    } else {
+        if ($action === 'kembalikan') {
+            $pem_id = (int)($_POST['pem_id'] ?? 0);
+            if ($pem_id > 0) {
+                $cek_res = mysqli_query($conn,
+                    "SELECT p.buku_id, p.status, p.batas_kembali FROM peminjaman p
+                     LEFT JOIN buku b ON b.id = p.buku_id
+                     WHERE p.id=$pem_id LIMIT 1"
+                );
+                $cek = $cek_res ? mysqli_fetch_assoc($cek_res) : null;
 
-    if ($pem_id > 0) {
-        $cek_res = mysqli_query($conn,
-            "SELECT p.buku_id, p.status, p.batas_kembali FROM peminjaman p
-             LEFT JOIN buku b ON b.id = p.buku_id
-             WHERE p.id=$pem_id LIMIT 1"
-        );
-        $cek = $cek_res ? mysqli_fetch_assoc($cek_res) : null;
+                if ($cek && $cek['status'] === 'dipinjam') {
+                    $buku_id = (int)$cek['buku_id'];
+                    $now     = date('Y-m-d H:i:s');
 
-        if ($cek && $cek['status'] === 'dipinjam') {
-            $buku_id = (int)$cek['buku_id'];
-            $now     = date('Y-m-d H:i:s');
+                    // Hitung denda
+                    $denda_info   = hitungDenda($cek['batas_kembali'], $now, $denda_aktif, $denda_per_hari, $grace_period);
+                    $terlambat_hari = $denda_info['hari'];
+                    $total_denda    = $denda_info['total'];
+                    $status_denda   = $total_denda > 0 ? 'belum_bayar' : 'tidak_ada';
 
-            // Hitung denda
-            $denda_info   = hitungDenda($cek['batas_kembali'], $now, $denda_aktif, $denda_per_hari, $grace_period);
-            $terlambat_hari = $denda_info['hari'];
-            $total_denda    = $denda_info['total'];
-            $status_denda   = $total_denda > 0 ? 'belum_bayar' : 'tidak_ada';
+                    mysqli_query($conn,
+                        "UPDATE peminjaman
+                         SET status='dikembalikan',
+                             waktu_kembali='$now',
+                             terlambat_hari=$terlambat_hari,
+                             denda=$total_denda,
+                             status_denda='$status_denda'
+                         WHERE id=$pem_id"
+                    );
+                    mysqli_query($conn, "UPDATE buku SET stok = stok + 1 WHERE id=$buku_id");
 
-            mysqli_query($conn,
-                "UPDATE peminjaman
-                 SET status='dikembalikan',
-                     waktu_kembali='$now',
-                     terlambat_hari=$terlambat_hari,
-                     denda=$total_denda,
-                     status_denda='$status_denda'
-                 WHERE id=$pem_id"
-            );
-            mysqli_query($conn, "UPDATE buku SET stok = stok + 1 WHERE id=$buku_id");
-
-            if ($total_denda > 0) {
-                $msg = "Buku berhasil dikembalikan! Terlambat $terlambat_hari hari → Denda: Rp " . number_format($total_denda, 0, ',', '.') . ". Harap segera diselesaikan.";
-                $msg_type = 'warning';
-            } else {
-                $msg = 'Buku berhasil dikembalikan! Stok otomatis bertambah.';
+                    if ($total_denda > 0) {
+                        $msg = "Buku berhasil dikembalikan! Terlambat $terlambat_hari hari → Denda: Rp " . number_format($total_denda, 0, ',', '.') . ". Harap segera diselesaikan.";
+                        $msg_type = 'warning';
+                    } else {
+                        $msg = 'Buku berhasil dikembalikan! Stok otomatis bertambah.';
+                        $msg_type = 'success';
+                    }
+                } else {
+                    $msg = 'Buku ini sudah dikembalikan atau bukunya telah dihapus.';
+                    $msg_type = 'error';
+                }
+            }
+        } elseif ($action === 'hapus_riwayat') {
+            $pem_id = (int)($_POST['pem_id'] ?? 0);
+            if ($pem_id > 0) {
+                mysqli_query($conn, "DELETE FROM peminjaman WHERE id=$pem_id AND status='dikembalikan'");
+                $msg = 'Riwayat peminjaman berhasil dihapus.';
                 $msg_type = 'success';
             }
-        } else {
-            $msg = 'Buku ini sudah dikembalikan atau bukunya telah dihapus.';
-            $msg_type = 'error';
+        } elseif ($action === 'tandai_wa') {
+            $pem_id = (int)($_POST['pem_id'] ?? 0);
+            if ($pem_id > 0) {
+                $today = date('Y-m-d');
+                mysqli_query($conn,
+                    "INSERT INTO reminder_log (peminjaman_id, tanggal, wa_terkirim, wa_terkirim_at)
+                     VALUES ($pem_id, '$today', 1, NOW())
+                     ON DUPLICATE KEY UPDATE wa_terkirim = 1, wa_terkirim_at = NOW()"
+                );
+                $msg = 'Ditandai sudah mengirim pengingat WA hari ini.';
+                $msg_type = 'success';
+            }
+        } elseif ($action === 'tandai_lunas') {
+            $pem_id = (int)($_POST['pem_id'] ?? 0);
+            if ($pem_id > 0) {
+                mysqli_query($conn,
+                    "UPDATE peminjaman SET status_denda='lunas' WHERE id=$pem_id AND status_denda='belum_bayar'"
+                );
+                $msg = 'Denda berhasil ditandai sebagai lunas.';
+                $msg_type = 'success';
+            }
         }
-    }
-}
-
-// Hapus riwayat
-if ($action === 'hapus_riwayat') {
-    $pem_id = (int)($_POST['pem_id'] ?? 0);
-    if ($pem_id > 0) {
-        mysqli_query($conn, "DELETE FROM peminjaman WHERE id=$pem_id AND status='dikembalikan'");
-        $msg = 'Riwayat peminjaman berhasil dihapus.';
-        $msg_type = 'success';
-    }
-}
-
-// Tandai pengingat WA sudah dikirim hari ini (dicatat di reminder_log)
-if ($action === 'tandai_wa') {
-    $pem_id = (int)($_POST['pem_id'] ?? 0);
-    if ($pem_id > 0) {
-        $today = date('Y-m-d');
-        mysqli_query($conn,
-            "INSERT INTO reminder_log (peminjaman_id, tanggal, wa_terkirim, wa_terkirim_at)
-             VALUES ($pem_id, '$today', 1, NOW())
-             ON DUPLICATE KEY UPDATE wa_terkirim = 1, wa_terkirim_at = NOW()"
-        );
-        $msg = 'Ditandai sudah mengirim pengingat WA hari ini.';
-        $msg_type = 'success';
-    }
-}
-
-// Batalkan tanda sudah kirim WA
-if ($action === 'batal_wa') {
-    $pem_id = (int)($_POST['pem_id'] ?? 0);
-    if ($pem_id > 0) {
-        $today = date('Y-m-d');
-        mysqli_query($conn,
-            "UPDATE reminder_log SET wa_terkirim = 0, wa_terkirim_at = NULL
-             WHERE peminjaman_id = $pem_id AND tanggal = '$today'"
-        );
-    }
-}
-
-// Tandai denda sebagai lunas
-if ($action === 'tandai_lunas') {
-    $pem_id = (int)($_POST['pem_id'] ?? 0);
-    if ($pem_id > 0) {
-        mysqli_query($conn,
-            "UPDATE peminjaman SET status_denda='lunas' WHERE id=$pem_id AND status_denda='belum_bayar'"
-        );
-        $msg = 'Denda berhasil ditandai sebagai lunas.';
-        $msg_type = 'success';
     }
 }
 
@@ -419,6 +404,24 @@ ob_start();
     }
     .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
     .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn.sidebar-btn-logout {
+      color: #e74c3c !important;
+      margin-top: 10px;
+    }
+    .sidebar-btn.sidebar-btn-logout svg {
+      color: #e74c3c !important;
+      stroke: #e74c3c !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover {
+      background: rgba(231,76,60,.14) !important;
+      border-color: #e74c3c !important;
+      color: #ff6b6b !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover svg {
+      color: #ff6b6b !important;
+      stroke: #ff6b6b !important;
+      transform: translateX(2px);
+    }
     .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
@@ -465,11 +468,11 @@ ob_start();
     .content-header { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; animation:fadeUp .5s .1s both; }
     .content-title { font-family:'Cormorant Garamond',serif; font-size:1.6rem; font-weight:700; color:var(--text); }
 
-    .pem-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:14px; animation:fadeUp .5s .13s both; }
-    .pem-card { background:#fff; border-radius:12px; box-shadow:var(--shadow); overflow:hidden; transition:box-shadow var(--trans), transform var(--trans); animation:fadeUp .4s both; }
-    .pem-card:hover { box-shadow:0 6px 18px rgba(0,0,0,.11); transform:translateY(-2px); }
+    .pem-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(260px, 1fr)); gap:16px; align-items:stretch; animation:fadeUp .5s .13s both; }
+    .pem-card { display:flex; flex-direction:column; background:#fff; border:1px solid rgba(150,110,45,.15); border-radius:12px; box-shadow:var(--shadow); overflow:hidden; transition:box-shadow var(--trans), transform var(--trans); animation:fadeUp .4s both; }
+    .pem-card:hover { box-shadow:0 8px 22px rgba(0,0,0,.11); transform:translateY(-2px); }
     .pem-card.terlambat { border-left:4px solid #ef4444; }
-    .pem-card.dikembalikan { border-left:4px solid #10b981; opacity:.88; }
+    .pem-card.dikembalikan { border-left:4px solid #10b981; opacity:.92; }
     .pem-card.ada-denda { border-left:4px solid #f59e0b; }
 
     .pem-card-top { display:flex; gap:14px; padding:14px 14px 0; }
@@ -482,7 +485,7 @@ ob_start();
     .pem-peminjam { font-size:.75rem; font-weight:700; color:#1a1a2e; display:flex; align-items:center; gap:5px; background:#f5f5fb; border-radius:6px; padding:5px 8px; margin-bottom:4px; }
     .pem-peminjam svg { width:13px; height:13px; color:#6b7280; flex-shrink:0; }
 
-    .pem-meta { padding:10px 14px; display:flex; flex-direction:column; gap:4px; }
+    .pem-meta { padding:10px 14px 12px; display:flex; flex-direction:column; gap:5px; }
     .pem-meta-row { display:flex; align-items:center; gap:6px; font-size:.7rem; color:#6b7280; font-weight:600; }
     .pem-meta-row svg { width:12px; height:12px; flex-shrink:0; }
     .pem-meta-val { color:#1a1a2e; font-weight:700; }
@@ -511,10 +514,10 @@ ob_start();
     .sisa-ok       { background:#eff6ff; color:#2563eb; }
     .sisa-terlambat{ background:#fef2f2; color:#dc2626; }
 
-    .pem-footer { padding:0 14px 14px; }
-    .btn-kembalikan { display:block; width:100%; padding:8px 0; border-radius:7px; border:none; background:var(--btn-kembali,#059669); color:#fff; font-family:'Nunito',sans-serif; font-size:.72rem; font-weight:700; cursor:pointer; text-align:center; transition:opacity var(--trans), transform .12s; letter-spacing:.02em; }
-    .btn-kembalikan:hover  { opacity:.87; }
-    .btn-kembalikan:active { transform:scale(.96); }
+    .pem-footer { margin-top:auto; padding:0 14px 14px; }
+    .btn-kembalikan { display:block; width:100%; padding:8.5px 0; border-radius:7px; border:none; background:var(--btn-kembali,#059669); color:#fff; font-family:'Nunito',sans-serif; font-size:.73rem; font-weight:800; cursor:pointer; text-align:center; transition:opacity var(--trans), transform .12s; letter-spacing:.02em; }
+    .btn-kembalikan:hover  { opacity:.9; }
+    .btn-kembalikan:active { transform:scale(.97); }
     .btn-kembalikan.has-denda { background:#dc2626; }
     .returned-label { display:block; width:100%; padding:8px 0; text-align:center; font-size:.72rem; font-weight:700; color:#065f46; background:#d1fae5; border-radius:7px; letter-spacing:.02em; margin-bottom:6px; }
     .btn-hapus-riwayat { display:block; width:100%; padding:7px 0; border-radius:7px; border:1.5px solid rgba(220,38,38,.4); background:rgba(220,38,38,.08); color:#dc2626; font-family:'Nunito',sans-serif; font-size:.68rem; font-weight:700; cursor:pointer; text-align:center; transition:all var(--trans); }
@@ -523,15 +526,24 @@ ob_start();
     /* Tombol kirim pengingat WA */
     .btn-wa {
       display:flex; align-items:center; justify-content:center; gap:6px;
-      width:100%; padding:8px 0; border-radius:7px; border:none;
-      background:#25D366; color:#fff; text-decoration:none;
-      font-family:'Nunito',sans-serif; font-size:.72rem; font-weight:700;
-      cursor:pointer; transition:opacity var(--trans), transform .12s;
+      width:100%; padding:8.5px 0; border-radius:7px; border:1px solid transparent;
+      background:#16a34a; color:#fff; text-decoration:none;
+      font-family:'Nunito',sans-serif; font-size:.73rem; font-weight:800;
+      cursor:pointer; transition:all var(--trans);
       letter-spacing:.02em; margin-bottom:6px;
     }
-    .btn-wa:hover  { opacity:.88; }
-    .btn-wa:active { transform:scale(.96); }
+    .btn-wa:hover  { background:#15803d; }
+    .btn-wa:active { transform:scale(.97); }
     .btn-wa svg { width:14px; height:14px; flex-shrink:0; }
+    .btn-wa.wa-sent {
+      background:#ecfdf5;
+      color:#047857;
+      border-color:#6ee7b7;
+    }
+    .btn-wa.wa-sent:hover {
+      background:#d1fae5;
+      border-color:#34d399;
+    }
     .btn-wa-disabled {
       display:block; width:100%; padding:8px 0; border-radius:7px;
       background:#f3f4f6; color:#9ca3af; text-align:center;
@@ -539,16 +551,45 @@ ob_start();
       margin-bottom:6px; border:1.5px dashed #d1d5db;
     }
     .wa-status-row {
-      display:flex; align-items:center; justify-content:space-between;
-      margin-bottom:8px; font-size:.66rem; font-weight:700;
+      display:flex; align-items:center;
+      margin-bottom:5px; padding:0 2px;
     }
-    .wa-status-sent { color:#059669; }
-    .btn-tandai-wa {
-      background:none; border:none; color:#6b7280;
-      font-family:'Nunito',sans-serif; font-size:.66rem; font-weight:700;
-      cursor:pointer; text-decoration:underline; padding:0;
+    .wa-status-sent {
+      display:inline-flex; align-items:center; gap:5px;
+      font-size:.68rem; font-weight:800; color:#059669;
     }
-    .btn-tandai-wa:hover { color:#2563eb; }
+    .wa-status-sent svg { width:13px; height:13px; flex-shrink:0; }
+
+    /* Adaptasi Mode Gelap untuk Kartu Peminjaman */
+    html.dark .pem-card { background:var(--card,#121820); border-color:var(--card-border,rgba(216,184,120,.16)); box-shadow:0 6px 22px rgba(0,0,0,.38); }
+    html.dark .pem-card.terlambat { border-left:4px solid #ef4444; }
+    html.dark .pem-card.dikembalikan { border-left:4px solid #10b981; }
+    html.dark .pem-card.ada-denda { border-left:4px solid #f59e0b; }
+    html.dark .pem-thumb { background:#1a2330; }
+    html.dark .pem-judul, html.dark .pem-meta-val { color:var(--text,#eef3f4); }
+    html.dark .pem-penulis, html.dark .pem-meta-row { color:var(--muted,rgba(238,243,244,.68)); }
+    html.dark .pem-peminjam { background:rgba(255,255,255,.06); color:var(--text,#eef3f4); border:1px solid rgba(255,255,255,.08); }
+    html.dark .pem-peminjam svg { color:var(--accent,#d8b878); }
+    html.dark .chip-dipinjam { background:rgba(59,130,246,.18); color:#93c5fd; border:1px solid rgba(59,130,246,.3); }
+    html.dark .chip-terlambat { background:rgba(239,68,68,.18); color:#fca5a5; border:1px solid rgba(239,68,68,.3); }
+    html.dark .chip-kembali { background:rgba(16,185,129,.18); color:#6ee7b7; border:1px solid rgba(16,185,129,.3); }
+    html.dark .sisa-ok { background:rgba(59,130,246,.15); color:#93c5fd; }
+    html.dark .sisa-terlambat { background:rgba(239,68,68,.15); color:#fca5a5; }
+    html.dark .denda-box { background:rgba(245,158,11,.1); border-color:rgba(245,158,11,.32); }
+    html.dark .denda-box .denda-title { color:#fbbf24; }
+    html.dark .denda-box .denda-nominal { color:#f87171; }
+    html.dark .denda-box .denda-sub { color:#fcd34d; }
+    html.dark .denda-box.preview { background:rgba(239,68,68,.1); border-color:rgba(239,68,68,.32); }
+    html.dark .denda-box.preview .denda-title { color:#fca5a5; }
+    html.dark .denda-box.preview .denda-nominal { color:#f87171; }
+    html.dark .denda-box.preview .denda-sub { color:rgba(252,165,165,.88); }
+    html.dark .denda-box.lunas { background:rgba(16,185,129,.1); border-color:rgba(16,185,129,.32); }
+    html.dark .denda-box.lunas .denda-title, html.dark .denda-box.lunas .denda-sub { color:#6ee7b7; }
+    html.dark .denda-box.lunas .denda-nominal { color:#34d399; }
+    html.dark .wa-status-sent { color:#34d399; }
+    html.dark .btn-wa.wa-sent { background:rgba(16,185,129,.14); border-color:rgba(16,185,129,.35); color:#34d399; }
+    html.dark .btn-wa.wa-sent:hover { background:rgba(16,185,129,.22); border-color:#34d399; }
+    html.dark .returned-label { background:rgba(16,185,129,.14); color:#6ee7b7; border:1px solid rgba(16,185,129,.28); }
 
     /* Chip status denda */
     .denda-status-chip { display:inline-flex; align-items:center; gap:3px; font-size:.62rem; font-weight:800; padding:2px 7px; border-radius:12px; margin-left:4px; }
@@ -676,9 +717,9 @@ ob_start();
   ?>
   <a class="sidebar-btn" href="pengajuan_buku.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-    Pengajuan Buku
+    Pengajuan Pinjam
     <?php if ($cnt_aju_badge > 0): ?>
-      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn active" href="telah_dipinjam.php">
@@ -695,15 +736,25 @@ ob_start();
       </svg>
       Pengaturan Musik
     </a>
+    <a class="sidebar-btn" href="pengaturan_lokasi.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+      </svg>
+      Peta & Jam Buka
+    </a>
   
-    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Tema & Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </button>
-    <a class="sidebar-btn" href="beranda.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    Kembali
-  </a>
+    <a class="sidebar-btn sidebar-btn-logout" href="logout.php" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Keluar
+    </a>
   </nav>
 </aside>
 
@@ -895,6 +946,12 @@ ob_start();
         </div>
         <?php if ($status_denda !== 'lunas'): ?>
         <div class="denda-sub">Harap segera diselesaikan</div>
+        <form method="POST" action="telah_dipinjam.php?tab=<?= htmlspecialchars($tab) ?><?= $search ? '&q=' . urlencode($search) : '' ?>" style="margin-top:8px;" onsubmit="event.preventDefault(); konfirmasiLunasSirkulasi(this, '<?= htmlspecialchars(addslashes($pem['nama_peminjam'])) ?>', '<?= number_format($denda_sudah, 0, ',', '.') ?>');">
+          <?= csrf_field() ?>
+          <input type="hidden" name="action" value="tandai_lunas"/>
+          <input type="hidden" name="pem_id" value="<?= (int)$pem['id'] ?>"/>
+          <button type="submit" style="width:100%;padding:6px 10px;border-radius:6px;border:1px solid rgba(16,185,129,.45);background:rgba(16,185,129,.16);color:#10b981;font-size:.73rem;font-weight:700;cursor:pointer;font-family:inherit;">Tandai Lunas</button>
+        </form>
         <?php endif; ?>
       </div>
       <?php endif; ?>
@@ -904,14 +961,16 @@ ob_start();
           <?php if ($isTerlambat): ?>
             <?php if ($waSudahDikirim): ?>
             <div class="wa-status-row">
-              <span class="wa-status-sent">WA sudah dikirim hari ini</span>
-              <button type="button" class="btn-tandai-wa" onclick="tandaiWa(<?= $pem['id'] ?>, 0)">Batalkan</button>
+              <span class="wa-status-sent">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+                WA sudah dikirim hari ini
+              </span>
             </div>
             <?php endif; ?>
 
             <?php if ($waLink): ?>
-            <a class="btn-wa" href="<?= htmlspecialchars($waLink) ?>" target="_blank" rel="noopener"
-               onclick="setTimeout(function(){ tandaiWa(<?= $pem['id'] ?>, 1); }, 400);">
+            <a class="btn-wa <?= $waSudahDikirim ? 'wa-sent' : '' ?>" href="<?= htmlspecialchars($waLink) ?>" target="_blank" rel="noopener"
+               onclick="setTimeout(function(){ tandaiWa(<?= $pem['id'] ?>); }, 400);">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm0 18a8 8 0 0 1-4.1-1.1l-.3-.2-3 .8.8-2.9-.2-.3A8 8 0 1 1 12 20zm4.4-5.7c-.2-.1-1.4-.7-1.6-.8-.2-.1-.4-.1-.5.1s-.6.8-.7.9-.3.2-.5.1a6.5 6.5 0 0 1-1.9-1.2 7 7 0 0 1-1.3-1.6c-.1-.2 0-.3.1-.5l.4-.4c.1-.1.1-.2.2-.4a.4.4 0 0 0 0-.4c0-.1-.5-1.3-.7-1.8s-.4-.4-.5-.4h-.5a.9.9 0 0 0-.6.3 2.7 2.7 0 0 0-.9 2 4.7 4.7 0 0 0 1 2.5 10.7 10.7 0 0 0 4.1 3.6c.6.2 1 .4 1.4.5a3.3 3.3 0 0 0 1.5.1 2.5 2.5 0 0 0 1.6-1.2 2.1 2.1 0 0 0 .2-1.2c-.1-.1-.3-.2-.5-.3z"/></svg>
               Kirim Pengingat WA
             </a>
@@ -970,6 +1029,7 @@ ob_start();
     </div>
 
     <form method="POST" action="telah_dipinjam.php?tab=<?= $tab ?><?= $search ? '&q=' . urlencode($search) : '' ?>">
+      <?= csrf_field() ?>
       <input type="hidden" name="action"  value="kembalikan"/>
       <input type="hidden" name="pem_id"  id="inputPemId"/>
       <div class="modal-footer">
@@ -986,6 +1046,7 @@ ob_start();
     <div class="modal-title">Hapus Riwayat?</div>
     <div class="modal-desc" id="hapusRiwayatDesc"></div>
     <form method="POST" action="telah_dipinjam.php?tab=<?= $tab ?><?= $search ? '&q=' . urlencode($search) : '' ?>">
+      <?= csrf_field() ?>
       <input type="hidden" name="action"  value="hapus_riwayat"/>
       <input type="hidden" name="pem_id"  id="inputHapusRiwayatId"/>
       <div class="modal-footer">
@@ -1072,7 +1133,7 @@ function konfirmasiKembali(pemId, judul, peminjam, terlambat, dendaEstimasi, sis
     label.textContent = 'Denda akan dicatat: ' + sisaLabel;
     val.className = 'modal-denda-val';
     val.textContent = formatRupiah(dendaEstimasi);
-    sub.textContent = 'Denda akan tersimpan dengan status "Belum Bayar". Tandai lunas di halaman Pengaturan Denda.';
+    sub.textContent = 'Denda akan tersimpan dengan status "Belum Bayar" dan dapat ditandai lunas setelah dibayar.';
     btn.textContent = 'Kembalikan & Catat Denda';
     btn.className = 'btn-confirm denda';
   } else {
@@ -1106,15 +1167,33 @@ function konfirmasiHapusRiwayat(pemId, judul, peminjam) {
 function tutupHapusRiwayatModal() {
   document.getElementById('hapusRiwayatModalOverlay').classList.remove('open');
 }
+
+function konfirmasiLunasSirkulasi(form, nama, nominal) {
+  if (typeof window.AksaConfirm === 'function') {
+    window.AksaConfirm({
+      title: 'Tandai Denda Lunas?',
+      icon: 'denda',
+      message: 'Tandai tagihan denda sebesar <strong>Rp ' + nominal + '</strong> untuk peminjam <strong>' + nama + '</strong> sebagai telah lunas dibayar?',
+      confirmText: 'Ya, Tandai Lunas',
+      cancelText: 'Tidak, Batal',
+      type: 'success'
+    }).then(function(confirmed) {
+      if (confirmed === true) form.submit();
+    });
+  } else if (confirm('Tandai denda Rp ' + nominal + ' milik ' + nama + ' sebagai lunas?')) {
+    form.submit();
+  }
+}
 document.getElementById('hapusRiwayatModalOverlay').addEventListener('click', function(e) {
   if (e.target === this) tutupHapusRiwayatModal();
 });
 
 // ─── Tandai status kirim WA (dipanggil otomatis saat tombol "Kirim Pengingat WA" diklik) ───
-function tandaiWa(pemId, status) {
+function tandaiWa(pemId) {
   const body = new URLSearchParams();
-  body.set('action', status ? 'tandai_wa' : 'batal_wa');
+  body.set('action', 'tandai_wa');
   body.set('pem_id', pemId);
+  body.set('csrf_token', '<?= csrf_token() ?>');
   fetch('telah_dipinjam.php', { method: 'POST', body })
     .then(() => { window.location.reload(); })
     .catch(() => { /* biarkan diam-diam gagal, tidak mengganggu pengiriman WA */ });

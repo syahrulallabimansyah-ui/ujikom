@@ -3,9 +3,23 @@
 session_start();
 require_once "db.php";
 
-// Jika sudah login, langsung arahkan ke beranda
+// Validasi parameter redirect internal (aman dari Open Redirect)
+$raw_redirect  = trim($_POST["redirect"] ?? ($_GET["redirect"] ?? ""));
+$safe_redirect = "";
+if ($raw_redirect !== "" && preg_match('/^[a-zA-Z0-9_]+\.php(\?[a-zA-Z0-9_=&%-]*)?$/', $raw_redirect)) {
+    $redir_base = strtolower(strtok($raw_redirect, '?'));
+    if (!in_array($redir_base, ["sign_in.php", "sign_up.php", "logout.php"], true)) {
+        $safe_redirect = $raw_redirect;
+    }
+}
+
+// Jika sudah login, langsung arahkan ke dashboard/beranda masing-masing role
 if (isset($_SESSION["user_id"])) {
-    header("Location: beranda.php");
+    if (($_SESSION["role"] ?? "") === "admin") {
+        header("Location: dashboard.php");
+    } else {
+        header("Location: " . ($safe_redirect !== "" ? $safe_redirect : "beranda.php"));
+    }
     exit;
 }
 
@@ -13,8 +27,11 @@ $error = "";
 
 // Proses login saat form dikirim
 if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
-    $identity = trim($_POST["email"] ?? "");
-    $password = trim($_POST["password"] ?? "");
+    if (!csrf_verify()) {
+        $error = "Token sesi keamanan tidak valid atau kedaluwarsa. Silakan muat ulang halaman.";
+    } else {
+        $identity = trim($_POST["email"] ?? "");
+        $password = trim($_POST["password"] ?? "");
 
     if (empty($identity) || empty($password)) {
         $error = "Username/Email dan kata sandi wajib diisi.";
@@ -35,22 +52,28 @@ if (($_SERVER["REQUEST_METHOD"] ?? "") === "POST") {
             } elseif (($user["card_status"] ?? "active") === "frozen") {
                 $error = "Kartu anggota ini sedang dibekukan karena ada proses \"Lupa Kartu\" yang belum selesai. Selesaikan proses tersebut untuk mendapatkan kartu baru.";
             } else {
-                // Login berhasil — simpan data ke session
+                // Login berhasil — regenerasi ID sesi & simpan data ke session
+                session_regenerate_id(true);
                 $_SESSION["user_id"]   = $user["id"];
                 $_SESSION["user_name"] = $user["full_name"];
                 $_SESSION["username"]  = $user["username"];
                 $_SESSION["role"]      = $user["role"];
 
-                header("Location: beranda.php");
+                if ($user["role"] === "admin") {
+                    header("Location: dashboard.php");
+                } else {
+                    header("Location: " . ($safe_redirect !== "" ? $safe_redirect : "beranda.php"));
+                }
                 exit;
             }
         } else {
-            $error = "Email atau kata sandi salah.";
+            $error = "Username/Email atau kata sandi salah.";
         }
+    }
     }
 }
 
-$page_title = "Sign In – AKSA NOVA";
+$page_title = "Masuk – AKSA NOVA";
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -60,9 +83,22 @@ $page_title = "Sign In – AKSA NOVA";
   <title><?= htmlspecialchars($page_title) ?></title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
   <script>
-    if (localStorage.getItem('aksanova_theme') === 'light') {
-      document.documentElement.classList.add('theme-light');
-    }
+    (function() {
+      try {
+        var t = localStorage.getItem('aksanova_theme');
+        if (!t) {
+          var s = JSON.parse(localStorage.getItem('aksanova_settings') || '{}');
+          t = s.mode;
+        }
+        if (t === 'light') {
+          document.documentElement.classList.add('theme-light', 'light');
+          document.documentElement.classList.remove('dark');
+        } else {
+          document.documentElement.classList.add('dark');
+          document.documentElement.classList.remove('theme-light', 'light');
+        }
+      } catch(e) {}
+    })();
   </script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -156,7 +192,7 @@ $page_title = "Sign In – AKSA NOVA";
 
     .form-sub {
       font-size: .82rem;
-      color: rgba(238,243,244,.55);
+      color: rgba(238,243,244,.78);
       font-weight: 300;
       margin-bottom: 30px;
       animation: fadeSlide .7s .18s both;
@@ -201,7 +237,7 @@ $page_title = "Sign In – AKSA NOVA";
       left: 16px;
       width: 17px;
       height: 17px;
-      color: rgba(238,243,244,.35);
+      color: #d8b878;
       pointer-events: none;
       transition: color var(--trans);
     }
@@ -219,7 +255,7 @@ $page_title = "Sign In – AKSA NOVA";
       transition: background var(--trans), border-color var(--trans), box-shadow var(--trans);
     }
 
-    .input-wrap input::placeholder { color: rgba(238,243,244,.35); }
+    .input-wrap input::placeholder { color: rgba(238,243,244,.55); }
 
     .input-wrap input:focus {
       background: rgba(216,184,120,.08);
@@ -236,12 +272,12 @@ $page_title = "Sign In – AKSA NOVA";
       left: auto;
       width: 19px;
       height: 19px;
-      color: rgba(238,243,244,.35);
+      color: #d8b878;
       cursor: pointer;
       pointer-events: auto;
       transition: color var(--trans);
     }
-    .toggle-eye:hover { color: #d8b878; }
+    .toggle-eye:hover { color: #f0d9a8; }
     .toggle-eye svg { position: static; width: 100%; height: 100%; }
     .toggle-eye .eye-off { display: none; }
     .input-wrap.pw-visible .eye-on  { display: none; }
@@ -258,7 +294,7 @@ $page_title = "Sign In – AKSA NOVA";
 
     .forgot {
       font-size: .8rem;
-      color: rgba(238,243,244,.5);
+      color: rgba(238,243,244,.75); font-weight: 500;
       font-weight: 300;
       text-decoration: none;
       transition: color var(--trans);
@@ -290,7 +326,7 @@ $page_title = "Sign In – AKSA NOVA";
       display: block;
       margin-top: 14px;
       font-size: .78rem;
-      color: rgba(238,243,244,.45);
+      color: rgba(238,243,244,.75); font-weight: 600;
       font-weight: 500;
       text-decoration: none;
       text-align: center;
@@ -352,8 +388,8 @@ $page_title = "Sign In – AKSA NOVA";
 
     .right-sub {
       font-size: .86rem;
-      font-weight: 300;
-      color: rgba(238,243,244,.68);
+      font-weight: 400;
+      color: rgba(238,243,244,.85);
       line-height: 1.8;
       margin-bottom: 38px;
     }
@@ -393,6 +429,54 @@ $page_title = "Sign In – AKSA NOVA";
       .left::before { height: 3px; }
     }
 
+        /* ══════════════════ TOMBOL KEMBALI KE BERANDA ══════════════════ */
+    .btn-back-home {
+      position: fixed;
+      top: 18px;
+      left: 18px;
+      z-index: 999;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 16px;
+      border-radius: 50px;
+      border: 1px solid rgba(216,184,120,.3);
+      background: rgba(16,21,27,.75);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      color: #d8b878;
+      text-decoration: none;
+      font-size: .84rem;
+      font-weight: 600;
+      box-shadow: 0 6px 20px rgba(0,0,0,.4);
+      transition: background .2s ease, border-color .2s ease, transform .18s ease, box-shadow .2s ease;
+    }
+    .btn-back-home:hover {
+      transform: translateX(-2px);
+      border-color: #d8b878;
+      background: rgba(216,184,120,.15);
+      box-shadow: 0 8px 24px rgba(216,184,120,.3);
+      color: #f0d9a8;
+    }
+    .btn-back-home svg {
+      width: 17px;
+      height: 17px;
+      flex-shrink: 0;
+    }
+    @media (max-width: 500px) {
+      .btn-back-home {
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        justify-content: center;
+        border-radius: 50%;
+      }
+      .btn-back-home span {
+        display: none;
+      }
+    }
+
     /* ══════════════════ TOMBOL MODE GELAP / TERANG ══════════════════ */
     .btn-mode {
       position: fixed;
@@ -424,118 +508,190 @@ $page_title = "Sign In – AKSA NOVA";
     .btn-mode .icon-sun { display: none; }
 
     /* ══════════════════ LIGHT THEME OVERRIDES ══════════════════ */
-    html.theme-light {
+    html.theme-light, html.light {
       --ink:       #1a1714;
-      --dim:       #6b645b;
-      --ghost:     #9c9489;
+      --dim:       #524b42;
+      --ghost:     #7a7267;
       --surface:   #ffffff;
-      --field:     rgba(0,0,0,.04);
-      --field-foc: rgba(0,0,0,.07);
+      --field:     #fdfbf7;
+      --field-foc: #ffffff;
       --panel-bg:  linear-gradient(148deg, #f5efe6 0%, #ece2d0 50%, #f9f5ee 100%);
-      --accent:    #9a7328;
-      --ring:      rgba(154,115,40,.28);
+      --accent:    #8a6323;
+      --ring:      rgba(138,99,35,.25);
       --shadow:    0 32px 80px rgba(70,50,20,.14);
     }
-    html.theme-light, html.theme-light body {
-      background: linear-gradient(135deg, #f6f2e9 0%, #ece4d4 50%, #f7f3ec 100%);
+    html.theme-light, html.theme-light body,
+    html.light, html.light body {
+      background: linear-gradient(135deg, #f6f2e9 0%, #ece4d4 50%, #f7f3ec 100%) !important;
+      color: #1a1714 !important;
     }
-    html.theme-light .btn-mode {
-      background: rgba(255,255,255,.85);
-      border-color: rgba(154,115,40,.3);
-      color: #9a7328;
-      box-shadow: 0 6px 20px rgba(60,45,20,.12);
+    html.theme-light .btn-back-home,
+    html.light .btn-back-home {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
     }
-    html.theme-light .btn-mode:hover {
-      border-color: #9a7328;
-      box-shadow: 0 8px 24px rgba(154,115,40,.22);
+    html.theme-light .btn-back-home svg,
+    html.light .btn-back-home svg {
+      color: #8a6323 !important;
     }
-    html.theme-light .btn-mode .icon-moon { display: none; }
-    html.theme-light .btn-mode .icon-sun  { display: block; }
-    html.theme-light .card {
-      background: #ffffff;
-      border-color: rgba(154,115,40,.2);
-      box-shadow: 0 24px 60px rgba(60,45,20,.12);
+    html.theme-light .btn-back-home:hover,
+    html.light .btn-back-home:hover {
+      background: rgba(138,99,35,.12) !important;
+      border-color: #8a6323 !important;
+      color: #5a3c08 !important;
     }
-    html.theme-light .left {
-      background: #ffffff;
+    html.theme-light .btn-mode,
+    html.light .btn-mode {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(60,45,20,.12) !important;
     }
-    html.theme-light .form-title {
-      color: #8a6323;
+    html.theme-light .btn-mode svg,
+    html.light .btn-mode svg {
+      color: #8a6323 !important;
     }
-    html.theme-light .form-sub {
-      color: #6b645b;
+    html.theme-light .btn-mode:hover,
+    html.light .btn-mode:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 8px 24px rgba(138,99,35,.22) !important;
     }
-    html.theme-light .input-wrap input {
-      background: #fdfbf7;
-      border-color: rgba(154,115,40,.22);
-      color: #1a1714;
+    html.theme-light .btn-mode .icon-moon,
+    html.light .btn-mode .icon-moon { display: none !important; }
+    html.theme-light .btn-mode .icon-sun,
+    html.light .btn-mode .icon-sun  { display: block !important; }
+
+    html.theme-light .card,
+    html.light .card {
+      background: #ffffff !important;
+      border-color: rgba(138,99,35,.22) !important;
+      box-shadow: 0 24px 60px rgba(60,45,20,.12) !important;
     }
-    html.theme-light .input-wrap input::placeholder {
-      color: #9c9489;
+    html.theme-light .left,
+    html.light .left {
+      background: #ffffff !important;
     }
-    html.theme-light .input-wrap input:focus {
-      background: #ffffff;
-      border-color: #9a7328;
-      box-shadow: 0 0 0 3px rgba(154,115,40,.18);
+    html.theme-light .form-title,
+    html.light .form-title {
+      color: #8a6323 !important;
     }
-    html.theme-light .input-wrap > svg {
-      color: #9c9489;
+    html.theme-light .form-sub,
+    html.light .form-sub {
+      color: #524b42 !important;
+      font-weight: 400 !important;
     }
-    html.theme-light .input-wrap:focus-within svg {
-      color: #9a7328;
+    html.theme-light .input-wrap input,
+    html.light .input-wrap input {
+      background: #fdfbf7 !important;
+      border-color: rgba(138,99,35,.28) !important;
+      color: #1a1714 !important;
+      font-weight: 500 !important;
     }
-    html.theme-light .toggle-eye {
-      color: #9c9489;
+    html.theme-light .input-wrap input::placeholder,
+    html.light .input-wrap input::placeholder {
+      color: #6d6457 !important;
+      opacity: 1 !important;
     }
-    html.theme-light .toggle-eye:hover {
-      color: #9a7328;
+    html.theme-light .input-wrap input:focus,
+    html.light .input-wrap input:focus {
+      background: #ffffff !important;
+      border-color: #8a6323 !important;
+      box-shadow: 0 0 0 3px rgba(138,99,35,.18) !important;
     }
-    html.theme-light .forgot {
-      color: #6b645b;
+    html.theme-light .input-wrap > svg,
+    html.light .input-wrap > svg {
+      color: #8a6323 !important;
+      opacity: 1 !important;
     }
-    html.theme-light .forgot:hover {
-      color: #9a7328;
+    html.theme-light .input-wrap:focus-within > svg,
+    html.light .input-wrap:focus-within > svg {
+      color: #5a3c08 !important;
     }
-    html.theme-light .btn-primary {
-      background: linear-gradient(135deg, #d8b878, #caa055);
-      color: #1a1205;
-      box-shadow: 0 6px 20px rgba(154,115,40,.25);
+    html.theme-light .toggle-eye,
+    html.light .toggle-eye {
+      color: #8a6323 !important;
+      opacity: 1 !important;
     }
-    html.theme-light .btn-primary:hover {
-      box-shadow: 0 8px 28px rgba(154,115,40,.38);
+    html.theme-light .toggle-eye:hover,
+    html.light .toggle-eye:hover {
+      color: #5a3c08 !important;
     }
-    html.theme-light .btn-guest {
-      color: #6b645b;
+    html.theme-light .forgot,
+    html.light .forgot {
+      color: #524b42 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .btn-guest:hover {
-      color: #9a7328;
+    html.theme-light .forgot:hover,
+    html.light .forgot:hover {
+      color: #8a6323 !important;
     }
-    html.theme-light .right {
-      background: linear-gradient(148deg, #f8f4ec 0%, #ece1ce 50%, #f4ede0 100%);
+    html.theme-light .btn-primary,
+    html.light .btn-primary {
+      background: linear-gradient(135deg, #d8b878, #caa055) !important;
+      color: #1a1205 !important;
+      font-weight: 700 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.25) !important;
     }
-    html.theme-light .right-title {
-      color: #8a6323;
+    html.theme-light .btn-primary:hover,
+    html.light .btn-primary:hover {
+      box-shadow: 0 8px 28px rgba(138,99,35,.38) !important;
     }
-    html.theme-light .right-sub {
-      color: #6b645b;
+    html.theme-light .btn-guest,
+    html.light .btn-guest {
+      color: #524b42 !important;
+      font-weight: 600 !important;
     }
-    html.theme-light .btn-outline {
-      border-color: rgba(154,115,40,.45);
-      color: #8a6323;
+    html.theme-light .btn-guest:hover,
+    html.light .btn-guest:hover {
+      color: #8a6323 !important;
     }
-    html.theme-light .btn-outline:hover {
-      background: rgba(154,115,40,.12);
-      border-color: #8a6323;
-      box-shadow: 0 6px 20px rgba(154,115,40,.2);
+    html.theme-light .right,
+    html.light .right {
+      background: linear-gradient(148deg, #f8f4ec 0%, #ece1ce 50%, #f4ede0 100%) !important;
     }
-    html.theme-light .error-msg {
-      background: rgba(220,38,38,.08);
-      border-color: rgba(220,38,38,.25);
-      color: #b91c1c;
+    html.theme-light .right-title,
+    html.light .right-title {
+      color: #8a6323 !important;
+    }
+    html.theme-light .right-sub,
+    html.light .right-sub {
+      color: #524b42 !important;
+      font-weight: 400 !important;
+    }
+    html.theme-light .btn-outline,
+    html.light .btn-outline {
+      border-color: rgba(138,99,35,.45) !important;
+      color: #8a6323 !important;
+      font-weight: 600 !important;
+    }
+    html.theme-light .btn-outline:hover,
+    html.light .btn-outline:hover {
+      background: rgba(138,99,35,.12) !important;
+      border-color: #8a6323 !important;
+      color: #5a3c08 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.2) !important;
+    }
+    html.theme-light .error-msg,
+    html.light .error-msg {
+      background: rgba(220,38,38,.08) !important;
+      border-color: rgba(220,38,38,.25) !important;
+      color: #b91c1c !important;
     }
   </style>
+  <?php require_once 'settings_include.php'; ?>
 </head>
 <body>
+
+<!-- Tombol Kembali ke Halaman Utama -->
+<a href="index.php" class="btn-back-home" title="Kembali ke Halaman Utama" aria-label="Kembali ke Halaman Utama">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="19" y1="12" x2="5" y2="12"/>
+    <polyline points="12 19 5 12 12 5"/>
+  </svg>
+  <span>Halaman Utama</span>
+</a>
 
 <!-- Tombol Ganti Mode Gelap / Terang -->
 <button type="button" class="btn-mode" id="btnMode" aria-label="Ganti mode gelap/terang" title="Mode Gelap / Terang" aria-pressed="false">
@@ -561,6 +717,10 @@ $page_title = "Sign In – AKSA NOVA";
     <?php endif; ?>
 
     <form method="POST" action="sign_in.php" style="width:100%;display:contents;">
+      <?= csrf_field() ?>
+      <?php if ($safe_redirect !== ""): ?>
+        <input type="hidden" name="redirect" value="<?= htmlspecialchars($safe_redirect) ?>"/>
+      <?php endif; ?>
       <div class="input-group">
         <!-- Email -->
         <div class="input-wrap">
@@ -597,7 +757,7 @@ $page_title = "Sign In – AKSA NOVA";
         <a href="lupa_kartu.php" class="forgot">Kartu hilang / lupa kartu?</a>
       </div>
 
-      <button type="submit" class="btn-primary">Sign In</button>
+      <button type="submit" class="btn-primary">Masuk</button>
     </form>
 
     <a href="beranda.php" class="btn-guest">Lihat sebagai Tamu &rarr;</a>
@@ -614,7 +774,7 @@ $page_title = "Sign In – AKSA NOVA";
         Daftarkan diri Anda dan mulai<br>
         gunakan layanan kami segera
       </p>
-      <a href="sign_up.php" class="btn-outline">Sign up</a>
+      <a href="sign_up.php" class="btn-outline">Daftar Sekarang</a>
     </div>
   </div>
 
@@ -649,16 +809,50 @@ $page_title = "Sign In – AKSA NOVA";
     var root = document.documentElement;
     var STORAGE_KEY = 'aksanova_theme';
 
-    function updatePressed() {
-      btn.setAttribute('aria-pressed', root.classList.contains('theme-light') ? 'true' : 'false');
+    function updateThemeUI() {
+      var isLight = root.classList.contains('theme-light') || root.classList.contains('light');
+      btn.setAttribute('aria-pressed', isLight ? 'true' : 'false');
+      var iconMoon = btn.querySelector('.icon-moon');
+      var iconSun  = btn.querySelector('.icon-sun');
+      if (iconMoon) iconMoon.style.display = isLight ? 'none' : 'block';
+      if (iconSun)  iconSun.style.display  = isLight ? 'block' : 'none';
+      if (isLight) {
+        root.style.backgroundColor = '#f6f2e9';
+      } else {
+        root.style.backgroundColor = '#090c10';
+      }
     }
-    updatePressed();
+    updateThemeUI();
 
     btn.addEventListener('click', function () {
-      root.classList.toggle('theme-light');
-      var isLight = root.classList.contains('theme-light');
-      try { localStorage.setItem(STORAGE_KEY, isLight ? 'light' : 'dark'); } catch (e) {}
-      updatePressed();
+      var isCurrentlyLight = root.classList.contains('theme-light') || root.classList.contains('light');
+      var newMode = isCurrentlyLight ? 'dark' : 'light';
+
+      if (newMode === 'light') {
+        root.classList.remove('dark');
+        root.classList.add('light', 'theme-light');
+      } else {
+        root.classList.remove('light', 'theme-light');
+        root.classList.add('dark');
+      }
+
+      try {
+        localStorage.setItem(STORAGE_KEY, newMode);
+        var s = JSON.parse(localStorage.getItem('aksanova_settings') || '{}');
+        s.mode = newMode;
+        localStorage.setItem('aksanova_settings', JSON.stringify(s));
+      } catch (e) {}
+
+      updateThemeUI();
+    });
+
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+      if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+      if ((e.altKey && (e.key === 'd' || e.key === 'D')) || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'd' || e.key === 'D'))) {
+        e.preventDefault();
+        btn.click();
+      }
     });
   })();
 </script>

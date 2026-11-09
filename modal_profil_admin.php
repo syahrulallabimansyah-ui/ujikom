@@ -42,6 +42,77 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
   border-color: var(--accent, #d8b878) !important;
   box-shadow: 0 0 0 3px rgba(216,184,120,.15);
 }
+.profil-foto-drop {
+  position: relative; width: 110px; height: 110px;
+  margin: 0 auto 16px; border-radius: 50%;
+  border: 2px dashed var(--border-color, rgba(216,184,120,.3));
+  overflow: hidden; cursor: pointer;
+  background: rgba(255,255,255,.04);
+  transition: border-color .2s, background .2s;
+}
+.profil-foto-drop:hover { border-color: var(--accent, #d8b878); }
+html.light .profil-foto-drop {
+  background: #f8f4ea;
+  border-color: rgba(150,110,45,.38);
+}
+.profil-modal-input {
+  width: 100%; padding: 10px 12px; border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(216,184,120,.2));
+  background: rgba(255,255,255,.05);
+  color: var(--text, #eef3f4);
+  font-family: inherit; font-size: .85rem; box-sizing: border-box;
+}
+.profil-modal-input.has-eye { padding: 9px 38px 9px 12px; }
+html.light .profil-modal-input {
+  background: #fdfbf7 !important;
+  border-color: rgba(150,110,45,.32) !important;
+  color: #1f1a12 !important;
+}
+.profil-pw-track {
+  height: 4px; border-radius: 2px; margin-top: 5px;
+  background: rgba(255,255,255,.1); overflow: hidden;
+}
+html.light .profil-pw-track { background: #e2e8f0; }
+.btn-batal-profil {
+  flex: 1; padding: 11px; border-radius: 8px;
+  border: 1px solid var(--border-color, rgba(216,184,120,.2));
+  background: rgba(255,255,255,.08);
+  color: var(--text, #eef3f4);
+  font-family: inherit; font-size: .85rem; font-weight: 700;
+  cursor: pointer; transition: background .2s, color .2s;
+}
+.btn-batal-profil:hover { background: rgba(255,255,255,.14); }
+html.light .btn-batal-profil {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #334155;
+}
+html.light .btn-batal-profil:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+.profil-close-x {
+  border: 1px solid rgba(216,184,120,.25);
+  background: rgba(216,184,120,.1);
+  width: 32px; height: 32px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; color: var(--text, #eef3f4); transition: background .2s;
+}
+html.light .profil-close-x {
+  background: #f5efe2;
+  border-color: rgba(150,110,45,.32);
+  color: #5c4213;
+}
+.profil-alert-ok {
+  background: rgba(5,150,105,.15); color: #4ade80;
+  border: 1px solid rgba(5,150,105,.3);
+  padding: 9px 12px; border-radius: 8px; font-size: .8rem; font-weight: 700; margin-bottom: 12px;
+}
+.profil-alert-err {
+  background: rgba(220,38,38,.15); color: #f87171;
+  border: 1px solid rgba(220,38,38,.3);
+  padding: 9px 12px; border-radius: 8px; font-size: .8rem; font-weight: 700; margin-bottom: 12px;
+}
 </style>
 
 <!-- ═══════════ MODAL EDIT PROFIL ADMIN ═══════════ -->
@@ -52,16 +123,17 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="var(--accent,#d8b878)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
         Edit Profil Admin
       </div>
-      <button type="button" onclick="closeProfilModal()" style="border:none;background:rgba(216,184,120,.1);width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--text,#eef3f4);transition:background .2s;" title="Tutup">
+      <button type="button" class="profil-close-x" onclick="closeProfilModal()" title="Tutup">
         <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
 
     <form method="POST" action="update_profil_admin.php" enctype="multipart/form-data">
+      <?= function_exists('csrf_field') ? csrf_field() : '' ?>
       <input type="hidden" name="redirect" value="<?= htmlspecialchars($current_page_file) ?>"/>
 
       <!-- Preview foto -->
-      <div style="position:relative;width:110px;height:110px;margin:0 auto 16px;border-radius:50%;border:2px dashed var(--border-color,rgba(216,184,120,.3));overflow:hidden;cursor:pointer;background:rgba(255,255,255,.03);" onclick="document.getElementById('inputFotoAdmin').click()" title="Klik untuk pilih foto baru">
+      <div class="profil-foto-drop" onclick="document.getElementById('inputFotoAdmin').click()" title="Klik untuk pilih foto baru">
         <?php if ($admin_foto && file_exists($admin_foto)): ?>
           <img id="profilPreviewImg" src="<?= htmlspecialchars($admin_foto) ?>?v=<?= filemtime($admin_foto) ?>" alt="Foto" style="width:100%;height:100%;max-width:100%;max-height:100%;object-fit:cover;display:block;"/>
           <div id="profilUploadPlaceholder" style="display:none;"></div>
@@ -79,9 +151,9 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
       <input type="file" id="inputFotoAdmin" name="foto_admin" accept="image/*" style="display:none"/>
 
       <?php if (isset($_GET['profil_saved'])): ?>
-      <div style="background:rgba(5,150,105,.15);color:#4ade80;border:1px solid rgba(5,150,105,.3);padding:9px 12px;border-radius:8px;font-size:.8rem;font-weight:700;margin-bottom:12px;">Profil berhasil disimpan.</div>
+      <div class="profil-alert-ok">Profil berhasil disimpan.</div>
       <?php elseif (isset($_GET['profil_err'])): ?>
-      <div style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);padding:9px 12px;border-radius:8px;font-size:.8rem;font-weight:700;margin-bottom:12px;"><?= htmlspecialchars($_GET['profil_err']) ?></div>
+      <div class="profil-alert-err"><?= htmlspecialchars($_GET['profil_err']) ?></div>
       <?php endif; ?>
 
       <div style="margin-bottom:14px;">
@@ -89,7 +161,7 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
         <input type="text" name="display_name"
                value="<?= htmlspecialchars($admin_name) ?>"
                placeholder="Nama yang ditampilkan" required
-               style="width:100%;padding:10px 12px;border-radius:8px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:rgba(255,255,255,.05);color:var(--text,#eef3f4);font-family:inherit;font-size:.85rem;box-sizing:border-box;"/>
+               class="profil-modal-input"/>
       </div>
 
       <!-- ─── Ganti Kata Sandi (opsional) ─── -->
@@ -104,7 +176,7 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
           <div style="position:relative;">
             <input type="password" name="current_password" id="pwCurrent"
                    placeholder="Masukkan kata sandi saat ini" autocomplete="current-password"
-                   style="width:100%;padding:9px 38px 9px 12px;border-radius:8px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:rgba(255,255,255,.05);color:var(--text,#eef3f4);font-family:inherit;font-size:.85rem;box-sizing:border-box;"/>
+                   class="profil-modal-input has-eye"/>
             <button type="button" onclick="togglePwAdmin('pwCurrent',this)"
                     style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:var(--muted,#888);padding:4px;" title="Tampilkan/sembunyikan">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -117,13 +189,13 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
           <div style="position:relative;">
             <input type="password" name="new_password" id="pwNew"
                    placeholder="Min. 8 karakter, huruf + angka" autocomplete="new-password"
-                   style="width:100%;padding:9px 38px 9px 12px;border-radius:8px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:rgba(255,255,255,.05);color:var(--text,#eef3f4);font-family:inherit;font-size:.85rem;box-sizing:border-box;" oninput="cekKekuatanSandi(this.value)"/>
+                   class="profil-modal-input has-eye" oninput="cekKekuatanSandi(this.value)"/>
             <button type="button" onclick="togglePwAdmin('pwNew',this)"
                     style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:var(--muted,#888);padding:4px;" title="Tampilkan/sembunyikan">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
             </button>
           </div>
-          <div style="height:4px;border-radius:2px;margin-top:5px;background:rgba(255,255,255,.1);overflow:hidden;">
+          <div class="profil-pw-track">
             <div id="pwStrengthBar" style="height:100%;width:0;border-radius:2px;transition:width .3s,background .3s;"></div>
           </div>
           <div id="pwStrengthLabel" style="font-size:.67rem;color:var(--muted);margin-top:2px;"></div>
@@ -134,7 +206,7 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
           <div style="position:relative;">
             <input type="password" name="confirm_new_password" id="pwConfirm"
                    placeholder="Ulangi kata sandi baru" autocomplete="new-password"
-                   style="width:100%;padding:9px 38px 9px 12px;border-radius:8px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:rgba(255,255,255,.05);color:var(--text,#eef3f4);font-family:inherit;font-size:.85rem;box-sizing:border-box;" oninput="cekKonfirmasi()"/>
+                   class="profil-modal-input has-eye" oninput="cekKonfirmasi()"/>
             <button type="button" onclick="togglePwAdmin('pwConfirm',this)"
                     style="position:absolute;right:8px;top:50%;transform:translateY(-50%);border:none;background:none;cursor:pointer;color:var(--muted,#888);padding:4px;" title="Tampilkan/sembunyikan">
               <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
@@ -145,7 +217,7 @@ $current_page_file = basename($_SERVER['PHP_SELF'] ?? 'dashboard.php');
       </div>
 
       <div style="display:flex;gap:10px;margin-top:18px;">
-        <button type="button" onclick="closeProfilModal()" style="flex:1;padding:11px;border-radius:8px;border:none;background:rgba(255,255,255,.08);color:var(--text);font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:background .2s;">Batal</button>
+        <button type="button" class="btn-batal-profil" onclick="closeProfilModal()">Batal</button>
         <button type="submit" style="flex:1;padding:11px;border-radius:8px;border:none;background:var(--accent,#d8b878);color:#1a1205;font-family:inherit;font-size:.85rem;font-weight:700;cursor:pointer;transition:opacity .2s;">Simpan</button>
       </div>
     </form>

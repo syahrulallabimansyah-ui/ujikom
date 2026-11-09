@@ -32,10 +32,6 @@ $profil     = $profil_res ? mysqli_fetch_assoc($profil_res) : null;
 $admin_name = $profil['display_name'] ?? ($_SESSION['user_name'] ?? 'Admin');
 $admin_foto = $profil['foto'] ?? '';
 
-// Jumlah anggota berstatus pending (badge sidebar, konsisten dengan halaman_admin.php)
-$pending_res   = mysqli_query($conn, "SELECT COUNT(*) AS c FROM users WHERE role='member' AND status='pending'");
-$pending_count = $pending_res ? (int)(mysqli_fetch_assoc($pending_res)['c'] ?? 0) : 0;
-
 // ─────────────────────────────────────────────
 //  AKSI: Setujui / Tolak Pengajuan
 // ─────────────────────────────────────────────
@@ -44,7 +40,10 @@ $action = $_POST['action'] ?? '';
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pengajuan_id = (int)($_POST['pengajuan_id'] ?? 0);
 
-    if ($action === 'setujui' && $pengajuan_id > 0) {
+    if (!csrf_verify()) {
+        $msg = 'Token sesi keamanan tidak valid atau kedaluwarsa. Silakan muat ulang halaman.';
+        $msg_type = 'error';
+    } elseif ($action === 'setujui' && $pengajuan_id > 0) {
         $p_stmt = mysqli_prepare($conn, "SELECT p.*, b.stok, b.judul FROM pengajuan_peminjaman p LEFT JOIN buku b ON b.id = p.buku_id WHERE p.id = ? AND p.status = 'menunggu' LIMIT 1");
         mysqli_stmt_bind_param($p_stmt, "i", $pengajuan_id);
         mysqli_stmt_execute($p_stmt);
@@ -164,6 +163,7 @@ $cnt_total    = (int)(mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as
 $cnt_menunggu = (int)(mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='menunggu'"))['c'] ?? 0);
 $cnt_disetujui= (int)(mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='disetujui'"))['c'] ?? 0);
 $cnt_ditolak  = (int)(mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(*) as c FROM pengajuan_peminjaman WHERE status='ditolak'"))['c'] ?? 0);
+$cnt_aju_badge = $cnt_menunggu;
 
 // ─────────────────────────────────────────────
 //  FILTER & AMBIL DATA PENGAJUAN
@@ -182,12 +182,12 @@ if ($tab === 'menunggu') {
 
 if ($search !== '') {
     $s = mysqli_real_escape_string($conn, $search);
-    $where .= " AND (p.nama_peminjam LIKE '%$s%' OR b.judul LIKE '%$s%' OR u.kelas LIKE '%$s%' OR u.no_anggota LIKE '%$s%')";
+    $where .= " AND (p.nama_peminjam LIKE '%$s%' OR b.judul LIKE '%$s%' OR u.nik LIKE '%$s%' OR u.no_anggota LIKE '%$s%')";
 }
 
 $pengajuan_list = [];
 $q_res = mysqli_query($conn,
-    "SELECT p.*, b.judul, b.penulis, b.gambar as buku_gambar, b.stok as buku_stok, b.rak as buku_rak, u.kelas, u.no_anggota, u.email, u.no_hp, u.foto as user_foto
+    "SELECT p.*, b.judul, b.penulis, b.gambar as buku_gambar, b.stok as buku_stok, b.rak as buku_rak, u.nik, u.kelas, u.no_anggota, u.email, u.no_hp, u.foto as user_foto
      FROM pengajuan_peminjaman p
      LEFT JOIN buku b ON b.id = p.buku_id
      LEFT JOIN users u ON u.id = p.user_id
@@ -298,6 +298,24 @@ if ($q_res) {
     }
     .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
     .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn.sidebar-btn-logout {
+      color: #e74c3c !important;
+      margin-top: 10px;
+    }
+    .sidebar-btn.sidebar-btn-logout svg {
+      color: #e74c3c !important;
+      stroke: #e74c3c !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover {
+      background: rgba(231,76,60,.14) !important;
+      border-color: #e74c3c !important;
+      color: #ff6b6b !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover svg {
+      color: #ff6b6b !important;
+      stroke: #ff6b6b !important;
+      transform: translateX(2px);
+    }
     .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
@@ -307,10 +325,19 @@ if ($q_res) {
     }
     .sidebar-btn.active svg { color:#121820; stroke:#121820; stroke-width:2.2px; }
 
-    .badge-nav {
+    .badge-nav, .aksa-notif-badge {
       margin-left:auto; background:rgba(245,158,11,.2); color:#fbbf24;
-      border:1px solid rgba(245,158,11,.35); font-size:.65rem; font-weight:800;
-      padding:2px 7px; border-radius:12px; line-height:1;
+      border:1px solid rgba(245,158,11,.45); font-size:.68rem; font-weight:800;
+      padding:0 6px; min-width:22px; height:20px; border-radius:999px; line-height:1;
+      display:inline-flex; align-items:center; justify-content:center; flex-shrink:0;
+      box-sizing:border-box; font-variant-numeric:tabular-nums;
+    }
+    .sidebar-btn.active .badge-nav,
+    .sidebar-btn.active .aksa-notif-badge {
+      background:#121820 !important; color:#fde68a !important;
+      border:1px solid rgba(18,24,32,.45) !important;
+      border-radius:999px !important;
+      box-shadow:0 2px 5px rgba(0,0,0,.25) !important;
     }
 
     /* ── MAIN ── */
@@ -604,7 +631,7 @@ if ($q_res) {
   <div class="mobile-topbar-divider"></div>
   <div class="mobile-topbar-brand">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-    <span>AKSA NOVA • Pengajuan Buku</span>
+    <span>AKSA NOVA • Pengajuan Pinjam</span>
   </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -660,9 +687,9 @@ if ($q_res) {
     </a>
     <a class="sidebar-btn active" href="pengajuan_buku.php">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-      Pengajuan Buku
+      Pengajuan Pinjam
       <?php if ($cnt_menunggu > 0): ?>
-        <span class="badge-nav aksa-notif-badge"><?= $cnt_menunggu ?></span>
+        <span class="aksa-notif-badge"><?= $cnt_menunggu ?></span>
       <?php endif; ?>
     </a>
     <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -677,14 +704,24 @@ if ($q_res) {
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
       Pengaturan Musik
     </a>
+    <a class="sidebar-btn" href="pengaturan_lokasi.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+      </svg>
+      Peta & Jam Buka
+    </a>
     
-    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Tema & Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </button>
-    <a class="sidebar-btn" href="beranda.php">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-      Kembali
+    <a class="sidebar-btn sidebar-btn-logout" href="logout.php" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Keluar
     </a>
   </nav>
 
@@ -775,10 +812,10 @@ if ($q_res) {
         <input type="hidden" name="tab" value="<?= htmlspecialchars($tab) ?>">
         <div class="search-box">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input type="text" name="q" placeholder="Cari nama, buku, kelas…" value="<?= htmlspecialchars($search) ?>">
+          <input type="text" name="q" placeholder="Cari peminjam, buku, NIS/NIP…" value="<?= htmlspecialchars($search) ?>">
         </div>
         <?php if ($search): ?>
-          <a href="pengajuan_buku.php?tab=<?= $tab ?>" style="display:flex;align-items:center;padding:0 10px;color:var(--muted);text-decoration:none;font-size:.8rem;">✕</a>
+          <a href="pengajuan_buku.php?tab=<?= $tab ?>" style="display:flex;align-items:center;padding:0 10px;color:var(--muted);text-decoration:none;font-size:.8rem;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:-1px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </a>
         <?php endif; ?>
       </form>
 
@@ -801,7 +838,8 @@ if ($q_res) {
       }
       ?>
       <?php if ($can_clear): ?>
-        <form method="POST" action="pengajuan_buku.php?tab=<?= htmlspecialchars($tab) ?>" onsubmit="return confirm('PERINGATAN: Apakah Anda yakin ingin membersihkan <?= $clear_label ?>? Data riwayat pengajuan dan file kartu yang tersimpan akan dihapus secara permanen.');">
+        <form method="POST" action="pengajuan_buku.php?tab=<?= htmlspecialchars($tab) ?>" onsubmit="event.preventDefault(); konfirmasiBersihkanRiwayat(this, '<?= htmlspecialchars(addslashes($clear_label)) ?>');">
+          <?= csrf_field() ?>
           <input type="hidden" name="action" value="bersihkan_riwayat">
           <input type="hidden" name="filter_target" value="<?= htmlspecialchars($clear_target) ?>">
           <button type="submit" class="btn-clear-history" title="<?= htmlspecialchars($clear_label) ?>">
@@ -856,7 +894,7 @@ if ($q_res) {
                   <div>
                     <div class="borrower-name"><?= htmlspecialchars($row['nama_peminjam']) ?></div>
                     <div class="borrower-sub">
-                      <?= htmlspecialchars($row['kelas'] ?: 'Umum') ?> · No: <?= htmlspecialchars($row['no_anggota'] ?: '—') ?>
+                      <?= !empty($row['nik']) ? ((strcasecmp($row['kelas'] ?? '', 'Guru') === 0 ? 'NIP: ' : 'NIS: ') . htmlspecialchars($row['nik'])) : 'Anggota' ?> · No: <?= htmlspecialchars($row['no_anggota'] ?: '—') ?>
                     </div>
                     <div style="font-size:.68rem;color:var(--muted);margin-top:2px;"><?= $tgl_input ?></div>
                   </div>
@@ -955,7 +993,8 @@ if ($q_res) {
                 <?php if ($status === 'menunggu'): ?>
                   <div class="action-group" style="justify-content:center;">
                     <!-- Setujui Form -->
-                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="return confirm('Setujui pengajuan buku oleh <?= htmlspecialchars($row['nama_peminjam'], ENT_QUOTES) ?>? Stok buku akan otomatis terpotong dan masuk ke Telah Dipinjam.');">
+                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="event.preventDefault(); konfirmasiSetujui(this, '<?= htmlspecialchars(addslashes($row['nama_peminjam']), ENT_QUOTES) ?>', '<?= htmlspecialchars(addslashes($row['judul']), ENT_QUOTES) ?>');">
+                      <?= csrf_field() ?>
                       <input type="hidden" name="action" value="setujui">
                       <input type="hidden" name="pengajuan_id" value="<?= (int)$row['id'] ?>">
                       <button type="submit" class="btn-action-approve" title="Setujui Pengajuan">
@@ -973,7 +1012,8 @@ if ($q_res) {
                 <?php elseif ($status === 'disetujui'): ?>
                   <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
                     <span style="font-size:.72rem;color:#1a8a4a;font-weight:600;">✓ Masuk Peminjaman</span>
-                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="return confirm('Hapus riwayat pengajuan oleh <?= htmlspecialchars($row['nama_peminjam'], ENT_QUOTES) ?>? (Catatan: ini hanya menghapus log pengajuan, tidak membatalkan peminjaman yang sedang berjalan).');">
+                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="event.preventDefault(); konfirmasiHapusLog(this, '<?= htmlspecialchars(addslashes($row['nama_peminjam']), ENT_QUOTES) ?>', false);">
+                      <?= csrf_field() ?>
                       <input type="hidden" name="action" value="hapus_riwayat">
                       <input type="hidden" name="pengajuan_id" value="<?= (int)$row['id'] ?>">
                       <button type="submit" class="btn-action-delete" title="Hapus Riwayat Pengajuan">
@@ -984,7 +1024,8 @@ if ($q_res) {
                   </div>
                 <?php else: ?>
                   <div style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
-                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="return confirm('Hapus riwayat penolakan pengajuan oleh <?= htmlspecialchars($row['nama_peminjam'], ENT_QUOTES) ?>?');">
+                    <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>" onsubmit="event.preventDefault(); konfirmasiHapusLog(this, '<?= htmlspecialchars(addslashes($row['nama_peminjam']), ENT_QUOTES) ?>', true);">
+                      <?= csrf_field() ?>
                       <input type="hidden" name="action" value="hapus_riwayat">
                       <input type="hidden" name="pengajuan_id" value="<?= (int)$row['id'] ?>">
                       <button type="submit" class="btn-action-delete" title="Hapus Riwayat Pengajuan">
@@ -1009,7 +1050,7 @@ if ($q_res) {
   <div class="modal-box" style="max-width:560px;">
     <div class="modal-head">
       <div class="modal-head-title" id="previewKartuTitle">Kartu Anggota</div>
-      <button type="button" class="modal-close" onclick="tutupModalKartu()">✕</button>
+      <button type="button" class="modal-close" onclick="tutupModalKartu()" aria-label="Tutup"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </div>
     <div class="modal-body" style="text-align:center;padding:16px;">
       <img src="" id="imgKartuPreview" style="max-width:100%;max-height:65vh;border-radius:10px;border:1px solid var(--border-color);box-shadow:0 8px 30px rgba(0,0,0,.6);" alt="Kartu Anggota">
@@ -1019,7 +1060,7 @@ if ($q_res) {
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
         Unduh Berkas Kartu
       </a>
-      <button type="button" class="card-thumb-btn" onclick="tutupModalKartu()" style="background:rgba(255,255,255,.05);color:var(--text);border-color:var(--card-border);">Tutup</button>
+      <button type="button" class="card-thumb-btn btn-cancel-modal" onclick="tutupModalKartu()">Tutup</button>
     </div>
   </div>
 </div>
@@ -1028,12 +1069,13 @@ if ($q_res) {
 <div class="modal-overlay" id="modalTolakPengajuan" onclick="if(event.target === this) tutupModalTolak()">
   <div class="modal-box">
     <form method="POST" action="pengajuan_buku.php?tab=<?= $tab ?>">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" value="tolak">
       <input type="hidden" name="pengajuan_id" id="inputTolakId" value="0">
 
       <div class="modal-head">
         <div class="modal-head-title">Tolak Pengajuan Peminjaman</div>
-        <button type="button" class="modal-close" onclick="tutupModalTolak()">✕</button>
+        <button type="button" class="modal-close" onclick="tutupModalTolak()" aria-label="Tutup"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
       <div class="modal-body">
         <p style="font-size:.82rem;color:var(--muted);line-height:1.5;">
@@ -1042,7 +1084,7 @@ if ($q_res) {
         <textarea name="alasan_penolakan" class="textarea-reject" placeholder="Contoh: Foto kartu anggota tidak jelas/buram, atau Buku fisik sedang dalam perbaikan..." required></textarea>
       </div>
       <div class="modal-foot">
-        <button type="button" class="card-thumb-btn" onclick="tutupModalTolak()" style="background:rgba(255,255,255,.05);color:var(--text);border-color:var(--card-border);">Batal</button>
+        <button type="button" class="card-thumb-btn btn-cancel-modal" onclick="tutupModalTolak()">Batal</button>
         <button type="submit" class="btn-action-reject" style="padding:8px 16px;">Konfirmasi Tolak</button>
       </div>
     </form>
@@ -1061,7 +1103,47 @@ if ($q_res) {
     document.getElementById('modalKartuPreview').classList.remove('open');
   }
 
-  function bukaModalTolak(id, nama) {
+  
+function konfirmasiBersihkanRiwayat(form, label) {
+  AksaConfirm({
+    title: 'Bersihkan Riwayat Pengajuan?',
+    icon: 'trash',
+    message: `Apakah Anda yakin ingin membersihkan <strong>${label}</strong>? Seluruh data riwayat pengajuan dan file kartu yang tersimpan akan dihapus secara permanen.`,
+    confirmText: 'Ya, Bersihkan Permanen',
+    cancelText: 'Batal',
+    type: 'danger'
+  }).then(function(confirmed) {
+    if (confirmed) form.submit();
+  });
+}
+
+function konfirmasiSetujui(form, nama, judul) {
+  AksaConfirm({
+    title: 'Setujui Pengajuan Buku?',
+    icon: 'check',
+    message: `Setujui pengajuan buku "<strong>${judul}</strong>" oleh peminjam <strong>${nama}</strong>? Stok buku fisik akan otomatis terpotong dan masuk ke daftar Telah Dipinjam.`,
+    confirmText: 'Ya, Setujui',
+    cancelText: 'Batal',
+    type: 'success'
+  }).then(function(confirmed) {
+    if (confirmed) form.submit();
+  });
+}
+
+function konfirmasiHapusLog(form, nama, isReject) {
+  AksaConfirm({
+    title: isReject ? 'Hapus Riwayat Penolakan?' : 'Hapus Riwayat Pengajuan?',
+    icon: 'trash',
+    message: `Hapus catatan arsip pengajuan oleh <strong>${nama}</strong>? Tindakan ini hanya menghapus log riwayat dan tidak membatalkan peminjaman yang sedang berjalan.`,
+    confirmText: 'Ya, Hapus Log',
+    cancelText: 'Batal',
+    type: 'danger'
+  }).then(function(confirmed) {
+    if (confirmed) form.submit();
+  });
+}
+
+function bukaModalTolak(id, nama) {
     document.getElementById('inputTolakId').value = id;
     document.getElementById('namaPeminjamTolak').textContent = nama;
     document.getElementById('modalTolakPengajuan').classList.add('open');

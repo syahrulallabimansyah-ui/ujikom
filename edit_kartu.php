@@ -1,12 +1,11 @@
 <?php
-// edit_kartu.php — Update Data Diri (nama, kelas, no HP, email, foto) untuk anggota yang SUDAH LOGIN
-// ── PERUBAHAN: akses dipindah dari halaman Sign In ke Beranda (kartu "Profil Saya") ──
-// Karena diakses dari dalam dashboard, halaman ini langsung memakai sesi login yang sedang aktif
-// (tidak perlu lagi memasukkan ulang email & password, dan TIDAK ADA LAGI konfirmasi kata sandi
-// saat ini sebelum menyimpan — sesi login yang aktif sudah cukup sebagai otorisasi).
-// Username, NIS, dan nomor anggota TIDAK bisa diubah lewat halaman ini. Ganti kata sandi baru
-// tetap opsional (kosongkan jika tidak ingin mengganti).
-session_start();
+// edit_kartu.php — Update Data Diri (nama lengkap, NIS/NIP, username, no HP, email, foto) untuk anggota yang SUDAH LOGIN
+// Anggota dapat mengubah nama lengkap, NIS/NIP, username, no HP, email, dan foto profil tanpa perlu memasukkan kata sandi.
+// Penggantian kata sandi bersifat opsional — hanya diproses jika pengguna sengaja mengisi kolom kata sandi baru.
+// Nomor anggota perpustakaan bersifat permanen dan terhubung dengan barcode fisik.
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once "db.php";
 
 // ─── Halaman ini khusus anggota (member) yang sudah login ───
@@ -15,7 +14,7 @@ if (!isset($_SESSION["user_id"])) {
     exit;
 }
 if (($_SESSION["role"] ?? "") !== "member") {
-    header("Location: beranda.php");
+    header("Location: dashboard.php");
     exit;
 }
 
@@ -49,20 +48,17 @@ if ($user["status"] === "pending") {
     $blocked = "Kartu kamu sedang dibekukan (proses Lupa Kartu belum selesai). Selesaikan itu dulu sebelum mengedit data.";
 }
 
-// Ambil daftar kelas dari tabel kelas untuk pilihan dropdown
-$daftar_kelas = [];
-$res_k = mysqli_query($conn, "SELECT nama_kelas FROM kelas ORDER BY nama_kelas ASC");
-if ($res_k) {
-    while ($row_k = mysqli_fetch_assoc($res_k)) {
-        $daftar_kelas[] = $row_k["nama_kelas"];
-    }
-}
+
+$is_guru = (strcasecmp($user["kelas"] ?? "", "Guru") === 0);
 
 $form_data = [
-    "full_name" => $user["full_name"],
-    "kelas"     => $user["kelas"],
-    "no_hp"     => $user["no_hp"],
-    "email"     => $user["email"],
+    "full_name"  => $user["full_name"] ?? "",
+    "username"   => $user["username"] ?? "",
+    "nik"        => $user["nik"] ?? "",
+    "kelas"      => $user["kelas"] ?? "",
+    "no_hp"      => $user["no_hp"] ?? "",
+    "email"      => $user["email"] ?? "",
+    "no_anggota" => $user["no_anggota"] ?? "",
 ];
 
 // ─────────────────────────────────────────────
@@ -71,7 +67,9 @@ $form_data = [
 if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST["action"] ?? "") === "update_data") {
 
     $new_full_name = trim($_POST["full_name"] ?? "");
-    $new_kelas     = trim($_POST["kelas"] ?? "");
+    $new_username  = trim($_POST["username"] ?? "");
+    $new_nik       = trim($_POST["nik"] ?? "");
+    $new_kelas     = $user["kelas"] ?? "";
     $new_no_hp     = trim($_POST["no_hp"] ?? "");
     $new_email     = strtolower(trim($_POST["email"] ?? ""));
     $old_password  = trim($_POST["old_password"] ?? "");
@@ -82,19 +80,36 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
     $foto_web_dir  = "uploads/anggota";
 
     $form_data = [
-        "full_name" => $new_full_name,
-        "kelas"     => $new_kelas,
-        "no_hp"     => $new_no_hp,
-        "email"     => $new_email,
+        "full_name"  => $new_full_name,
+        "username"   => $new_username,
+        "nik"        => $new_nik,
+        "kelas"      => $new_kelas,
+        "no_hp"      => $new_no_hp,
+        "email"      => $new_email,
+        "no_anggota" => $user["no_anggota"] ?? "",
     ];
 
-    // Ganti password bersifat opsional — jika ada salah satu kolom kata sandi yang diisi
-    $want_change_password = ($old_password !== "" || $new_password !== "" || $new_password2 !== "");
+    // Ganti kata sandi HANYA diproses jika pengguna secara sengaja mengisi kolom kata sandi baru.
+    // Hal ini mencegah browser autofill pada kata sandi lama memicu validasi kata sandi saat pengguna
+    // hanya ingin mengubah nama lengkap, NIS/NIP, username, atau data profil lainnya.
+    $want_change_password = ($new_password !== "" || $new_password2 !== "");
 
-    if ($new_full_name === "") {
+    if (!csrf_verify()) {
+        $error = "Token sesi keamanan tidak valid atau kedaluwarsa. Silakan muat ulang halaman.";
+    } elseif ($new_full_name === "") {
         $error = "Nama lengkap wajib diisi.";
-    } elseif ($new_kelas === "") {
-        $error = "Pilihan kelas wajib dipilih.";
+    } elseif (strlen($new_full_name) < 2) {
+        $error = "Nama lengkap minimal 2 karakter.";
+    } elseif ($new_username === "") {
+        $error = "Username wajib diisi.";
+    } elseif (!preg_match('/^[a-zA-Z0-9._]{3,30}$/', $new_username)) {
+        $error = "Username hanya boleh berupa huruf, angka, titik, dan garis bawah (3-30 karakter).";
+    } elseif ($new_nik === "") {
+        $error = $is_guru ? "NIP / NUPTK / NIK Guru wajib diisi." : "Nomor Induk Siswa (NIS) wajib diisi.";
+    } elseif ($is_guru && strlen($new_nik) < 3) {
+        $error = "NIP / NIK Guru minimal 3 karakter.";
+    } elseif (!$is_guru && !preg_match('/^[0-9]{3,20}$/', $new_nik)) {
+        $error = "NIS harus berupa angka (minimal 3 digit).";
     } elseif ($new_email === "" || !filter_var($new_email, FILTER_VALIDATE_EMAIL)) {
         $error = "Alamat email tidak valid.";
     } else {
@@ -106,32 +121,64 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
             $error = "Email dapat menggunakan akun sekolah (@student.smkn1rongga.sch.id / @smkn1rongga.sch.id) atau akun Gmail (@gmail.com).";
         }
     }
+
     if ($error === "" && $new_no_hp !== "" && !preg_match('/^[\d+\-\s]{6,20}$/', $new_no_hp)) {
-        $error = "Nomor HP tidak valid.";
-    } elseif ($want_change_password && $old_password === "") {
-        $error = "Kata sandi lama wajib dimasukkan untuk mengubah kata sandi.";
-    } elseif ($want_change_password && !password_verify($old_password, $user["password"]) && (empty($user["plain_password"]) || $old_password !== $user["plain_password"])) {
-        $error = "Kata sandi lama yang kamu masukkan salah.";
-    } elseif ($want_change_password && $new_password === "") {
-        $error = "Kata sandi baru wajib diisi.";
-    } elseif ($want_change_password && strlen($new_password) < 8) {
-        $error = "Kata sandi baru minimal 8 karakter.";
-    } elseif ($want_change_password && (!preg_match('/[A-Za-z]/', $new_password) || !preg_match('/[0-9]/', $new_password))) {
-        $error = "Kata sandi baru harus mengandung huruf dan angka.";
-    } elseif ($want_change_password && $new_password === $old_password) {
-        $error = "Kata sandi baru tidak boleh sama dengan kata sandi lama.";
-    } elseif ($want_change_password && $new_password !== $new_password2) {
-        $error = "Konfirmasi kata sandi baru tidak cocok.";
-    } else {
-        // Cek email tidak dipakai anggota lain
-        $chk = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ? AND id <> ?");
-        mysqli_stmt_bind_param($chk, "si", $new_email, $user_id);
-        mysqli_stmt_execute($chk);
-        mysqli_stmt_store_result($chk);
-        if (mysqli_stmt_num_rows($chk) > 0) {
-            $error = "Email tersebut sudah dipakai akun lain.";
+        $error = "Nomor WhatsApp / HP tidak valid.";
+    }
+
+    // Validasi kata sandi (HANYA jika ingin mengganti kata sandi)
+    if ($error === "" && $want_change_password) {
+        if ($old_password === "") {
+            $error = "Kata sandi saat ini wajib dimasukkan untuk konfirmasi penggantian kata sandi.";
+        } elseif (!password_verify($old_password, $user["password"]) && (empty($user["plain_password"]) || $old_password !== $user["plain_password"])) {
+            $error = "Kata sandi saat ini yang kamu masukkan salah.";
+        } elseif ($new_password === "") {
+            $error = "Kata sandi baru wajib diisi.";
+        } elseif (strlen($new_password) < 8) {
+            $error = "Kata sandi baru minimal 8 karakter.";
+        } elseif (!preg_match('/[A-Za-z]/', $new_password) || !preg_match('/[0-9]/', $new_password)) {
+            $error = "Kata sandi baru harus mengandung kombinasi huruf dan angka.";
+        } elseif ($new_password === $old_password) {
+            $error = "Kata sandi baru tidak boleh sama dengan kata sandi lama.";
+        } elseif ($new_password !== $new_password2) {
+            $error = "Konfirmasi kata sandi baru tidak cocok.";
         }
-        mysqli_stmt_close($chk);
+    }
+
+    // Cek keunikan username di database (kecuali akun sendiri)
+    if ($error === "") {
+        $chk_u = mysqli_prepare($conn, "SELECT id FROM users WHERE username = ? AND id <> ?");
+        mysqli_stmt_bind_param($chk_u, "si", $new_username, $user_id);
+        mysqli_stmt_execute($chk_u);
+        mysqli_stmt_store_result($chk_u);
+        if (mysqli_stmt_num_rows($chk_u) > 0) {
+            $error = "Username '" . htmlspecialchars($new_username) . "' sudah dipakai oleh akun lain.";
+        }
+        mysqli_stmt_close($chk_u);
+    }
+
+    // Cek keunikan NIK / NIS di database (kecuali akun sendiri)
+    if ($error === "") {
+        $chk_n = mysqli_prepare($conn, "SELECT id FROM users WHERE nik = ? AND id <> ?");
+        mysqli_stmt_bind_param($chk_n, "si", $new_nik, $user_id);
+        mysqli_stmt_execute($chk_n);
+        mysqli_stmt_store_result($chk_n);
+        if (mysqli_stmt_num_rows($chk_n) > 0) {
+            $error = $is_guru ? "NIP / NIK tersebut sudah terdaftar pada akun lain." : "Nomor Induk Siswa (NIS) tersebut sudah terdaftar pada akun lain.";
+        }
+        mysqli_stmt_close($chk_n);
+    }
+
+    // Cek keunikan email di database (kecuali akun sendiri)
+    if ($error === "") {
+        $chk_e = mysqli_prepare($conn, "SELECT id FROM users WHERE email = ? AND id <> ?");
+        mysqli_stmt_bind_param($chk_e, "si", $new_email, $user_id);
+        mysqli_stmt_execute($chk_e);
+        mysqli_stmt_store_result($chk_e);
+        if (mysqli_stmt_num_rows($chk_e) > 0) {
+            $error = "Alamat email tersebut sudah dipakai oleh akun lain.";
+        }
+        mysqli_stmt_close($chk_e);
     }
 
     // ── Ganti foto profil (opsional) — bisa ambil foto langsung atau dari galeri ──
@@ -166,9 +213,16 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
 
     if ($error === "") {
         $old_foto_relative = "";
-        $set_parts = ["full_name = ?", "kelas = ?", "no_hp = ?", "email = ?"];
-        $types  = "ssss";
-        $params = [$new_full_name, $new_kelas, $new_no_hp, $new_email];
+        $set_parts = [
+            "full_name = ?",
+            "username = ?",
+            "nik = ?",
+            "kelas = ?",
+            "no_hp = ?",
+            "email = ?"
+        ];
+        $types  = "ssssss";
+        $params = [$new_full_name, $new_username, $new_nik, $new_kelas, $new_no_hp, $new_email];
 
         if ($new_foto_uploaded !== "") {
             $old_foto_relative = $foto_path; // foto lama sebelum diganti
@@ -183,9 +237,10 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
             $set_parts[] = "password = ?";
             $types      .= "s";
             $params[]    = $new_password_hash;
+            $empty_plain = "";
             $set_parts[] = "plain_password = ?";
             $types      .= "s";
-            $params[]    = $new_password;
+            $params[]    = $empty_plain;
         }
 
         $sql    = "UPDATE users SET " . implode(", ", $set_parts) . " WHERE id = ?";
@@ -207,22 +262,21 @@ if ($blocked === "" && ($_SERVER["REQUEST_METHOD"] ?? "") === "POST" && ($_POST[
             }
         }
 
-        // Selaraskan sesi supaya nama di dashboard ikut ter-update
+        // Selaraskan sesi supaya nama dan username di dashboard ikut ter-update
         $_SESSION["user_name"] = $new_full_name;
+        $_SESSION["username"]  = $new_username;
 
-        // Tampilkan kartu dengan data terbaru. Password yang ditampilkan di kartu SELALU
-        // yang asli/valid: kalau diganti, pakai password baru; kalau tidak, pakai password
-        // yang tersimpan sebelumnya.
-        $display_pw = $want_change_password ? $new_password : ($user["plain_password"] ?? "");
+        // Tampilkan kartu dengan data terbaru
+        $display_pw = $want_change_password ? $new_password : "";
         $_SESSION["kartu_data"] = [
             "id"                 => $user_id,
             "full_name"          => $new_full_name,
-            "nik"                => $user["nik"],
+            "nik"                => $new_nik,
             "kelas"              => $new_kelas,
             "no_hp"              => $new_no_hp,
             "email"              => $new_email,
-            "no_anggota"         => $user["no_anggota"],
-            "username"           => $user["username"],
+            "no_anggota"         => $user["no_anggota"] ?? "",
+            "username"           => $new_username,
             "password"           => $display_pw,
             "foto"               => $foto_path,
             "status"             => "approved",
@@ -354,6 +408,23 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
     .btn-musik.playing { background: rgba(216,184,120,.18); box-shadow: 0 0 16px rgba(216,184,120,.3); }
     .btn-musik.playing .icon-off { display: none; }
     .btn-musik.playing .icon-eq  { display: flex; }
+    html.theme-light .btn-musik, html.light .btn-musik {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
+    }
+    html.theme-light .btn-musik:hover, html.light .btn-musik:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik.playing, html.light .btn-musik.playing {
+      background: rgba(138,99,35,.15) !important;
+      box-shadow: 0 0 16px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
+      background: #8a6323 !important;
+    }
 
     /* ── MAIN CONTENT ── */
     .main {
@@ -663,8 +734,8 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
       <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
     </button>
-    <audio id="audioLatar" loop autoplay muted preload="auto">
-      <source src="<?= htmlspecialchars($musik_file) ?>">
+    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
+      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
     </audio>
     <?php endif; ?>
   </div>
@@ -691,7 +762,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
     </a>
     <a href="dashboard_user.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-      Dashboard
+      Peminjaman Saya
     </a>
     <a href="daftar_buku.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
@@ -703,20 +774,20 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
     </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Buku Simpan
+      Buku Disimpan
     </a>
     <a href="edit_kartu.php" class="nav-item active">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Edit Profil
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profil
     </a>
   </nav>
 
   <div class="nav-bottom">
     <a href="#" class="nav-item" onclick="bukaSettings(); return false;" title="Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </a>
-    <a href="logout.php" class="nav-item" style="color:#e74c3c;">
+    <a href="logout.php" class="nav-item sidebar-btn-logout" style="color:#e74c3c;" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Keluar
     </a>
@@ -728,8 +799,8 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
 
   <div class="page-head">
     <div class="head-info">
-      <h1 class="page-title">Edit Profil Anggota</h1>
-      <p class="page-sub">Perbarui informasi akun, foto profil, dan kata sandi kamu</p>
+      <h1 class="page-title">Profil Anggota</h1>
+      <p class="page-sub">Kelola informasi akun, foto profil, dan kata sandi kamu</p>
     </div>
   </div>
 
@@ -755,6 +826,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
       ?>
 
       <form method="POST" action="edit_kartu.php" enctype="multipart/form-data" id="editForm">
+        <?= csrf_field() ?>
         <input type="hidden" name="action" value="update_data">
 
         <!-- 1. Foto Profil -->
@@ -791,94 +863,84 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
           Informasi Anggota
         </div>
 
+        <!-- Nomor Anggota (Tetap / Readonly) -->
+        <div class="field" style="margin-bottom:16px;">
+          <label>Nomor Anggota (ID Perpustakaan)</label>
+          <div class="id-tetap-box" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(216,184,120,.06);border:1px solid rgba(216,184,120,.22);border-radius:10px;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--accent);flex-shrink:0;"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <div style="font-family:'JetBrains Mono',monospace;font-size:.92rem;font-weight:700;color:var(--accent);letter-spacing:.06em;">
+              <?= htmlspecialchars($user["no_anggota"] ?? "") ?>
+            </div>
+            <span class="id-tetap-pill" style="margin-left:auto;font-size:.68rem;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.06);color:var(--muted);font-weight:600;">ID Tetap</span>
+          </div>
+          <p class="field-hint">Nomor anggota perpustakaan dibuat permanen oleh sistem dan terhubung dengan barcode kartu fisik.</p>
+        </div>
+
+        <!-- Nama Lengkap -->
+        <div class="field" style="margin-bottom:16px;">
+          <label for="fullNameInput">Nama Lengkap <span style="color:#e74c3c;">*</span></label>
+          <input type="text" id="fullNameInput" name="full_name" value="<?= htmlspecialchars($form_data['full_name']) ?>" required placeholder="Contoh: Budi Santoso">
+        </div>
+
+        <!-- NIS / NIP & Username -->
         <div class="row2">
           <div class="field">
-            <label for="fullNameInput">Nama Lengkap</label>
-            <input type="text" id="fullNameInput" name="full_name" value="<?= htmlspecialchars($form_data['full_name']) ?>" required>
+            <label for="nikInput"><?= $is_guru ? 'NIP / NUPTK / NIK Guru' : 'Nomor Induk Siswa (NIS)' ?> <span style="color:#e74c3c;">*</span></label>
+            <input type="text" id="nikInput" name="nik" value="<?= htmlspecialchars($form_data['nik']) ?>" required
+                   placeholder="<?= $is_guru ? 'Contoh: 198503152010011005' : 'Contoh: 212210045' ?>"
+                   pattern="<?= $is_guru ? '.{3,30}' : '[0-9]{3,20}' ?>"
+                   title="<?= $is_guru ? 'NIP / NIK minimal 3 karakter' : 'NIS harus berupa angka (minimal 3 digit)' ?>">
+            <p class="field-hint"><?= $is_guru ? 'Nomor identitas tenaga pendidik resmi' : 'Nomor induk siswa resmi' ?></p>
           </div>
           <div class="field">
-            <label for="kelasInput">Pilihan Kelas</label>
-            <select id="kelasInput" name="kelas" required>
-              <option value="" disabled <?= empty($form_data['kelas']) ? 'selected' : '' ?>>-- Pilih Kelas --</option>
-              <?php foreach ($daftar_kelas as $k): ?>
-                <option value="<?= htmlspecialchars($k) ?>" <?= $form_data['kelas'] === $k ? 'selected' : '' ?>>
-                  <?= htmlspecialchars($k) ?>
-                </option>
-              <?php endforeach; ?>
-              <?php if (!empty($form_data['kelas']) && !in_array($form_data['kelas'], $daftar_kelas, true)): ?>
-                <option value="<?= htmlspecialchars($form_data['kelas']) ?>" selected><?= htmlspecialchars($form_data['kelas']) ?></option>
-              <?php endif; ?>
-            </select>
+            <label for="usernameInput">Username Akun <span style="color:#e74c3c;">*</span></label>
+            <input type="text" id="usernameInput" name="username" value="<?= htmlspecialchars($form_data['username']) ?>" required
+                   placeholder="Contoh: budisantoso"
+                   pattern="[a-zA-Z0-9._]{3,30}"
+                   title="3-30 karakter (huruf, angka, titik, atau garis bawah)">
+            <p class="field-hint">Digunakan untuk login ke AKSA NOVA</p>
           </div>
         </div>
 
+        <!-- Nomor WhatsApp & Email -->
         <div class="row2">
           <div class="field">
             <label for="noHpInput">Nomor WhatsApp / HP</label>
-            <input type="text" id="noHpInput" name="no_hp" placeholder="Contoh: 081234567890" value="<?= htmlspecialchars($form_data['no_hp']) ?>">
+            <input type="tel" id="noHpInput" name="no_hp" value="<?= htmlspecialchars($form_data['no_hp']) ?>"
+                   placeholder="Contoh: 081234567890" pattern="[\d+\-\s]{6,20}">
+            <p class="field-hint">Untuk notifikasi pengembalian buku</p>
           </div>
           <div class="field">
-            <label for="emailInput"><?= strcasecmp($user["kelas"], "Guru") === 0 ? "Alamat Email Guru" : "Alamat Email Siswa" ?></label>
-            <input type="email" id="emailInput" name="email" value="<?= htmlspecialchars($form_data['email']) ?>"
-                   pattern="[a-zA-Z0-9._%+\-]+@((student\.)?smkn1rongga\.sch\.id|gmail\.com)$"
-                   title="Email dapat menggunakan akun @student.smkn1rongga.sch.id, @smkn1rongga.sch.id, atau @gmail.com" required>
-            <p class="field-hint" style="color:var(--accent,#d8b878);">Dapat menggunakan akun resmi sekolah (@student.smkn1rongga.sch.id / @smkn1rongga.sch.id) atau @gmail.com</p>
+            <label for="emailInput">Alamat Email <span style="color:#e74c3c;">*</span></label>
+            <input type="email" id="emailInput" name="email" value="<?= htmlspecialchars($form_data['email']) ?>" required
+                   placeholder="nama@student.smkn1rongga.sch.id atau nama@gmail.com">
+            <p class="field-hint">Email sekolah atau akun Gmail</p>
           </div>
         </div>
 
-        <!-- 3. Identitas Permanen -->
-        <div class="form-section-title">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-          Identitas Resmi (Terkunci)
-        </div>
-
-        <div class="readonly-grid">
-          <div class="readonly-item">
-            <div class="readonly-label">
-              <span>Nomor Anggota</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <div class="readonly-value"><?= htmlspecialchars($user["no_anggota"] ?: "—") ?></div>
-          </div>
-          <div class="readonly-item">
-            <div class="readonly-label">
-              <span>Username Login</span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <div class="readonly-value">@<?= htmlspecialchars($user["username"]) ?></div>
-          </div>
-          <div class="readonly-item">
-            <div class="readonly-label">
-              <span><?= strcasecmp($user["kelas"], "Guru") === 0 ? "NIP / NIK Terdaftar" : "NIS Terdaftar" ?></span>
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-            </div>
-            <div class="readonly-value"><?= htmlspecialchars($user["nik"] ?: "—") ?></div>
-          </div>
-        </div>
-
-        <!-- 4. Ganti Kata Sandi -->
+        <!-- 3. Ubah Kata Sandi (Opsional) -->
         <div class="form-section-title">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 2l-2 2m-1.5 1.5L14 9M19 8l-7 7m4-7l-7 7m1 1l-2 2H4v-4l2-2 7-7"/></svg>
           Ubah Kata Sandi (Opsional)
         </div>
 
         <div class="field" style="margin-bottom:14px;">
-          <label for="oldPwInput">Kata Sandi Lama (Saat Ini)</label>
+          <label for="oldPwInput">Kata Sandi Saat Ini</label>
           <div class="field-input-wrap" id="wrapPwOld">
-            <input type="password" id="oldPwInput" name="old_password" placeholder="Masukkan kata sandi saat ini untuk verifikasi" autocomplete="current-password">
+            <input type="password" id="oldPwInput" name="old_password" placeholder="Masukkan kata sandi saat ini jika ingin mengganti" autocomplete="off">
             <span class="toggle-eye" data-target="oldPwInput" data-wrap="wrapPwOld" role="button" tabindex="0" aria-label="Tampilkan kata sandi">
               <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
               <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
             </span>
           </div>
-          <p class="field-hint" style="margin-top:4px;">Wajib diisi jika ingin mengubah kata sandi akun.</p>
+          <p class="field-hint" style="margin-top:4px;">Hanya perlu diisi jika kamu ingin mengganti kata sandi akun.</p>
         </div>
 
         <div class="row2">
           <div class="field">
             <label for="newPwInput">Kata Sandi Baru</label>
             <div class="field-input-wrap" id="wrapPw1">
-              <input type="password" id="newPwInput" name="new_password" placeholder="Minimal 8 karakter, huruf & angka" autocomplete="new-password">
+              <input type="password" id="newPwInput" name="new_password" placeholder="Minimal 8 karakter (huruf &amp; angka)" autocomplete="new-password">
               <span class="toggle-eye" data-target="newPwInput" data-wrap="wrapPw1" role="button" tabindex="0" aria-label="Tampilkan kata sandi">
                 <svg class="eye-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
                 <svg class="eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17.94 17.94A10.94 10.94 0 0 1 12 19c-7 0-11-7-11-7a20.3 20.3 0 0 1 5.06-5.94M9.9 4.24A10.94 10.94 0 0 1 12 5c7 0 11 7 11 7a20.3 20.3 0 0 1-2.61 3.61M14.12 14.12a3 3 0 1 1-4.24-4.24"/><path d="M1 1l22 22"/></svg>
@@ -896,7 +958,7 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
             </div>
           </div>
         </div>
-        <p class="field-hint" style="margin-top:-6px; margin-bottom:12px;">Kosongkan kolom di atas jika kamu tidak ingin mengganti kata sandi.</p>
+        <p class="field-hint" style="margin-top:-6px; margin-bottom:12px;">Kosongkan kolom kata sandi di atas jika kamu tidak ingin mengganti kata sandi akun.</p>
 
         <!-- Form Actions -->
         <div class="form-actions">
@@ -904,7 +966,6 @@ $musik_tampil = $musik_aktif && $musik_file !== "" && file_exists($musik_file);
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="20 6 9 17 4 12"/></svg>
             Simpan Perubahan
           </button>
-          <a href="dashboard_user.php" class="btn-cancel">Batal</a>
         </div>
       </form>
 

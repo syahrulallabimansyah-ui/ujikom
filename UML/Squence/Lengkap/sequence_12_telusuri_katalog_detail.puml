@@ -1,0 +1,40 @@
+@startuml sequence_12_telusuri_katalog_detail
+autonumber "1:"
+skinparam sequence {
+    ArrowColor #1F4E79
+    ActorBorderColor #1F4E79
+    LifeLineBorderColor #1F4E79
+    LifeLineBackgroundColor #9CC3E6
+    ParticipantBorderColor #1F4E79
+    ParticipantBackgroundColor #E2E8F0
+}
+
+title Sequence Diagram — Penelusuran Katalog & Melihat Detail Buku\n<i>File: katalog.php & detail_buku.php</i>
+
+actor "Tamu / Anggota" as Actor
+boundary "Antarmuka Pengguna\n(katalog.php)" as Boundary
+control "Controller Logika\n(katalog.php)" as Control
+entity "Basis Data\n(MySQL Engine)" as DB
+
+activate Actor
+Actor -> Boundary: Membuka fitur & input parameter
+activate Boundary
+Boundary -> Control: Minta eksekusi aksi (POST / GET, csrf_token)
+activate Control
+Control -> Control: csrf_verify() / validasi sesi aktif
+Control -> DB: Eksekusi prepared statement query
+activate DB
+DB --> Control: Hasil operasi data (sukses / gagal)
+deactivate DB
+
+alt Operasi Berhasil
+    Control --> Boundary: Return status sukses & perbarui UI
+    Boundary --> Actor: Tampilkan notifikasi keberhasilan
+else Validasi / Eksekusi Gagal
+    Control --> Boundary: Return pesan kesalahan
+    Boundary --> Actor: Tampilkan peringatan kesalahan
+end
+deactivate Control
+deactivate Boundary
+deactivate Actor
+@enduml

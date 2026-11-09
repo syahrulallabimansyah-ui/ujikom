@@ -1,0 +1,46 @@
+@startuml 05_activity_peminjaman_langsung
+skinparam activity {
+    BackgroundColor #FFF4C2
+    BorderColor #6B5A1E
+    DiamondBackgroundColor #FFE9A3
+    DiamondBorderColor #C0282D
+}
+skinparam ArrowColor #6B5A1E
+
+title Activity Diagram 05 — Sirkulasi Peminjaman Langsung di Meja Layanan\n<i>File: pinjam_buku.php</i>
+
+|#DCFCE7|Pustakawan (Admin)|
+|#F1F5F9|Sistem AKSA NOVA|
+
+|Pustakawan (Admin)|
+start
+:Membuka halaman Sirkulasi Peminjaman Langsung;
+:Pindai Barcode Kartu Siswa atau input Nomor Anggota;
+:Pindai Barcode Buku atau input ISBN/Judul;
+
+|Sistem AKSA NOVA|
+:Pengecekan status keaktifan anggota & kartu;
+if (Kartu Aktif & Status Approved?) then (<color:green>Ya</color>)
+    :Pengecekan ketersediaan stok fisik buku;
+    if (Stok Buku > 0?) then (<color:green>Ya</color>)
+        :Kurangi stok buku (-1);
+        :Insert transaksi ke tabel peminjaman\n(tgl_pinjam=CURRENT_DATE, status='dipinjam');
+        :Tampilkan struk bukti transaksi berhasil;
+        |Pustakawan (Admin)|
+        :Menyerahkan buku fisik kepada siswa/guru;
+        stop
+    else (<color:red>Tidak</color>)
+        |Sistem AKSA NOVA|
+        :Tampilkan peringatan: "Stok buku habis";
+        |Pustakawan (Admin)|
+        :Menginformasikan ketiadaan stok kepada anggota;
+        stop
+    endif
+else (<color:red>Tidak</color>)
+    |Sistem AKSA NOVA|
+    :Tampilkan error: "Kartu anggota dibekukan / tidak aktif";
+    |Pustakawan (Admin)|
+    :Menolak transaksi dan meminta anggota mengaktifkan kartu;
+    stop
+endif
+@enduml

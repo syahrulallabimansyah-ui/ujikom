@@ -15,19 +15,38 @@ if (!isset($_SESSION['user_id'])) {
 $user_id = (int)$_SESSION['user_id'];
 $user_role = $_SESSION['role'] ?? 'member';
 
+if ($user_role === 'admin') {
+    header('Location: dashboard.php');
+    exit;
+}
+
 // Ambil data user terkini
-$u_stmt = mysqli_prepare($conn, "SELECT id, full_name, kelas, no_anggota, email, no_hp, foto, status, card_status FROM users WHERE id = ? LIMIT 1");
+$u_stmt = mysqli_prepare($conn, "SELECT id, full_name, nik, kelas, no_anggota, email, no_hp, foto, status, card_status FROM users WHERE id = ? LIMIT 1");
 mysqli_stmt_bind_param($u_stmt, "i", $user_id);
 mysqli_stmt_execute($u_stmt);
 $u_res = mysqli_stmt_get_result($u_stmt);
 $user = mysqli_fetch_assoc($u_res);
 mysqli_stmt_close($u_stmt);
 
-if (!$user) {
+if (!$user || ($user['status'] ?? '') !== 'approved' || ($user['card_status'] ?? 'active') === 'frozen') {
     session_destroy();
     header('Location: sign_in.php');
     exit;
 }
+
+// Pengaturan musik latar
+$musik_aktif = 0;
+$musik_file  = '';
+$musik_judul = 'Musik Latar';
+$mgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('musik_aktif','musik_file','musik_judul')");
+if ($mgt) {
+    while ($m = mysqli_fetch_assoc($mgt)) {
+        if ($m['kunci'] === 'musik_aktif') $musik_aktif = (int)$m['nilai'];
+        if ($m['kunci'] === 'musik_file')  $musik_file  = (string)$m['nilai'];
+        if ($m['kunci'] === 'musik_judul') $musik_judul = (string)($m['nilai'] ?: $musik_judul);
+    }
+}
+$musik_tampil = ($musik_aktif === 1 && $musik_file !== '' && (file_exists($musik_file) || file_exists(__DIR__ . '/' . $musik_file)));
 
 $error_msg = '';
 $success_msg = '';
@@ -61,6 +80,10 @@ if (!$buku_terpilih && !empty($daftar_buku_tersedia)) {
 }
 
 // ─── Proses Formulir POST ───
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !csrf_verify()) {
+    $error_msg = 'Token sesi keamanan tidak valid atau kedaluwarsa. Silakan muat ulang halaman.';
+    $_POST['action'] = '';
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'ajukan') {
     $post_buku_id    = (int)($_POST['buku_id'] ?? 0);
     $total_buku      = max(1, (int)($_POST['total_buku'] ?? 1));
@@ -494,6 +517,74 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     .mobile-topbar { display: contents; }
     .mobile-topbar-divider,
     .mobile-topbar-brand { display: none; }
+    .page-hud-controls {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 150;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-musik {
+      appearance: none;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1.5px solid var(--accent, #d8b878);
+      background: rgba(18,24,32,.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent, #d8b878);
+      transition: all var(--trans);
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      flex-shrink: 0;
+    }
+    .btn-musik:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(216,184,120,.35);
+    }
+    .btn-musik svg { width: 18px; height: 18px; }
+    .btn-musik .icon-off { display: block; }
+    .btn-musik .icon-eq  { display: none; align-items: flex-end; gap: 2.5px; height: 16px; }
+    .btn-musik .icon-eq span {
+      display: block;
+      width: 3px;
+      background: var(--accent, #d8b878);
+      border-radius: 2px;
+      animation: eqBar 1s ease-in-out infinite;
+    }
+    .btn-musik .icon-eq span:nth-child(1) { height: 40%; animation-delay: -.6s; }
+    .btn-musik .icon-eq span:nth-child(2) { height: 100%; animation-delay: -.2s; }
+    .btn-musik .icon-eq span:nth-child(3) { height: 65%; animation-delay: -.9s; }
+    @keyframes eqBar { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+    .btn-musik.playing {
+      background: rgba(216,184,120,.18);
+      box-shadow: 0 0 16px rgba(216,184,120,.3);
+    }
+    .btn-musik.playing .icon-off { display: none; }
+    .btn-musik.playing .icon-eq  { display: flex; }
+    html.theme-light .btn-musik, html.light .btn-musik {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
+    }
+    html.theme-light .btn-musik:hover, html.light .btn-musik:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik.playing, html.light .btn-musik.playing {
+      background: rgba(138,99,35,.15) !important;
+      box-shadow: 0 0 16px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
+      background: #8a6323 !important;
+    }
 
     /* Responsive */
     @media (max-width:880px) {
@@ -531,6 +622,12 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
         font-size:clamp(.82rem, 3.8vw, 1.02rem);
         color:var(--accent); letter-spacing:.04em; white-space:nowrap;
         overflow:hidden; text-overflow:ellipsis;
+      }
+      .mobile-topbar .page-hud-controls {
+        position: static;
+        top: auto;
+        right: auto;
+        margin-left: auto;
       }
     }
     @media (max-width:520px) {
@@ -572,6 +669,20 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     </svg>
     <span>AKSA NOVA</span>
   </div>
+
+  <div class="page-hud-controls" id="pageHudControls">
+    <?php if ($musik_tampil): ?>
+    <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
+      <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+      </svg>
+      <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
+      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
+    </audio>
+    <?php endif; ?>
+  </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -595,7 +706,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     </a>
     <a href="dashboard_user.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-      Dashboard
+      Peminjaman Saya
     </a>
     <a href="daftar_buku.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
@@ -607,20 +718,20 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
     </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Buku Simpan
+      Buku Disimpan
     </a>
     <a href="edit_kartu.php" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Edit Profil
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profil
     </a>
   </nav>
 
   <div class="nav-bottom">
     <a href="#" class="nav-item" onclick="bukaSettings(); return false;">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </a>
-    <a href="logout.php" class="nav-item" style="color:#e74c3c;">
+    <a href="logout.php" class="nav-item sidebar-btn-logout" style="color:#e74c3c;" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Keluar
     </a>
@@ -658,13 +769,14 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
           Petugas perpustakaan akan memeriksa permohonan peminjaman kamu. Setelah disetujui, buku dapat kamu ambil sesuai waktu yang kamu pilih.
         </p>
         <div class="success-actions">
-          <a href="dashboard_user.php" class="btn-action-pri">Buka Dashboard Saya</a>
+          <a href="dashboard_user.php" class="btn-action-pri">Buka Peminjaman Saya</a>
           <a href="daftar_buku.php" class="btn-action-sec">Jelajahi Buku Lain</a>
         </div>
       </div>
     <?php else: ?>
 
       <form method="POST" action="pengajuan_peminjaman.php" enctype="multipart/form-data" id="formPengajuan">
+        <?= csrf_field() ?>
         <input type="hidden" name="action" value="ajukan">
         <input type="hidden" name="buku_id" id="inputBukuId" value="<?= (int)($buku_terpilih['id'] ?? 0) ?>">
 
@@ -739,7 +851,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
               </label>
               <input type="text" class="form-input" value="<?= htmlspecialchars($user['full_name']) ?>" readonly>
               <div class="user-info-row">
-                <span class="user-badge-chip">Kelas: <?= htmlspecialchars($user['kelas'] ?: 'Umum') ?></span>
+                <?php if (!empty($user['nik'])): ?><span class="user-badge-chip"><?= (strcasecmp($user['kelas'] ?? '', 'Guru') === 0 ? 'NIP: ' : 'NIS: ') . htmlspecialchars($user['nik']) ?></span><?php endif; ?>
                 <span class="user-badge-chip">No. Anggota: <?= htmlspecialchars($user['no_anggota'] ?: '—') ?></span>
               </div>
             </div>
@@ -902,7 +1014,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
   <div class="modal-box">
     <div class="modal-header">
       <div class="modal-title">Pilih Buku yang Ingin Dipinjam</div>
-      <button type="button" class="modal-close" onclick="tutupModalPilihBuku()">✕</button>
+      <button type="button" class="modal-close" onclick="tutupModalPilihBuku()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="display:inline-block;vertical-align:-1px;"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> </button>
     </div>
     <div class="modal-search">
       <input type="text" id="cariBukuModal" class="form-input" placeholder="Ketik judul, penulis, atau kategori…" oninput="filterBukuModal(this.value)">
@@ -956,13 +1068,13 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
       const isExtValid = validExts.some(ext => fileName.endsWith(ext));
 
       if (!isExtValid && file.type && !file.type.startsWith('image/')) {
-        alert('Harap pilih file gambar dengan format JPG, JPEG, PNG, atau WEBP.');
+        AksaAlert({ title: 'Format Tidak Didukung', message: 'Harap pilih berkas gambar dengan format JPG, JPEG, PNG, atau WEBP.', type: 'warning' });
         input.value = '';
         return;
       }
 
       if (file.size > 5 * 1024 * 1024) {
-        alert('Ukuran gambar kartu terlalu besar (maksimal 5MB).');
+        AksaAlert({ title: 'Ukuran Terlalu Besar', message: 'Ukuran gambar kartu terlalu besar (maksimal 5 MB). Silakan gunakan gambar dengan ukuran lebih kecil.', type: 'warning' });
         input.value = '';
         return;
       }
@@ -1027,7 +1139,7 @@ $page_title = 'Ajukan Peminjaman Buku – AKSA NOVA';
         e.preventDefault();
         uploadArea.classList.add('has-error');
         uploadArea.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        alert('Foto/gambar kartu anggota wajib diunggah sebagai bukti validasi.');
+        AksaAlert({ title: 'Unggahan Kartu Diperlukan', message: 'Foto atau gambar kartu anggota wajib diunggah sebagai bukti validasi peminjaman.', type: 'warning' });
         return false;
       }
       const btn = document.getElementById('btnSubmit');

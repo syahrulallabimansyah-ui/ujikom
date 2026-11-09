@@ -1,7 +1,7 @@
 <?php
 // pengaturan_denda.php — Pengaturan Tarif Denda Keterlambatan
 declare(strict_types=1);
-session_start();
+if (session_status() === PHP_SESSION_NONE) session_start();
 
 if (!isset($_SESSION['user_id']) || ($_SESSION['role'] ?? '') !== 'admin') {
     header('Location: sign_in.php');
@@ -57,35 +57,71 @@ if (!function_exists('setSetting')) {
 }
 
 // ─────────────────────────────────────────────
-//  AKSI: Simpan pengaturan
+//  AKSI POST: Simpan pengaturan & Tandai Lunas
 // ─────────────────────────────────────────────
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'simpan_pengaturan') {
-    $denda_per_hari    = (int)($_POST['denda_per_hari']    ?? 1000);
-    $denda_aktif       = isset($_POST['denda_aktif']) ? '1' : '0';
-    $grace_period      = max(0, (int)($_POST['grace_period'] ?? 0));
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
+    $is_ajax = (isset($_POST['is_ajax']) && $_POST['is_ajax'] === '1') ||
+               (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest');
 
-    if ($denda_per_hari < 0) {
-        $msg = 'Tarif denda tidak boleh negatif.';
+    if (!csrf_verify()) {
+        if ($is_ajax) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['success' => false, 'message' => 'Sesi keamanan formulir kedaluwarsa. Silakan muat ulang halaman.']);
+            exit;
+        }
+        $msg = 'Sesi keamanan formulir kedaluwarsa. Silakan muat ulang halaman.';
         $msg_type = 'error';
     } else {
-        setSetting($conn, 'denda_per_hari',        (string)$denda_per_hari);
-        setSetting($conn, 'denda_aktif',            $denda_aktif);
-        setSetting($conn, 'denda_grace_period',     (string)$grace_period);
+        if (($_POST['action'] ?? '') === 'simpan_pengaturan') {
+            $denda_per_hari = isset($_POST['denda_per_hari']) ? (int)$_POST['denda_per_hari'] : (int)getSetting($conn, 'denda_per_hari', '1000');
+            $denda_aktif    = isset($_POST['denda_aktif']) ? ((int)$_POST['denda_aktif'] === 1 ? '1' : '0') : getSetting($conn, 'denda_aktif', '1');
+            $grace_period   = isset($_POST['grace_period']) ? max(0, (int)$_POST['grace_period']) : (int)getSetting($conn, 'denda_grace_period', '0');
 
-        $msg = 'Pengaturan denda berhasil disimpan!';
-        $msg_type = 'success';
-    }
-}
+            if ($denda_per_hari < 0) {
+                if ($is_ajax) {
+                    header('Content-Type: application/json; charset=utf-8');
+                    echo json_encode(['success' => false, 'message' => 'Tarif denda tidak boleh bernilai negatif.']);
+                    exit;
+                }
+                $msg = 'Tarif denda tidak boleh negatif.';
+                $msg_type = 'error';
+            } else {
+                setSetting($conn, 'denda_per_hari',    (string)$denda_per_hari);
+                setSetting($conn, 'denda_aktif',       $denda_aktif);
+                setSetting($conn, 'denda_grace_period', (string)$grace_period);
 
-// AKSI: Tandai denda lunas
-if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST' && ($_POST['action'] ?? '') === 'tandai_lunas') {
-    $pem_id = (int)($_POST['pem_id'] ?? 0);
-    if ($pem_id > 0) {
-        mysqli_query($conn,
-            "UPDATE peminjaman SET status_denda='lunas' WHERE id=$pem_id AND status_denda='belum_bayar'"
-        );
-        $msg = 'Denda ditandai sebagai lunas.';
-        $msg_type = 'success';
+                if ($is_ajax) {
+                    header('Content-Type: application/json; charset=utf-8');
+                    $msg_text = ($denda_aktif === '1') ? 'Fitur denda diaktifkan dan disimpan' : 'Fitur denda dinonaktifkan dan disimpan';
+                    $field = $_POST['field'] ?? 'all';
+                    if ($field === 'denda_per_hari') {
+                        $msg_text = 'Tarif denda harian berhasil disimpan';
+                    } elseif ($field === 'grace_period') {
+                        $msg_text = 'Toleransi masa tenggang berhasil disimpan';
+                    }
+                    echo json_encode([
+                        'success'        => true,
+                        'denda_aktif'    => ($denda_aktif === '1'),
+                        'denda_per_hari' => $denda_per_hari,
+                        'grace_period'   => $grace_period,
+                        'message'        => $msg_text
+                    ]);
+                    exit;
+                }
+
+                $msg = 'Pengaturan denda berhasil disimpan!';
+                $msg_type = 'success';
+            }
+        } elseif (($_POST['action'] ?? '') === 'tandai_lunas') {
+            $pem_id = (int)($_POST['pem_id'] ?? 0);
+            if ($pem_id > 0) {
+                mysqli_query($conn,
+                    "UPDATE peminjaman SET status_denda='lunas' WHERE id=$pem_id AND status_denda='belum_bayar'"
+                );
+                $msg = 'Denda ditandai sebagai lunas.';
+                $msg_type = 'success';
+            }
+        }
     }
 }
 
@@ -221,6 +257,24 @@ while ($row = mysqli_fetch_assoc($res)) {
     }
     .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
     .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn.sidebar-btn-logout {
+      color: #e74c3c !important;
+      margin-top: 10px;
+    }
+    .sidebar-btn.sidebar-btn-logout svg {
+      color: #e74c3c !important;
+      stroke: #e74c3c !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover {
+      background: rgba(231,76,60,.14) !important;
+      border-color: #e74c3c !important;
+      color: #ff6b6b !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover svg {
+      color: #ff6b6b !important;
+      stroke: #ff6b6b !important;
+      transform: translateX(2px);
+    }
     .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
@@ -259,18 +313,134 @@ while ($row = mysqli_fetch_assoc($res)) {
     .form-input:focus { border-color:#3b82f6; }
     .form-hint { font-size:.67rem; color:var(--muted); }
 
-    /* Toggle switch */
-    .toggle-wrap { display:flex; align-items:center; gap:10px; padding:10px 0; }
-    .toggle-label { font-size:.85rem; font-weight:700; color:var(--text); }
-    .toggle { position:relative; width:44px; height:24px; flex-shrink:0; }
+    /* Toggle switch - Kontras Tinggi di Light & Dark Mode */
+    .toggle-wrap { display:flex; align-items:center; gap:12px; padding:10px 0; }
+    .toggle-label { font-size:.88rem; font-weight:700; color:var(--text); }
+    .toggle { position:relative; width:48px; height:26px; flex-shrink:0; }
     .toggle input { opacity:0; width:0; height:0; }
-    .toggle-slider { position:absolute; inset:0; border-radius:12px; background:rgba(255,255,255,.15); cursor:pointer; transition:.2s; }
-    .toggle-slider::before { content:''; position:absolute; width:18px; height:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s; }
-    .toggle input:checked + .toggle-slider { background:#059669; }
-    .toggle input:checked + .toggle-slider::before { transform:translateX(20px); }
+    .toggle-slider {
+      position:absolute; inset:0; border-radius:999px;
+      background:#cbd5e1;
+      border:1.5px solid #94a3b8;
+      cursor:pointer;
+      transition:background .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    html:not(.light) .toggle-slider {
+      background:#334155;
+      border:1.5px solid #475569;
+    }
+    .toggle-slider::before {
+      content:''; position:absolute; width:18px; height:18px; left:3px; top:2.5px;
+      background:#ffffff; border-radius:50%;
+      transition:transform .25s cubic-bezier(0.22, 1, 0.36, 1), background .25s ease;
+      box-shadow:0 2px 5px rgba(0,0,0,.25);
+    }
+    .toggle input:checked + .toggle-slider {
+      background:#059669;
+      border-color:#059669;
+    }
+    .toggle input:checked + .toggle-slider::before {
+      transform:translateX(22px);
+      background:#ffffff;
+    }
+    .toggle input:focus-visible + .toggle-slider {
+      box-shadow:0 0 0 3px rgba(5,150,105,.35);
+    }
 
-    .btn-save { padding:10px 24px; border-radius:8px; border:none; background:var(--btn-primary); color:#fff; font-family:'Nunito',sans-serif; font-size:.82rem; font-weight:700; cursor:pointer; transition:background var(--trans); margin-top:16px; }
-    .btn-save:hover { background:#222; }
+    /* Floating Toast Notification Auto-Save */
+    .autosave-toast {
+      position: fixed;
+      top: 24px;
+      right: 28px;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      border-radius: 12px;
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.25);
+      font-size: .84rem;
+      font-weight: 600;
+      opacity: 0;
+      transform: translateY(-12px);
+      transition: opacity .25s ease, transform .25s ease;
+      pointer-events: none;
+    }
+    body.dark .autosave-toast, html:not(.light) .autosave-toast {
+      background: #1e293b;
+      color: #f1f5f9;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    .autosave-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .toast-icon-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .toast-icon-wrap svg {
+      width: 16px;
+      height: 16px;
+    }
+    .toast-icon-wrap .toast-icon-check {
+      display: block !important;
+      color: #10b981;
+    }
+    .toast-icon-wrap .toast-icon-warn {
+      display: none !important;
+      color: #ef4444;
+    }
+    .autosave-toast.toast-error {
+      background: #7f1d1d;
+      color: #fef2f2;
+    }
+    .autosave-toast.toast-error .toast-icon-wrap .toast-icon-check {
+      display: none !important;
+    }
+    .autosave-toast.toast-error .toast-icon-wrap .toast-icon-warn {
+      display: block !important;
+    }
+
+    .autosave-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: .72rem;
+      font-weight: 700;
+      background: rgba(16, 185, 129, 0.12);
+      color: #10b981;
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      transition: all .2s ease;
+    }
+    .autosave-pill .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+    .autosave-pill.saving {
+      background: rgba(245, 158, 11, 0.12);
+      color: #f59e0b;
+      border-color: rgba(245, 158, 11, 0.25);
+    }
+    .autosave-pill.saving .dot {
+      background: #f59e0b;
+      animation: autosavePulse 1s infinite;
+    }
+    @keyframes autosavePulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.35; transform: scale(0.85); }
+    }
 
     /* DENDA TABLE */
     .denda-section-title { font-size:1rem; font-weight:800; color:var(--text); margin-bottom:14px; display:flex; align-items:center; gap:8px; }
@@ -398,9 +568,9 @@ while ($row = mysqli_fetch_assoc($res)) {
   ?>
   <a class="sidebar-btn" href="pengajuan_buku.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-    Pengajuan Buku
+    Pengajuan Pinjam
     <?php if ($cnt_aju_badge > 0): ?>
-      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -417,19 +587,38 @@ while ($row = mysqli_fetch_assoc($res)) {
       </svg>
       Pengaturan Musik
     </a>
+    <a class="sidebar-btn" href="pengaturan_lokasi.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+      </svg>
+      Peta & Jam Buka
+    </a>
   
-    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Tema & Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </button>
-    <a class="sidebar-btn" href="beranda.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    Kembali
-  </a>
+    <a class="sidebar-btn sidebar-btn-logout" href="logout.php" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Keluar
+    </a>
   </nav>
 </aside>
 
 <main class="main">
+
+  <!-- Floating Toast Notifikasi Auto-Save -->
+  <div id="autoSaveToast" class="autosave-toast" aria-live="polite">
+    <div class="toast-icon-wrap">
+      <svg class="toast-icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      <svg class="toast-icon-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    </div>
+    <span class="toast-text">Perubahan tersimpan otomatis</span>
+  </div>
 
   <?php if ($msg): ?>
   <div class="alert alert-<?= $msg_type ?>">
@@ -437,7 +626,13 @@ while ($row = mysqli_fetch_assoc($res)) {
   </div>
   <?php endif; ?>
 
-  <div class="page-title">Pengaturan Denda</div>
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px;">
+    <div class="page-title" style="margin-bottom:0;">Pengaturan Denda</div>
+    <div id="autoSavePill" class="autosave-pill">
+      <span class="dot"></span>
+      <span class="text">Otomatis Tersimpan</span>
+    </div>
+  </div>
 
   <!-- STATISTIK -->
   <div class="stat-row">
@@ -470,7 +665,8 @@ while ($row = mysqli_fetch_assoc($res)) {
       Konfigurasi Tarif Denda
     </div>
 
-    <form method="POST" action="pengaturan_denda.php<?= $search ? '?q='.urlencode($search) : '' ?>">
+    <form id="dendaForm" method="POST" action="pengaturan_denda.php<?= $search ? '?q='.urlencode($search) : '' ?>" onsubmit="return false;">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" value="simpan_pengaturan"/>
 
       <div class="toggle-wrap" style="margin-bottom:16px;">
@@ -479,8 +675,8 @@ while ($row = mysqli_fetch_assoc($res)) {
           <span class="toggle-slider"></span>
         </label>
         <div>
-          <div class="toggle-label">Fitur Denda Aktif</div>
-          <div style="font-size:.7rem;color:var(--muted);margin-top:1px;">Nonaktifkan untuk menangguhkan perhitungan denda</div>
+          <div class="toggle-label" id="dendaAktifLabel"><?= $denda_aktif ? 'Fitur Denda Aktif' : 'Fitur Denda Nonaktif' ?></div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:1px;">Pengaturan tersimpan otomatis saat Anda mengubah nilai atau menggeser tombol.</div>
         </div>
       </div>
 
@@ -488,24 +684,22 @@ while ($row = mysqli_fetch_assoc($res)) {
         <div class="form-group">
           <label class="form-label" for="dendaPerHari">Tarif Denda per Hari (Rp)</label>
           <input type="number" id="dendaPerHari" name="denda_per_hari" class="form-input"
-                 value="<?= $denda_per_hari ?>" min="0" step="500" required/>
+                 value="<?= $denda_per_hari ?>" min="0" step="500" required autocomplete="off"/>
           <div class="form-hint">Jumlah rupiah yang dikenakan per hari keterlambatan</div>
         </div>
         <div class="form-group">
           <label class="form-label" for="gracePeriod">Toleransi (hari)</label>
           <input type="number" id="gracePeriod" name="grace_period" class="form-input"
-                 value="<?= $grace_period ?>" min="0" max="30" required/>
+                 value="<?= $grace_period ?>" min="0" max="30" required autocomplete="off"/>
           <div class="form-hint">Denda tidak dihitung jika terlambat di bawah toleransi ini (0 = langsung denda)</div>
         </div>
       </div>
 
-      <div style="margin-top:10px;padding:12px 14px;background:#fffbeb;border-radius:8px;border:1px solid #fcd34d;font-size:.76rem;color:#92400e;font-weight:600;">
-        Preview: Terlambat <strong>3 hari</strong> → Denda
-        <strong>Rp <?= number_format(max(0, 3 - $grace_period) * $denda_per_hari, 0, ',', '.') ?></strong>
-        <?= $grace_period > 0 ? "(toleransi $grace_period hari)" : '' ?>
+      <div style="margin-top:14px;padding:12px 14px;background:#fffbeb;border-radius:8px;border:1px solid #fcd34d;font-size:.76rem;color:#92400e;font-weight:600;">
+        Preview: Terlambat <strong>3 hari</strong> &rarr; Denda
+        <strong id="previewAmount">Rp <?= number_format(max(0, 3 - $grace_period) * $denda_per_hari, 0, ',', '.') ?></strong>
+        <span id="previewTolerance"><?= $grace_period > 0 ? "(toleransi $grace_period hari)" : '' ?></span>
       </div>
-
-      <button type="submit" class="btn-save">Simpan Pengaturan</button>
     </form>
   </div>
 
@@ -522,7 +716,7 @@ while ($row = mysqli_fetch_assoc($res)) {
         <input type="text" name="q" placeholder="Cari nama peminjam atau judul buku…" value="<?= htmlspecialchars($search) ?>"/>
         <button type="submit" class="btn-search">Cari</button>
         <?php if ($search): ?>
-        <a href="pengaturan_denda.php" style="font-size:.75rem;color:var(--muted);text-decoration:none;white-space:nowrap;">✕ Reset</a>
+        <a href="pengaturan_denda.php" style="display:inline-flex;align-items:center;gap:4px;font-size:.75rem;color:var(--muted);text-decoration:none;white-space:nowrap;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="18" x2="18" y2="6"/></svg> Reset</a>
         <?php endif; ?>
       </div>
     </form>
@@ -573,11 +767,11 @@ while ($row = mysqli_fetch_assoc($res)) {
             </td>
             <td>
               <?php if ($d['status_denda'] === 'belum_bayar'): ?>
-              <form method="POST" action="pengaturan_denda.php<?= $search ? '?q='.urlencode($search) : '' ?>" style="display:inline;">
+              <form method="POST" action="pengaturan_denda.php<?= $search ? '?q='.urlencode($search) : '' ?>" style="display:inline;" onsubmit="event.preventDefault(); konfirmasiTandaiLunas(this, '<?= htmlspecialchars(addslashes($d['nama_peminjam'])) ?>', '<?= number_format((int)$d['denda'], 0, ',', '.') ?>');">
+                <?= csrf_field() ?>
                 <input type="hidden" name="action" value="tandai_lunas"/>
                 <input type="hidden" name="pem_id" value="<?= (int)$d['id'] ?>"/>
-                <button type="submit" class="btn-lunas"
-                  onclick="return confirm('Tandai denda peminjaman ini sebagai lunas?')">
+                <button type="submit" class="btn-lunas">
                   Tandai Lunas
                 </button>
               </form>
@@ -596,21 +790,121 @@ while ($row = mysqli_fetch_assoc($res)) {
 </main>
 
 <script>
-// Sidebar mobile toggle dikelola terpusat oleh settings_include.php
+// ── Auto-Save Pengaturan Denda AKSA NOVA ──
+const dendaAktifInput = document.getElementById('dendaAktif');
+const dendaAktifLabel = document.getElementById('dendaAktifLabel');
+const rateInput       = document.getElementById('dendaPerHari');
+const graceInput      = document.getElementById('gracePeriod');
+const previewAmount   = document.getElementById('previewAmount');
+const previewTol      = document.getElementById('previewTolerance');
+const autoSaveToast   = document.getElementById('autoSaveToast');
+const autoSavePill    = document.getElementById('autoSavePill');
 
-// Live preview denda
-const rateInput  = document.getElementById('dendaPerHari');
-const graceInput = document.getElementById('gracePeriod');
-const preview    = document.querySelector('.settings-card [style*="fffbeb"] strong:last-child');
+let toastTimer = null;
+function showAutoSaveToast(msg, isError = false) {
+  if (!autoSaveToast) return;
+  autoSaveToast.querySelector('.toast-text').textContent = msg;
+  autoSaveToast.classList.toggle('toast-error', isError);
+  autoSaveToast.classList.add('show');
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    autoSaveToast.classList.remove('show');
+  }, 3000);
+}
+
+function setAutoSavePill(state, text) {
+  if (!autoSavePill) return;
+  autoSavePill.className = 'autosave-pill ' + (state === 'saving' ? 'saving' : '');
+  autoSavePill.querySelector('.text').textContent = text || (state === 'saving' ? 'Menyimpan...' : 'Otomatis Tersimpan');
+}
+
+
+function konfirmasiTandaiLunas(form, nama, nominal) {
+  AksaConfirm({
+    title: 'Tandai Denda Lunas?',
+    icon: 'denda',
+    message: `Tandai tagihan denda sebesar <strong>Rp ${nominal}</strong> untuk peminjam <strong>${nama}</strong> sebagai telah lunas dibayar?`,
+    confirmText: 'Ya, Tandai Lunas',
+    cancelText: 'Batal',
+    type: 'success'
+  }).then(function(confirmed) {
+    if (confirmed) form.submit();
+  });
+}
+
 function updatePreview() {
-  const rate  = parseInt(rateInput?.value || 0);
-  const grace = parseInt(graceInput?.value || 0);
+  const rate  = parseInt(rateInput?.value || 0, 10);
+  const grace = parseInt(graceInput?.value || 0, 10);
   const days  = Math.max(0, 3 - grace);
   const total = days * rate;
-  if (preview) preview.textContent = 'Rp ' + total.toLocaleString('id-ID');
+  if (previewAmount) previewAmount.textContent = 'Rp ' + total.toLocaleString('id-ID');
+  if (previewTol) previewTol.textContent = grace > 0 ? `(toleransi ${grace} hari)` : '';
 }
-rateInput?.addEventListener('input', updatePreview);
-graceInput?.addEventListener('input', updatePreview);
+
+function saveDendaSettings(field = 'all') {
+  setAutoSavePill('saving', 'Menyimpan...');
+  const fd = new FormData();
+  fd.append('action', 'simpan_pengaturan');
+  fd.append('csrf_token', '<?= csrf_token() ?>');
+  fd.append('is_ajax', '1');
+  fd.append('denda_aktif', dendaAktifInput.checked ? '1' : '0');
+  fd.append('denda_per_hari', rateInput.value);
+  fd.append('grace_period', graceInput.value);
+  fd.append('field', field);
+
+  fetch('pengaturan_denda.php', {
+    method: 'POST',
+    body: fd
+  })
+  .then(r => r.json())
+  .then(data => {
+    setAutoSavePill('saved', 'Otomatis Tersimpan');
+    if (data.success) {
+      showAutoSaveToast(data.message);
+      if (dendaAktifLabel) {
+        dendaAktifLabel.textContent = dendaAktifInput.checked ? 'Fitur Denda Aktif' : 'Fitur Denda Nonaktif';
+      }
+      updatePreview();
+    } else {
+      showAutoSaveToast(data.message || 'Gagal menyimpan pengaturan denda', true);
+    }
+  })
+  .catch(() => {
+    setAutoSavePill('saved', 'Gagal Tersimpan');
+    showAutoSaveToast('Koneksi terputus saat menyimpan pengaturan denda', true);
+  });
+}
+
+// Auto-save instan saat toggle digeser
+dendaAktifInput?.addEventListener('change', function() {
+  saveDendaSettings('denda_aktif');
+});
+
+// Auto-save debounced saat tarif / toleransi diubah
+let debounceTimer = null;
+function onInputChange(field) {
+  updatePreview();
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(() => {
+    saveDendaSettings(field);
+  }, 600);
+}
+
+rateInput?.addEventListener('input', () => onInputChange('denda_per_hari'));
+graceInput?.addEventListener('input', () => onInputChange('grace_period'));
+
+rateInput?.addEventListener('blur', () => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    saveDendaSettings('denda_per_hari');
+  }
+});
+graceInput?.addEventListener('blur', () => {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+    saveDendaSettings('grace_period');
+  }
+});
 </script>
 <?php require_once 'modal_profil_admin.php';
 require_once 'pengaturan_panel.php'; ?>

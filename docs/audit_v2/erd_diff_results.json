@@ -1,0 +1,316 @@
+{
+  "summary_counts": {
+    "sql_tables": 12,
+    "erd_tables": 12,
+    "total_columns_checked": 100,
+    "sql_foreign_keys": 13,
+    "erd_relationships": 13,
+    "in_erd_not_sql_tables": 0,
+    "in_erd_not_sql_columns": 0,
+    "in_sql_not_erd_tables": 0,
+    "in_sql_not_erd_columns": 0,
+    "type_or_null_annotation_diffs": 5,
+    "key_diffs_in_html": 2,
+    "relationship_diffs": 6,
+    "puml_nullability_star_diffs": 36
+  },
+  "html_and_png_vs_sql": {
+    "1_in_erd_not_sql": {
+      "tables": [],
+      "columns": []
+    },
+    "2_in_sql_not_erd": {
+      "tables": [],
+      "columns": []
+    },
+    "3_type_null_default_diffs": [
+      {
+        "column": "buku.sinopsis",
+        "aspect": "nullable_unmarked_in_erd",
+        "erd": "text",
+        "sql": "NULLABLE (default=None)"
+      },
+      {
+        "column": "password_otp.request_ip",
+        "aspect": "nullable_unmarked_in_erd",
+        "erd": "varchar(45)",
+        "sql": "NULLABLE (default=None)"
+      },
+      {
+        "column": "pengajuan_peminjaman.alasan_penolakan",
+        "aspect": "nullable_unmarked_in_erd",
+        "erd": "text",
+        "sql": "NULLABLE (default=None)"
+      },
+      {
+        "column": "pengajuan_peminjaman.approved_at",
+        "aspect": "nullable_unmarked_in_erd",
+        "erd": "datetime",
+        "sql": "NULLABLE (default=None)"
+      },
+      {
+        "column": "pengajuan_peminjaman.catatan_pengambilan",
+        "aspect": "nullable_unmarked_in_erd",
+        "erd": "varchar(255)",
+        "sql": "NULLABLE (default=None)"
+      }
+    ],
+    "4_key_diffs": [
+      {
+        "column": "pengajuan_peminjaman.buku_id",
+        "erd_pills": [
+          "NO FK"
+        ],
+        "sql_key": "FK -> buku.id"
+      },
+      {
+        "column": "pengajuan_peminjaman.user_id",
+        "erd_pills": [
+          "NO FK"
+        ],
+        "sql_key": "FK -> users.id"
+      }
+    ],
+    "5_relationship_cardinality_delete_diffs": [
+      {
+        "relation": "buku -> pengajuan_peminjaman (buku_id)",
+        "issue": "Digambar sebagai Relasi Logis Tanpa FK di ERD, padahal di SQL ADA FOREIGN KEY fisik",
+        "erd": "1:N LOGIS",
+        "sql": "CONSTRAINT fk_pengajuan_buku FOREIGN KEY (buku_id) REFERENCES buku(id) ON DELETE CASCADE ON UPDATE CASCADE"
+      },
+      {
+        "relation": "users -> buku_favorites (user_id)",
+        "issue": "FK fisik digambar memakai garis putus-putus (stroke-dasharray) yang di legenda berarti 'Relasi Logis (Tanpa FK DB)'",
+        "erd": {
+          "parent": "users",
+          "child": "buku_favorites",
+          "comment_tag": "1:N CASCADE",
+          "is_dashed": true,
+          "marker_start": "one-mandatory-sky",
+          "marker_end": "cf-many-sky"
+        },
+        "sql": "CONSTRAINT fk_favorites_user ON DELETE CASCADE"
+      },
+      {
+        "relation": "users -> buku_likes (user_id)",
+        "issue": "FK fisik digambar memakai garis putus-putus (stroke-dasharray) yang di legenda berarti 'Relasi Logis (Tanpa FK DB)'",
+        "erd": {
+          "parent": "users",
+          "child": "buku_likes",
+          "comment_tag": "1:N CASCADE",
+          "is_dashed": true,
+          "marker_start": "one-mandatory-rose",
+          "marker_end": "cf-many-rose"
+        },
+        "sql": "CONSTRAINT fk_likes_user ON DELETE CASCADE"
+      },
+      {
+        "relation": "users -> buku_ratings (user_id)",
+        "issue": "FK fisik digambar memakai garis putus-putus (stroke-dasharray) yang di legenda berarti 'Relasi Logis (Tanpa FK DB)'",
+        "erd": {
+          "parent": "users",
+          "child": "buku_ratings",
+          "comment_tag": "1:N CASCADE",
+          "is_dashed": true,
+          "marker_start": "one-mandatory-amber",
+          "marker_end": "cf-many-amber"
+        },
+        "sql": "CONSTRAINT fk_ratings_user ON DELETE CASCADE"
+      },
+      {
+        "relation": "users -> peminjaman (user_id)",
+        "issue": "Sisi induk digambar mandatory one (||), padahal kolom FK nullable (ON DELETE SET NULL -> seharusnya 0..1 / o|)",
+        "erd": "one-mandatory",
+        "sql": "peminjaman.user_id NULLABLE, ON DELETE SET NULL"
+      },
+      {
+        "relation": "users -> pengajuan_peminjaman (user_id)",
+        "issue": "Digambar sebagai Relasi Logis Tanpa FK di ERD, padahal di SQL ADA FOREIGN KEY fisik",
+        "erd": "1:N LOGIS",
+        "sql": "CONSTRAINT fk_pengajuan_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE ON UPDATE CASCADE"
+      }
+    ]
+  },
+  "puml_nullability_diffs": [
+    {
+      "column": "admin_profile.display_name",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "admin_profile.foto",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "banner.judul",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "banner.subjudul",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "banner.gambar",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "banner.link_url",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "banner.urutan",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "banner.aktif",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "buku.penulis",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "buku.isbn",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "buku.genre",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "buku.stok",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "buku.rak",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "buku.gambar",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "peminjaman.terlambat_hari",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "peminjaman.denda",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "peminjaman.status_denda",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "peminjaman.status",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "peminjaman.created_at",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "pengajuan_peminjaman.user_id",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "pengajuan_peminjaman.buku_id",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "pengajuan_peminjaman.total_buku",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "pengajuan_peminjaman.waktu_pengambilan",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "pengajuan_peminjaman.status",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "pengaturan.nilai",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "pengaturan.keterangan",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "reminder_log.terlambat_hari",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "reminder_log.wa_terkirim",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "reminder_log.created_at",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "users.nik",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "users.kelas",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "users.no_hp",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "users.plain_password",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "users.foto",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "users.status",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    },
+    {
+      "column": "users.card_status",
+      "puml_not_null_star": false,
+      "sql_not_null": true
+    }
+  ]
+}

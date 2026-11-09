@@ -1,0 +1,3537 @@
+{
+  "source_files": {
+    "main_sql": "database/aksa_nova.sql",
+    "migration_sql": "database/migrations/2026_otp_reset.sql"
+  },
+  "table_count": 12,
+  "tables": {
+    "admin_profile": {
+      "table": "admin_profile",
+      "start_line": 25,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci",
+      "column_order": [
+        "id",
+        "user_id",
+        "display_name",
+        "foto",
+        "updated_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 26,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 27,
+          "is_pk": false,
+          "is_uk_single": true,
+          "fk_target": "users.id"
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "varchar(100)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "Admin",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 28,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "foto": {
+          "name": "foto",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 29,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": true,
+          "comment": "",
+          "line": 30,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [
+        {
+          "name": "uq_admin_user",
+          "columns": [
+            "user_id"
+          ],
+          "line": 32
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": [
+        {
+          "name": "fk_admin_profile_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 33
+        }
+      ]
+    },
+    "banner": {
+      "table": "banner",
+      "start_line": 54,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci",
+      "column_order": [
+        "id",
+        "judul",
+        "subjudul",
+        "gambar",
+        "link_url",
+        "urutan",
+        "aktif",
+        "created_at",
+        "updated_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 55,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "judul": {
+          "name": "judul",
+          "type": "varchar(150)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 56,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "subjudul": {
+          "name": "subjudul",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 57,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "gambar": {
+          "name": "gambar",
+          "type": "varchar(500)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 58,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "link_url": {
+          "name": "link_url",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 59,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "urutan": {
+          "name": "urutan",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 60,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "aktif": {
+          "name": "aktif",
+          "type": "tinyint(1)",
+          "base_type": "tinyint",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "1",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 61,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 62,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": true,
+          "comment": "",
+          "line": 63,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [],
+      "indexes": [],
+      "foreign_keys": []
+    },
+    "buku": {
+      "table": "buku",
+      "start_line": 85,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci",
+      "column_order": [
+        "id",
+        "judul",
+        "penulis",
+        "isbn",
+        "genre",
+        "sinopsis",
+        "stok",
+        "rak",
+        "gambar",
+        "created_at",
+        "updated_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 86,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "judul": {
+          "name": "judul",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 87,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "penulis": {
+          "name": "penulis",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 88,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "isbn": {
+          "name": "isbn",
+          "type": "varchar(50)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 89,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "genre": {
+          "name": "genre",
+          "type": "varchar(100)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 90,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "sinopsis": {
+          "name": "sinopsis",
+          "type": "text",
+          "base_type": "text",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 91,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "stok": {
+          "name": "stok",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 92,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "rak": {
+          "name": "rak",
+          "type": "varchar(100)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 93,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "gambar": {
+          "name": "gambar",
+          "type": "varchar(500)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 94,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 95,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": true,
+          "comment": "",
+          "line": 96,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [],
+      "indexes": [],
+      "foreign_keys": []
+    },
+    "buku_favorites": {
+      "table": "buku_favorites",
+      "start_line": 118,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci",
+      "column_order": [
+        "id",
+        "buku_id",
+        "user_id",
+        "created_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 119,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "buku_id": {
+          "name": "buku_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 120,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "buku.id"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 121,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "users.id"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 122,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [
+        {
+          "name": "uniq_fav",
+          "columns": [
+            "buku_id",
+            "user_id"
+          ],
+          "line": 124
+        }
+      ],
+      "indexes": [
+        {
+          "name": "fk_favorites_user",
+          "columns": [
+            "user_id"
+          ],
+          "line": 125
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_favorites_buku",
+          "columns": [
+            "buku_id"
+          ],
+          "ref_table": "buku",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 126
+        },
+        {
+          "name": "fk_favorites_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 127
+        }
+      ]
+    },
+    "buku_likes": {
+      "table": "buku_likes",
+      "start_line": 148,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci",
+      "column_order": [
+        "id",
+        "buku_id",
+        "user_id",
+        "created_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 149,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "buku_id": {
+          "name": "buku_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 150,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "buku.id"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 151,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "users.id"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 152,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [
+        {
+          "name": "uniq_like",
+          "columns": [
+            "buku_id",
+            "user_id"
+          ],
+          "line": 154
+        }
+      ],
+      "indexes": [
+        {
+          "name": "fk_likes_user",
+          "columns": [
+            "user_id"
+          ],
+          "line": 155
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_likes_buku",
+          "columns": [
+            "buku_id"
+          ],
+          "ref_table": "buku",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 156
+        },
+        {
+          "name": "fk_likes_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 157
+        }
+      ]
+    },
+    "buku_ratings": {
+      "table": "buku_ratings",
+      "start_line": 178,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci",
+      "column_order": [
+        "id",
+        "user_id",
+        "buku_id",
+        "rating",
+        "created_at",
+        "updated_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 179,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 180,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "users.id"
+        },
+        "buku_id": {
+          "name": "buku_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 181,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "buku.id"
+        },
+        "rating": {
+          "name": "rating",
+          "type": "tinyint",
+          "base_type": "tinyint",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 182,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 183,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 184,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [
+        {
+          "name": "uq_user_buku",
+          "columns": [
+            "user_id",
+            "buku_id"
+          ],
+          "line": 186
+        }
+      ],
+      "indexes": [
+        {
+          "name": "fk_ratings_buku",
+          "columns": [
+            "buku_id"
+          ],
+          "line": 187
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_ratings_buku",
+          "columns": [
+            "buku_id"
+          ],
+          "ref_table": "buku",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 188
+        },
+        {
+          "name": "fk_ratings_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 189
+        }
+      ]
+    },
+    "peminjaman": {
+      "table": "peminjaman",
+      "start_line": 209,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_unicode_ci",
+      "column_order": [
+        "id",
+        "buku_id",
+        "user_id",
+        "nama_peminjam",
+        "waktu_pinjam",
+        "batas_kembali",
+        "waktu_kembali",
+        "terlambat_hari",
+        "denda",
+        "status_denda",
+        "status",
+        "created_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 210,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "buku_id": {
+          "name": "buku_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 211,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "buku.id"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 212,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "users.id"
+        },
+        "nama_peminjam": {
+          "name": "nama_peminjam",
+          "type": "varchar(150)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 213,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "waktu_pinjam": {
+          "name": "waktu_pinjam",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 214,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "batas_kembali": {
+          "name": "batas_kembali",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 215,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "waktu_kembali": {
+          "name": "waktu_kembali",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 216,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "terlambat_hari": {
+          "name": "terlambat_hari",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "Jumlah hari keterlambatan",
+          "line": 217,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "denda": {
+          "name": "denda",
+          "type": "decimal(12,0)",
+          "base_type": "decimal",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "Total denda dalam rupiah",
+          "line": 218,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "status_denda": {
+          "name": "status_denda",
+          "type": "enum('tidak_ada','belum_bayar','lunas')",
+          "base_type": "enum",
+          "enum_values": [
+            "tidak_ada",
+            "belum_bayar",
+            "lunas"
+          ],
+          "nullable": false,
+          "has_default": true,
+          "default": "tidak_ada",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "Status pembayaran denda",
+          "line": 219,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('dipinjam','dikembalikan')",
+          "base_type": "enum",
+          "enum_values": [
+            "dipinjam",
+            "dikembalikan"
+          ],
+          "nullable": false,
+          "has_default": true,
+          "default": "dipinjam",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 220,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 221,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [],
+      "indexes": [
+        {
+          "name": "fk_peminjaman_buku",
+          "columns": [
+            "buku_id"
+          ],
+          "line": 223
+        },
+        {
+          "name": "fk_peminjaman_user",
+          "columns": [
+            "user_id"
+          ],
+          "line": 224
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_peminjaman_buku",
+          "columns": [
+            "buku_id"
+          ],
+          "ref_table": "buku",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "RESTRICT",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "RESTRICT",
+          "effective_on_update": "CASCADE",
+          "line": 225
+        },
+        {
+          "name": "fk_peminjaman_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "SET NULL",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "SET NULL",
+          "effective_on_update": "CASCADE",
+          "line": 226
+        }
+      ]
+    },
+    "pengajuan_peminjaman": {
+      "table": "pengajuan_peminjaman",
+      "start_line": 247,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_unicode_ci",
+      "column_order": [
+        "id",
+        "user_id",
+        "buku_id",
+        "nama_peminjam",
+        "file_kartu",
+        "total_buku",
+        "batas_kembali",
+        "waktu_pengambilan",
+        "catatan_pengambilan",
+        "status",
+        "alasan_penolakan",
+        "approved_at",
+        "created_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 248,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 249,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "users.id"
+        },
+        "buku_id": {
+          "name": "buku_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 250,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "buku.id"
+        },
+        "nama_peminjam": {
+          "name": "nama_peminjam",
+          "type": "varchar(150)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 251,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "file_kartu": {
+          "name": "file_kartu",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 252,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "total_buku": {
+          "name": "total_buku",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "1",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 253,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "batas_kembali": {
+          "name": "batas_kembali",
+          "type": "date",
+          "base_type": "date",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 254,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "waktu_pengambilan": {
+          "name": "waktu_pengambilan",
+          "type": "enum('sekarang','nanti')",
+          "base_type": "enum",
+          "enum_values": [
+            "sekarang",
+            "nanti"
+          ],
+          "nullable": false,
+          "has_default": true,
+          "default": "sekarang",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 255,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "catatan_pengambilan": {
+          "name": "catatan_pengambilan",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 256,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('menunggu','disetujui','ditolak')",
+          "base_type": "enum",
+          "enum_values": [
+            "menunggu",
+            "disetujui",
+            "ditolak"
+          ],
+          "nullable": false,
+          "has_default": true,
+          "default": "menunggu",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 257,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "alasan_penolakan": {
+          "name": "alasan_penolakan",
+          "type": "text",
+          "base_type": "text",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 258,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "approved_at": {
+          "name": "approved_at",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 259,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 260,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [],
+      "indexes": [
+        {
+          "name": "user_id",
+          "columns": [
+            "user_id"
+          ],
+          "line": 262
+        },
+        {
+          "name": "buku_id",
+          "columns": [
+            "buku_id"
+          ],
+          "line": 263
+        },
+        {
+          "name": "status",
+          "columns": [
+            "status"
+          ],
+          "line": 264
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_pengajuan_buku",
+          "columns": [
+            "buku_id"
+          ],
+          "ref_table": "buku",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 265
+        },
+        {
+          "name": "fk_pengajuan_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 266
+        }
+      ]
+    },
+    "pengaturan": {
+      "table": "pengaturan",
+      "start_line": 287,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_unicode_ci",
+      "column_order": [
+        "id",
+        "kunci",
+        "nilai",
+        "keterangan",
+        "updated_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 288,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "kunci": {
+          "name": "kunci",
+          "type": "varchar(100)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "Nama pengaturan",
+          "line": 289,
+          "is_pk": false,
+          "is_uk_single": true,
+          "fk_target": null
+        },
+        "nilai": {
+          "name": "nilai",
+          "type": "text",
+          "base_type": "text",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 290,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "keterangan": {
+          "name": "keterangan",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 291,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": true,
+          "comment": "",
+          "line": 292,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [
+        {
+          "name": "uq_kunci",
+          "columns": [
+            "kunci"
+          ],
+          "line": 294
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": []
+    },
+    "reminder_log": {
+      "table": "reminder_log",
+      "start_line": 315,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_unicode_ci",
+      "column_order": [
+        "id",
+        "peminjaman_id",
+        "tanggal",
+        "terlambat_hari",
+        "wa_terkirim",
+        "wa_terkirim_at",
+        "created_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 316,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "peminjaman_id": {
+          "name": "peminjaman_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 317,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "peminjaman.id"
+        },
+        "tanggal": {
+          "name": "tanggal",
+          "type": "date",
+          "base_type": "date",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "Tanggal deteksi/pengingat (1 baris per peminjaman per hari)",
+          "line": 318,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "terlambat_hari": {
+          "name": "terlambat_hari",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 319,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "wa_terkirim": {
+          "name": "wa_terkirim",
+          "type": "tinyint(1)",
+          "base_type": "tinyint",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 320,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "wa_terkirim_at": {
+          "name": "wa_terkirim_at",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 321,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 322,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [
+        {
+          "name": "uq_pinjam_tanggal",
+          "columns": [
+            "peminjaman_id",
+            "tanggal"
+          ],
+          "line": 324
+        }
+      ],
+      "indexes": [
+        {
+          "name": "idx_peminjaman",
+          "columns": [
+            "peminjaman_id"
+          ],
+          "line": 325
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_reminder_peminjaman",
+          "columns": [
+            "peminjaman_id"
+          ],
+          "ref_table": "peminjaman",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": "CASCADE",
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "CASCADE",
+          "line": 326
+        }
+      ]
+    },
+    "password_otp": {
+      "table": "password_otp",
+      "start_line": 348,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_unicode_ci",
+      "column_order": [
+        "id",
+        "user_id",
+        "otp_hash",
+        "expires_at",
+        "attempts",
+        "used_at",
+        "last_sent_at",
+        "created_at",
+        "request_ip"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 349,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 350,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "users.id"
+        },
+        "otp_hash": {
+          "name": "otp_hash",
+          "type": "char(64)",
+          "base_type": "char",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 351,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 352,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "tinyint",
+          "base_type": "tinyint",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 353,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 354,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "last_sent_at": {
+          "name": "last_sent_at",
+          "type": "datetime",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 355,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 356,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "request_ip": {
+          "name": "request_ip",
+          "type": "varchar(45)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 357,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [],
+      "indexes": [
+        {
+          "name": "idx_user_created",
+          "columns": [
+            "user_id",
+            "created_at"
+          ],
+          "line": 359
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_password_otp_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": null,
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "RESTRICT",
+          "line": 360
+        }
+      ]
+    },
+    "users": {
+      "table": "users",
+      "start_line": 371,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_0900_ai_ci",
+      "column_order": [
+        "id",
+        "full_name",
+        "nik",
+        "kelas",
+        "no_hp",
+        "no_anggota",
+        "username",
+        "email",
+        "password",
+        "plain_password",
+        "foto",
+        "role",
+        "status",
+        "card_status",
+        "created_at"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "int",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 372,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar(100)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 373,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "nik": {
+          "name": "nik",
+          "type": "varchar(30)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 374,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "kelas": {
+          "name": "kelas",
+          "type": "varchar(50)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 375,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "no_hp": {
+          "name": "no_hp",
+          "type": "varchar(20)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 376,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "no_anggota": {
+          "name": "no_anggota",
+          "type": "varchar(30)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 377,
+          "is_pk": false,
+          "is_uk_single": true,
+          "fk_target": null
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar(50)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 378,
+          "is_pk": false,
+          "is_uk_single": true,
+          "fk_target": null
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(100)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 379,
+          "is_pk": false,
+          "is_uk_single": true,
+          "fk_target": null
+        },
+        "password": {
+          "name": "password",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 380,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "plain_password": {
+          "name": "plain_password",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 381,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "foto": {
+          "name": "foto",
+          "type": "varchar(255)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 382,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "role": {
+          "name": "role",
+          "type": "enum('admin','member')",
+          "base_type": "enum",
+          "enum_values": [
+            "admin",
+            "member"
+          ],
+          "nullable": true,
+          "has_default": true,
+          "default": "member",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 383,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "status": {
+          "name": "status",
+          "type": "enum('pending','approved','rejected')",
+          "base_type": "enum",
+          "enum_values": [
+            "pending",
+            "approved",
+            "rejected"
+          ],
+          "nullable": false,
+          "has_default": true,
+          "default": "pending",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 384,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "card_status": {
+          "name": "card_status",
+          "type": "enum('active','frozen')",
+          "base_type": "enum",
+          "enum_values": [
+            "active",
+            "frozen"
+          ],
+          "nullable": false,
+          "has_default": true,
+          "default": "active",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "Dibekukan sementara saat proses Lupa Kartu berlangsung",
+          "line": 385,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 386,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [
+        {
+          "name": "username",
+          "columns": [
+            "username"
+          ],
+          "line": 388
+        },
+        {
+          "name": "email",
+          "columns": [
+            "email"
+          ],
+          "line": 389
+        },
+        {
+          "name": "uq_no_anggota",
+          "columns": [
+            "no_anggota"
+          ],
+          "line": 390
+        }
+      ],
+      "indexes": [],
+      "foreign_keys": []
+    }
+  },
+  "migration_tables": {
+    "password_otp": {
+      "table": "password_otp",
+      "start_line": 5,
+      "engine": "InnoDB",
+      "charset": "utf8mb4",
+      "collate": "utf8mb4_unicode_ci",
+      "column_order": [
+        "id",
+        "user_id",
+        "otp_hash",
+        "expires_at",
+        "attempts",
+        "used_at",
+        "last_sent_at",
+        "created_at",
+        "request_ip"
+      ],
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "INT",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": true,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 6,
+          "is_pk": true,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "INT",
+          "base_type": "int",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 7,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": "users.id"
+        },
+        "otp_hash": {
+          "name": "otp_hash",
+          "type": "CHAR(64)",
+          "base_type": "char",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 8,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "DATETIME",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 9,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "attempts": {
+          "name": "attempts",
+          "type": "TINYINT",
+          "base_type": "tinyint",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "0",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 10,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "used_at": {
+          "name": "used_at",
+          "type": "DATETIME",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 11,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "last_sent_at": {
+          "name": "last_sent_at",
+          "type": "DATETIME",
+          "base_type": "datetime",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": false,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 12,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "TIMESTAMP",
+          "base_type": "timestamp",
+          "enum_values": null,
+          "nullable": false,
+          "has_default": true,
+          "default": "CURRENT_TIMESTAMP",
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 13,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        },
+        "request_ip": {
+          "name": "request_ip",
+          "type": "VARCHAR(45)",
+          "base_type": "varchar",
+          "enum_values": null,
+          "nullable": true,
+          "has_default": true,
+          "default": null,
+          "auto_increment": false,
+          "on_update_current_timestamp": false,
+          "comment": "",
+          "line": 14,
+          "is_pk": false,
+          "is_uk_single": false,
+          "fk_target": null
+        }
+      },
+      "primary_key": [
+        "id"
+      ],
+      "unique_keys": [],
+      "indexes": [
+        {
+          "name": "idx_user_created",
+          "columns": [
+            "user_id",
+            "created_at"
+          ],
+          "line": 16
+        }
+      ],
+      "foreign_keys": [
+        {
+          "name": "fk_password_otp_user",
+          "columns": [
+            "user_id"
+          ],
+          "ref_table": "users",
+          "ref_columns": [
+            "id"
+          ],
+          "raw_on_delete": "CASCADE",
+          "raw_on_update": null,
+          "effective_on_delete": "CASCADE",
+          "effective_on_update": "RESTRICT",
+          "line": 17
+        }
+      ]
+    }
+  },
+  "password_otp_main_vs_migration_diffs": [],
+  "drift_analysis": {
+    "table_usage_counts": {
+      "buku_ratings": {
+        "SELECT": 9,
+        "INSERT": 1,
+        "UPDATE": 1,
+        "DELETE": 0,
+        "DDL": 0
+      },
+      "password_otp": {
+        "SELECT": 3,
+        "INSERT": 1,
+        "UPDATE": 3,
+        "DELETE": 2,
+        "DDL": 0
+      },
+      "pengajuan_peminjaman": {
+        "SELECT": 29,
+        "INSERT": 1,
+        "UPDATE": 2,
+        "DELETE": 2,
+        "DDL": 0
+      },
+      "users": {
+        "SELECT": 48,
+        "INSERT": 1,
+        "UPDATE": 10,
+        "DELETE": 1,
+        "DDL": 0
+      },
+      "buku_likes": {
+        "SELECT": 7,
+        "INSERT": 1,
+        "UPDATE": 0,
+        "DELETE": 1,
+        "DDL": 0
+      },
+      "buku": {
+        "SELECT": 40,
+        "INSERT": 1,
+        "UPDATE": 4,
+        "DELETE": 1,
+        "DDL": 0
+      },
+      "admin_profile": {
+        "SELECT": 14,
+        "INSERT": 1,
+        "UPDATE": 2,
+        "DELETE": 0,
+        "DDL": 0
+      },
+      "peminjaman": {
+        "SELECT": 37,
+        "INSERT": 2,
+        "UPDATE": 3,
+        "DELETE": 1,
+        "DDL": 0
+      },
+      "buku_favorites": {
+        "SELECT": 11,
+        "INSERT": 1,
+        "UPDATE": 0,
+        "DELETE": 1,
+        "DDL": 0
+      },
+      "pengaturan": {
+        "SELECT": 20,
+        "INSERT": 4,
+        "UPDATE": 3,
+        "DELETE": 0,
+        "DDL": 0
+      },
+      "reminder_log": {
+        "SELECT": 1,
+        "INSERT": 2,
+        "UPDATE": 0,
+        "DELETE": 0,
+        "DDL": 0
+      },
+      "banner": {
+        "SELECT": 7,
+        "INSERT": 1,
+        "UPDATE": 4,
+        "DELETE": 1,
+        "DDL": 0
+      }
+    },
+    "table_usage_locations": {
+      "buku_ratings": {
+        "SELECT": [
+          "beranda.php:93",
+          "buku_detail.php:89",
+          "buku_detail.php:102",
+          "buku_simpan.php:85",
+          "daftar_buku.php:112",
+          "rating_handler.php:30",
+          "rating_handler.php:34",
+          "rating_handler.php:56",
+          "rating_handler.php:64"
+        ],
+        "INSERT": [
+          "rating_handler.php:60"
+        ],
+        "UPDATE": [
+          "rating_handler.php:58"
+        ],
+        "DELETE": [],
+        "DDL": []
+      },
+      "password_otp": {
+        "SELECT": [
+          "includes/otp.php:33",
+          "includes/otp.php:54",
+          "includes/otp.php:268"
+        ],
+        "INSERT": [
+          "includes/otp.php:123"
+        ],
+        "UPDATE": [
+          "includes/otp.php:105",
+          "includes/otp.php:321",
+          "includes/otp.php:337"
+        ],
+        "DELETE": [
+          "includes/mailer.php:121",
+          "includes/otp.php:102"
+        ],
+        "DDL": []
+      },
+      "pengajuan_peminjaman": {
+        "SELECT": [
+          "api_cek_pengajuan_admin.php:25",
+          "api_cek_pengajuan_admin.php:32",
+          "daftar_anggota.php:15",
+          "daftar_anggota.php:798",
+          "dashboard.php:14",
+          "dashboard.php:771",
+          "dashboard_user.php:121",
+          "halaman_admin.php:15",
+          "halaman_admin.php:985",
+          "kelola_banner.php:14",
+          "kelola_banner.php:540",
+          "pengajuan_buku.php:15",
+          "pengajuan_buku.php:47",
+          "pengajuan_buku.php:112",
+          "pengajuan_buku.php:143",
+          "pengajuan_buku.php:162",
+          "pengajuan_buku.php:163",
+          "pengajuan_buku.php:164",
+          "pengajuan_buku.php:165",
+          "pengajuan_buku.php:190",
+          "pengaturan_denda.php:15",
+          "pengaturan_denda.php:567",
+          "pengaturan_lokasi.php:25",
+          "pengaturan_musik.php:15",
+          "pengaturan_musik.php:714",
+          "pinjam_buku.php:18",
+          "pinjam_buku.php:733",
+          "telah_dipinjam.php:17",
+          "telah_dipinjam.php:716"
+        ],
+        "INSERT": [
+          "pengajuan_peminjaman.php:179"
+        ],
+        "UPDATE": [
+          "pengajuan_buku.php:85",
+          "pengajuan_buku.php:100"
+        ],
+        "DELETE": [
+          "pengajuan_buku.php:123",
+          "pengajuan_buku.php:152"
+        ],
+        "DDL": []
+      },
+      "users": {
+        "SELECT": [
+          "api_cek_pengajuan_admin.php:32",
+          "beranda.php:17",
+          "beranda.php:117",
+          "buku_simpan.php:23",
+          "daftar_anggota.php:13",
+          "daftar_anggota.php:91",
+          "daftar_anggota.php:107",
+          "daftar_anggota.php:174",
+          "daftar_anggota.php:181",
+          "daftar_anggota.php:185",
+          "daftar_anggota.php:190",
+          "daftar_buku.php:18",
+          "dashboard.php:12",
+          "dashboard.php:84",
+          "dashboard_user.php:24",
+          "edit_kartu.php:25",
+          "edit_kartu.php:150",
+          "edit_kartu.php:162",
+          "edit_kartu.php:174",
+          "export_excel_dashboard.php:56",
+          "ganti_sandi_admin.php:42",
+          "halaman_admin.php:13",
+          "halaman_admin.php:970",
+          "kartu_anggota.php:12",
+          "kartu_anggota.php:42",
+          "kartu_anggota.php:68",
+          "kartu_clear.php:8",
+          "kartu_masuk.php:8",
+          "kelola_banner.php:12",
+          "lupa_kartu.php:86",
+          "pengajuan_buku.php:13",
+          "pengajuan_buku.php:190",
+          "pengajuan_peminjaman.php:24",
+          "pengaturan_denda.php:13",
+          "pengaturan_lokasi.php:23",
+          "pengaturan_musik.php:13",
+          "pinjam_buku.php:16",
+          "pinjam_buku.php:74",
+          "pinjam_buku.php:153",
+          "sign_in.php:40",
+          "sign_up.php:143",
+          "sign_up.php:153",
+          "sign_up.php:184",
+          "sign_up.php:202",
+          "telah_dipinjam.php:15",
+          "telah_dipinjam.php:180",
+          "update_profil_admin.php:50",
+          "includes/mailer.php:112"
+        ],
+        "INSERT": [
+          "sign_up.php:215"
+        ],
+        "UPDATE": [
+          "daftar_anggota.php:60",
+          "daftar_anggota.php:68",
+          "daftar_anggota.php:76",
+          "daftar_anggota.php:131",
+          "ganti_sandi_admin.php:60",
+          "lupa_kartu.php:47",
+          "lupa_kartu.php:185",
+          "lupa_kartu.php:265",
+          "lupa_kartu.php:293",
+          "update_profil_admin.php:72"
+        ],
+        "DELETE": [
+          "daftar_anggota.php:97"
+        ],
+        "DDL": []
+      },
+      "buku_likes": {
+        "SELECT": [
+          "beranda.php:35",
+          "buku_detail.php:75",
+          "buku_detail.php:124",
+          "daftar_buku.php:93",
+          "daftar_buku.php:102",
+          "like_handler.php:32",
+          "like_handler.php:45"
+        ],
+        "INSERT": [
+          "like_handler.php:40"
+        ],
+        "UPDATE": [],
+        "DELETE": [
+          "like_handler.php:36"
+        ],
+        "DDL": []
+      },
+      "buku": {
+        "SELECT": [
+          "api_cek_pengajuan_admin.php:32",
+          "beranda.php:35",
+          "beranda.php:46",
+          "beranda.php:50",
+          "beranda.php:57",
+          "beranda.php:125",
+          "beranda.php:166",
+          "buku_detail.php:67",
+          "buku_simpan.php:52",
+          "buku_simpan.php:64",
+          "buku_simpan.php:73",
+          "cari_isbn.php:219",
+          "daftar_anggota.php:44",
+          "daftar_buku.php:62",
+          "daftar_buku.php:69",
+          "daftar_buku.php:77",
+          "dashboard.php:79",
+          "dashboard.php:130",
+          "dashboard_user.php:72",
+          "dashboard_user.php:109",
+          "dashboard_user.php:121",
+          "dashboard_user.php:134",
+          "export_excel_dashboard.php:51",
+          "export_excel_dashboard.php:109",
+          "halaman_admin.php:152",
+          "halaman_admin.php:179",
+          "index.php:10",
+          "pengajuan_buku.php:47",
+          "pengajuan_buku.php:190",
+          "pengajuan_peminjaman.php:59",
+          "pengajuan_peminjaman.php:69",
+          "pengajuan_peminjaman.php:119",
+          "pengajuan_peminjaman.php:204",
+          "pengaturan_denda.php:153",
+          "pinjam_buku.php:84",
+          "pinjam_buku.php:133",
+          "pinjam_buku.php:141",
+          "telah_dipinjam.php:86",
+          "telah_dipinjam.php:180",
+          "telah_dipinjam.php:200"
+        ],
+        "INSERT": [
+          "halaman_admin.php:101"
+        ],
+        "UPDATE": [
+          "halaman_admin.php:130",
+          "pengajuan_buku.php:68",
+          "pinjam_buku.php:100",
+          "telah_dipinjam.php:111"
+        ],
+        "DELETE": [
+          "halaman_admin.php:158"
+        ],
+        "DDL": []
+      },
+      "admin_profile": {
+        "SELECT": [
+          "beranda.php:109",
+          "daftar_anggota.php:39",
+          "dashboard.php:22",
+          "halaman_admin.php:25",
+          "kelola_banner.php:24",
+          "modal_profil_admin.php:7",
+          "pengajuan_buku.php:30",
+          "pengaturan_denda.php:31",
+          "pengaturan_lokasi.php:34",
+          "pengaturan_musik.php:25",
+          "pinjam_buku.php:49",
+          "telah_dipinjam.php:34",
+          "update_profil_admin.php:98",
+          "update_profil_admin.php:109"
+        ],
+        "INSERT": [
+          "update_profil_admin.php:118"
+        ],
+        "UPDATE": [
+          "update_profil_admin.php:113",
+          "update_profil_admin.php:115"
+        ],
+        "DELETE": [],
+        "DDL": []
+      },
+      "peminjaman": {
+        "SELECT": [
+          "beranda.php:140",
+          "beranda.php:143",
+          "beranda.php:146",
+          "cron_cek_terlambat.php:38",
+          "daftar_anggota.php:84",
+          "dashboard.php:102",
+          "dashboard.php:105",
+          "dashboard.php:111",
+          "dashboard.php:114",
+          "dashboard.php:117",
+          "dashboard.php:122",
+          "dashboard.php:130",
+          "dashboard.php:150",
+          "dashboard.php:225",
+          "dashboard_user.php:57",
+          "dashboard_user.php:61",
+          "dashboard_user.php:72",
+          "dashboard_user.php:109",
+          "export_excel_dashboard.php:63",
+          "export_excel_dashboard.php:66",
+          "export_excel_dashboard.php:70",
+          "export_excel_dashboard.php:73",
+          "export_excel_dashboard.php:76",
+          "export_excel_dashboard.php:96",
+          "export_excel_dashboard.php:102",
+          "export_excel_dashboard.php:109",
+          "halaman_admin.php:144",
+          "pengaturan_denda.php:135",
+          "pengaturan_denda.php:137",
+          "pengaturan_denda.php:139",
+          "pengaturan_denda.php:141",
+          "pengaturan_denda.php:153",
+          "pinjam_buku.php:141",
+          "telah_dipinjam.php:86",
+          "telah_dipinjam.php:180",
+          "telah_dipinjam.php:200",
+          "telah_dipinjam.php:210"
+        ],
+        "INSERT": [
+          "pengajuan_buku.php:78",
+          "pinjam_buku.php:105"
+        ],
+        "UPDATE": [
+          "pengaturan_denda.php:119",
+          "telah_dipinjam.php:103",
+          "telah_dipinjam.php:148"
+        ],
+        "DELETE": [
+          "telah_dipinjam.php:128"
+        ],
+        "DDL": []
+      },
+      "buku_favorites": {
+        "SELECT": [
+          "beranda.php:125",
+          "buku_detail.php:82",
+          "buku_detail.php:113",
+          "buku_simpan.php:52",
+          "buku_simpan.php:64",
+          "buku_simpan.php:73",
+          "daftar_buku.php:97",
+          "daftar_buku.php:106",
+          "dashboard_user.php:134",
+          "like_handler.php:32",
+          "like_handler.php:45"
+        ],
+        "INSERT": [
+          "like_handler.php:40"
+        ],
+        "UPDATE": [],
+        "DELETE": [
+          "like_handler.php:36"
+        ],
+        "DDL": []
+      },
+      "pengaturan": {
+        "SELECT": [
+          "beranda.php:154",
+          "buku_simpan.php:106",
+          "daftar_buku.php:131",
+          "dashboard_user.php:42",
+          "dashboard_user.php:147",
+          "edit_kartu.php:297",
+          "index.php:62",
+          "index.php:82",
+          "index.php:100",
+          "index.php:134",
+          "kelola_banner.php:157",
+          "kelola_banner.php:171",
+          "pengajuan_peminjaman.php:41",
+          "pengaturan_denda.php:42",
+          "pengaturan_lokasi.php:45",
+          "pengaturan_lokasi.php:56",
+          "pengaturan_musik.php:36",
+          "pengaturan_musik.php:50",
+          "pinjam_buku.php:36",
+          "telah_dipinjam.php:43"
+        ],
+        "INSERT": [
+          "kelola_banner.php:161",
+          "pengaturan_denda.php:53",
+          "pengaturan_lokasi.php:60",
+          "pengaturan_musik.php:40"
+        ],
+        "UPDATE": [
+          "kelola_banner.php:159",
+          "pengaturan_lokasi.php:58",
+          "pengaturan_musik.php:38"
+        ],
+        "DELETE": [],
+        "DDL": []
+      },
+      "reminder_log": {
+        "SELECT": [
+          "telah_dipinjam.php:180"
+        ],
+        "INSERT": [
+          "cron_cek_terlambat.php:51",
+          "telah_dipinjam.php:137"
+        ],
+        "UPDATE": [],
+        "DELETE": [],
+        "DDL": []
+      },
+      "banner": {
+        "SELECT": [
+          "beranda.php:105",
+          "index.php:52",
+          "kelola_banner.php:69",
+          "kelola_banner.php:113",
+          "kelola_banner.php:137",
+          "kelola_banner.php:142",
+          "kelola_banner.php:177"
+        ],
+        "INSERT": [
+          "kelola_banner.php:76"
+        ],
+        "UPDATE": [
+          "kelola_banner.php:102",
+          "kelola_banner.php:128",
+          "kelola_banner.php:145",
+          "kelola_banner.php:146"
+        ],
+        "DELETE": [
+          "kelola_banner.php:119"
+        ],
+        "DDL": []
+      }
+    },
+    "runtime_ddl_in_php": [
+      {
+        "location": "dashboard.php:45",
+        "sql": "SHOW TABLES LIKE '$t'"
+      },
+      {
+        "location": "dashboard.php:54",
+        "sql": "SHOW COLUMNS FROM `$t`"
+      },
+      {
+        "location": "export_excel_dashboard.php:13",
+        "sql": "SHOW TABLES LIKE '$t'"
+      },
+      {
+        "location": "export_excel_dashboard.php:21",
+        "sql": "SHOW COLUMNS FROM `$t`"
+      }
+    ],
+    "unknown_tables_in_php": [],
+    "unknown_columns_in_php": [],
+    "unused_sql_tables": [],
+    "column_coverage": {
+      "admin_profile": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "user_id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": false
+        },
+        "display_name": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "foto": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "updated_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "banner": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "judul": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "subjudul": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "gambar": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "link_url": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "urutan": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "aktif": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "updated_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "buku": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "judul": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "penulis": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "isbn": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "genre": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "sinopsis": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "stok": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "rak": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "gambar": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "updated_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "buku_favorites": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "buku_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "user_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "buku_likes": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "buku_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "user_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "buku_ratings": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "user_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "buku_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "rating": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": true
+        },
+        "updated_at": {
+          "read_in_php": false,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": true
+        }
+      },
+      "peminjaman": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "buku_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "user_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "nama_peminjam": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "waktu_pinjam": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": true
+        },
+        "batas_kembali": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "waktu_kembali": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "terlambat_hari": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "denda": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "status_denda": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "status": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "pengajuan_peminjaman": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "user_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "buku_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "nama_peminjam": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "file_kartu": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "total_buku": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "batas_kembali": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "waktu_pengambilan": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "catatan_pengambilan": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "status": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "alasan_penolakan": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "approved_at": {
+          "read_in_php": false,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "pengaturan": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "kunci": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "nilai": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "keterangan": {
+          "read_in_php": false,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "updated_at": {
+          "read_in_php": false,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": true
+        }
+      },
+      "reminder_log": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "peminjaman_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "tanggal": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "terlambat_hari": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "wa_terkirim": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "wa_terkirim_at": {
+          "read_in_php": false,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      },
+      "password_otp": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "user_id": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "otp_hash": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "expires_at": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "attempts": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "used_at": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "last_sent_at": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "request_ip": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        }
+      },
+      "users": {
+        "id": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        },
+        "full_name": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "nik": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "kelas": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "no_hp": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "no_anggota": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "username": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "email": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "password": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "plain_password": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "foto": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "role": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "status": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "card_status": {
+          "read_in_php": true,
+          "written_in_php_sql": true,
+          "auto_managed_by_db": false
+        },
+        "created_at": {
+          "read_in_php": true,
+          "written_in_php_sql": false,
+          "auto_managed_by_db": true
+        }
+      }
+    }
+  }
+}

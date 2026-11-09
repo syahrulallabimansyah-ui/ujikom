@@ -1,0 +1,49 @@
+@startuml 06_activity_pengembalian_denda
+skinparam activity {
+    BackgroundColor #FFF4C2
+    BorderColor #6B5A1E
+    DiamondBackgroundColor #FFE9A3
+    DiamondBorderColor #C0282D
+}
+skinparam ArrowColor #6B5A1E
+
+title Activity Diagram 06 — Pengembalian Buku & Perhitungan Denda Otomatis\n<i>File: telah_dipinjam.php</i>
+
+|#DCFCE7|Pustakawan (Admin)|
+|#F1F5F9|Sistem AKSA NOVA|
+
+|Pustakawan (Admin)|
+start
+:Menerima fisik buku dari peminjam;
+:Buka menu Telah Dipinjam & klik tombol "Kembalikan Buku";
+
+|Sistem AKSA NOVA|
+:Verifikasi token CSRF;
+:Ambil batas_kembali dan tarif denda per hari dari pengaturan;
+:Hitung selisih hari pengembalian terhadap batas tempo;
+if (Terlambat >= 1 Hari?) then (<color:green>Ya</color>)
+    :Kalkulasi total denda = hari_terlambat * tarif_per_hari;
+    :Update peminjaman set tgl_kembali=CURRENT_DATE, status='kembali', denda=total, denda_terbayar='0';
+else (<color:red>Tidak (Tepat Waktu)</color>)
+    :Set denda = 0;
+    :Update peminjaman set tgl_kembali=CURRENT_DATE, status='kembali', denda=0, denda_terbayar='1';
+endif
+:Tambah stok fisik buku (+1) di tabel buku;
+:Tampilkan notifikasi pengembalian sukses beserta rincian denda;
+
+|Pustakawan (Admin)|
+if (Ada Denda Keterlambatan?) then (<color:green>Ya</color>)
+    :Menerima uang denda dari peminjam;
+    :Klik tombol "Tandai Lunas" jika sudah dibayar;
+    |Sistem AKSA NOVA|
+    :Update peminjaman set denda_terbayar='1';
+    :Catat status lunas di sistem;
+    |Pustakawan (Admin)|
+    :Selesai melayani pengembalian;
+    stop
+else (<color:red>Tidak</color>)
+    |Pustakawan (Admin)|
+    :Selesai melayani pengembalian;
+    stop
+endif
+@enduml

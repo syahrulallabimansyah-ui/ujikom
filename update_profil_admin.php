@@ -12,11 +12,17 @@ require_once "db.php";
 $allowed_redirects = [
     "halaman_admin.php", "dashboard.php", "daftar_anggota.php",
     "pinjam_buku.php", "telah_dipinjam.php", "pengaturan_denda.php",
-    "kelola_banner.php", "pengaturan_musik.php", "pengajuan_buku.php"
+    "kelola_banner.php", "pengaturan_musik.php", "pengajuan_buku.php",
+    "pengaturan_lokasi.php"
 ];
-$redirect = $_POST["redirect"] ?? "halaman_admin.php";
+$redirect = $_POST["redirect"] ?? "dashboard.php";
 if (!in_array($redirect, $allowed_redirects, true)) {
-    $redirect = "halaman_admin.php";
+    $redirect = "dashboard.php";
+}
+
+if (($_SERVER["REQUEST_METHOD"] ?? "") !== "POST" || !csrf_verify()) {
+    header("Location: $redirect?profil_err=" . urlencode("Token sesi keamanan tidak valid atau kedaluwarsa. Silakan ulangi."));
+    exit;
 }
 
 $user_id = (int)$_SESSION["user_id"];

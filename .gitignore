@@ -1,0 +1,10 @@
+# File kredensial sensitif
+config_mail.php
+
+# Storage & Log Lokal
+storage/
+*.log
+
+# Cache & Temporary
+cache/*.tmp
+cache/berita_cache.json

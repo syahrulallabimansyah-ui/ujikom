@@ -2,11 +2,28 @@
 // daftar_buku.php — Katalog buku (dinamis dari database)
 session_start();
 
+// Admin diarahkan langsung ke Dashboard Admin
+if (isset($_SESSION["role"]) && $_SESSION["role"] === "admin") {
+    header("Location: dashboard.php");
+    exit;
+}
+
 require_once "db.php";
 
 // ─── Mode tamu: pengunjung boleh melihat katalog tanpa login ───
 // Aksi seperti suka, rating, dan simpan tetap butuh login (lihat bagian JS di bawah).
 $is_guest   = !isset($_SESSION["user_id"]);
+if (!$is_guest) {
+    $uid_chk = (int)$_SESSION["user_id"];
+    $u_chk   = mysqli_query($conn, "SELECT status, card_status, full_name FROM users WHERE id = $uid_chk LIMIT 1");
+    $u_row   = $u_chk ? mysqli_fetch_assoc($u_chk) : null;
+    if (!$u_row || ($u_row["status"] ?? "") !== "approved" || ($u_row["card_status"] ?? "active") === "frozen") {
+        session_destroy();
+        header("Location: sign_in.php");
+        exit;
+    }
+    $_SESSION["user_name"] = $u_row["full_name"] ?: ($_SESSION["user_name"] ?? "Pengguna");
+}
 $user_name  = $is_guest ? "Tamu" : ($_SESSION["user_name"] ?? "Pengguna");
 $role       = $is_guest ? "guest" : ($_SESSION["role"] ?? "member");
 $is_admin   = (!$is_guest && $role === "admin");
@@ -20,8 +37,13 @@ $offset     = ($page - 1) * $per_page;
 
 // ─── Search & Filter Kategori ───
 $search   = trim($_GET["q"] ?? "");
-$kategori = trim($_GET["kategori"] ?? "");
+$kategori = trim($_GET["kategori"] ?? ($_GET["genre"] ?? ""));
 $is_ajax  = isset($_GET["ajax"]) && $_GET["ajax"] == "1";
+
+// ─── Navigasi Kembali Khusus Tamu (ke Landing Page / Halaman Utama) ───
+$back_url   = "index.php";
+$back_label = "Halaman Utama";
+$back_title = "Kembali ke Halaman Utama (Landing Page)";
 
 $conditions = [];
 if ($search !== "") {
@@ -114,7 +136,7 @@ if ($mgt) {
         if ($m["kunci"] === "musik_judul") $musik_judul = $m["nilai"] ?: $musik_judul;
     }
 }
-$musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_file));
+$musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && (file_exists($musik_file) || file_exists(__DIR__ . '/' . $musik_file)));
 
 // Buffer seluruh output halaman. Untuk request AJAX (live search), buffer ini
 // akan dibuang sepenuhnya sebelum kita kirim hanya fragmen hasil pencarian —
@@ -177,20 +199,102 @@ ob_start();
     .nav-item svg { width:17px; height:17px; flex-shrink:0; }
     .nav-item.admin-only { color:#e67e22; }
     .nav-item.admin-only:hover { background:rgba(230,126,34,.12); color:#f39c12; }
+    /* Tombol Kembali / Halaman Utama Khusus Tamu di Sidebar */
+    .nav-item.nav-item-back {
+      background: rgba(216,184,120,.09);
+      border: 1px dashed var(--border-color, rgba(216,184,120,.35));
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .nav-item.nav-item-back:hover {
+      background: rgba(216,184,120,.18);
+      border-style: solid;
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateX(-2px);
+    }
+    .nav-item.nav-item-back svg {
+      color: var(--accent);
+    }
     .nav-bottom { padding:10px 10px 0; border-top:1px solid var(--border-color, rgba(216,184,120,.15)); display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
 
     /* ── MAIN ── */
     .main { margin-left:var(--sidebar-w); flex:1; min-width:0; max-width:100%; overflow-x:hidden; padding:24px 24px 32px; min-height:100vh; transition:margin-left var(--trans); }
 
     /* Topbar */
-    .topbar { display:flex; gap:10px; margin-bottom:22px; align-items:center; }
-    .search-wrap { display:flex; align-items:center; background:var(--card); border-radius:50px; padding:0 16px; gap:10px; height:42px; border:1.5px solid var(--border-color); flex:1; max-width:420px; box-shadow:var(--shadow-sm); transition:border-color var(--trans), box-shadow var(--trans); }
+    .topbar { display:flex; gap:12px; margin-bottom:24px; align-items:center; }
+    .search-wrap { display:flex; align-items:center; background:var(--card); border-radius:50px; padding:0 18px; gap:10px; height:44px; border:1.5px solid var(--border-color); flex:1; max-width:520px; box-shadow:var(--shadow-sm); transition:border-color var(--trans), box-shadow var(--trans); }
     .search-wrap:focus-within { border-color:var(--accent); box-shadow:0 0 0 3px rgba(216,184,120,.2); }
-    .search-wrap input { border:none; outline:none; font-family:var(--font-family,'Outfit',sans-serif); font-size:.82rem; color:var(--text); background:transparent; flex:1; }
+    .search-wrap input { border:none; outline:none; font-family:var(--font-family,'Outfit',sans-serif); font-size:.84rem; color:var(--text); background:transparent; flex:1; }
     .search-wrap input::placeholder { color:var(--muted); }
-    .search-wrap svg { width:16px; height:16px; color:var(--muted); }
-    .tab-btn { padding:9px 18px; border-radius:50px; border:1.5px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.8rem; font-weight:600; color:var(--muted); cursor:pointer; transition:all var(--trans); text-decoration:none; }
+    .search-wrap svg { width:17px; height:17px; color:var(--muted); flex-shrink:0; }
+    .tab-btn { padding:9px 18px; border-radius:50px; border:1.5px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.8rem; font-weight:600; color:var(--muted); cursor:pointer; transition:all var(--trans); text-decoration:none; display:inline-flex; align-items:center; gap:6px; height:44px; box-sizing:border-box; }
     .tab-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.1); }
+
+    /* Tombol Kembali di Topbar */
+    .btn-topbar-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 44px;
+      padding: 0 18px;
+      border-radius: 50px;
+      border: 1.5px solid var(--border-color);
+      background: var(--card);
+      font-family: var(--font-family, 'Outfit', sans-serif);
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--text);
+      text-decoration: none;
+      cursor: pointer;
+      transition: all var(--trans);
+      box-shadow: var(--shadow-sm);
+      flex-shrink: 0;
+      box-sizing: border-box;
+    }
+    .btn-topbar-back:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: rgba(216, 184, 120, .12);
+      transform: translateX(-2px);
+      box-shadow: 0 4px 14px rgba(216, 184, 120, .2);
+    }
+    .btn-topbar-back svg {
+      width: 16px;
+      height: 16px;
+      color: var(--accent);
+      transition: transform var(--trans);
+      flex-shrink: 0;
+    }
+    .btn-topbar-back:hover svg {
+      transform: translateX(-2px);
+    }
+
+    /* Tombol Kembali Khusus Header Mobile */
+    .mobile-btn-back {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-color, rgba(216,184,120,.3));
+      background: var(--card, rgba(18,24,32,.85));
+      color: var(--accent, #d8b878);
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: all var(--trans);
+    }
+    .mobile-btn-back:hover {
+      border-color: var(--accent);
+      background: rgba(216,184,120,.15);
+      transform: translateX(-2px);
+    }
+    .mobile-btn-back svg {
+      width: 18px;
+      height: 18px;
+    }
 
     .btn-topbar-mode {
       appearance: none;
@@ -264,20 +368,38 @@ ob_start();
     }
     .btn-musik.playing .icon-off { display: none; }
     .btn-musik.playing .icon-eq  { display: flex; }
+    html.theme-light .btn-musik, html.light .btn-musik {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
+    }
+    html.theme-light .btn-musik:hover, html.light .btn-musik:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik.playing, html.light .btn-musik.playing {
+      background: rgba(138,99,35,.15) !important;
+      box-shadow: 0 0 16px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
+      background: #8a6323 !important;
+    }
 
     /* ══════════ NAVBAR ATAS (HUD): dudukan tombol mode & musik ══════════ */
     .mobile-topbar { display: contents; }
     .mobile-topbar-divider,
     .mobile-topbar-brand { display: none; }
-    .page-hud-controls {
+    .page-hud-controls,
+    .beranda-hud-controls {
       position: fixed; top: 16px; right: 20px; z-index: 150;
       display: flex; align-items: center; gap: 10px;
     }
     /* Dropdown kategori bergaya chip */
     .kategori-dropdown { position:relative; flex-shrink:0; }
     .kategori-trigger {
-      display:flex; align-items:center; gap:8px; height:42px; padding:0 16px; border-radius:50px;
-      border:1.5px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.8rem; font-weight:700;
+      display:flex; align-items:center; gap:8px; height:44px; padding:0 18px; border-radius:50px;
+      border:1.5px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.82rem; font-weight:700;
       color:var(--muted); cursor:pointer; white-space:nowrap; box-shadow:var(--shadow-sm);
       transition:border-color var(--trans), color var(--trans), background var(--trans), box-shadow var(--trans);
     }
@@ -330,19 +452,28 @@ ob_start();
     #searchResultArea { transition: opacity .15s ease; }
     #searchResultArea.loading-search { opacity: .55; }
 
-    /* ── Grid buku (menggantikan tabel — reflow alami di semua lebar layar, tanpa geser ke samping) ── */
-    .books-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px; animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
+    /* ── Grid buku: Desain Modern Horizontal Book Card ── */
+    .books-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:20px; animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
     .book-card {
-      background:var(--card); border:1px solid var(--card-border, rgba(216,184,120,.12)); border-radius:var(--radius);
+      background:var(--card); border:1.5px solid var(--card-border, rgba(216,184,120,.14)); border-radius:22px;
       box-shadow:var(--shadow-sm); overflow:hidden; min-width:0;
-      cursor:pointer; transition:box-shadow var(--trans), transform var(--trans), border-color var(--trans);
-      display:flex; flex-direction:column; height:100%;
+      cursor:pointer; transition:box-shadow .25s cubic-bezier(.22,1,.36,1), transform .25s cubic-bezier(.22,1,.36,1), border-color .25s cubic-bezier(.22,1,.36,1);
+      display:flex; flex-direction:row; align-items:center; padding:14px; gap:16px;
     }
-    .book-card:hover { box-shadow:var(--shadow-md); transform:translateY(-3px); border-color:var(--accent); }
-    .book-cover-wrap { aspect-ratio:2/3; overflow:hidden; position:relative; flex-shrink:0; }
-    .book-cover-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+    .book-card:hover {
+      box-shadow:0 12px 32px rgba(0,0,0,.5), 0 0 20px rgba(216,184,120,.16);
+      transform:translateY(-4px);
+      border-color:var(--accent);
+    }
+    .book-cover-wrap {
+      flex:0 0 125px; width:125px; aspect-ratio:2/3; border-radius:16px;
+      overflow:hidden; position:relative; flex-shrink:0; background:#0b0f14;
+      box-shadow:0 6px 18px rgba(0,0,0,.35); align-self:center;
+    }
+    .book-cover-wrap img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s cubic-bezier(.22,1,.36,1); }
+    .book-card:hover .book-cover-wrap img { transform:scale(1.05); }
     .c1 { background:linear-gradient(135deg,#f5a623,#d4820a); }
     .c2 { background:linear-gradient(135deg,#9b59b6,#6c3483); }
     .c3 { background:linear-gradient(135deg,#e74c3c,#922b21); }
@@ -351,47 +482,76 @@ ob_start();
     .c6 { background:linear-gradient(135deg,#e91e63,#880e4f); }
     .c7 { background:linear-gradient(135deg,#ff5722,#bf360c); }
     .c8 { background:linear-gradient(135deg,#607d8b,#263238); }
-    .cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.3rem; font-weight:800; color:rgba(255,255,255,.8); }
-    .cover-rating { position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,.7); border:1px solid rgba(216,184,120,.3); color:#d8b878; font-size:.6rem; font-weight:800; padding:2px 7px; border-radius:20px; display:flex; align-items:center; gap:2px; backdrop-filter:blur(3px); }
-    .cover-rating svg { width:9px; height:9px; }
-    .cover-num-badge { position:absolute; top:6px; left:6px; width:22px; height:22px; border-radius:50%; background:rgba(0,0,0,.7); border:1px solid rgba(216,184,120,.3); color:var(--accent); font-size:.62rem; font-weight:800; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(3px); }
+    .cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.4rem; font-weight:800; color:rgba(255,255,255,.8); text-shadow:0 2px 8px rgba(0,0,0,.5); }
+    .cover-rating { position:absolute; bottom:8px; right:8px; background:rgba(9,12,16,.85); border:1px solid rgba(216,184,120,.35); color:#d8b878; font-size:.64rem; font-weight:800; padding:2.5px 8px; border-radius:20px; display:flex; align-items:center; gap:3px; backdrop-filter:blur(4px); box-shadow:0 2px 8px rgba(0,0,0,.4); }
+    .cover-rating svg { width:10px; height:10px; }
+    .cover-num-badge { position:absolute; top:8px; left:8px; width:24px; height:24px; border-radius:50%; background:rgba(9,12,16,.85); border:1px solid rgba(216,184,120,.35); color:var(--accent); font-size:.64rem; font-weight:800; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(4px); box-shadow:0 2px 8px rgba(0,0,0,.4); }
 
-    .book-info { padding:10px 12px 12px; flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
-    .bk-title { font-size:.83rem; font-weight:800; color:var(--text); line-height:1.35; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; min-height:2.25rem; }
-    .bk-badges-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px; min-height:22px; max-width:100%; }
+    .book-info {
+      padding:4px 2px; flex:1; display:flex; flex-direction:column;
+      align-items:center; text-align:center; justify-content:center; min-width:0;
+    }
+    .bk-title {
+      font-size:1.05rem; font-weight:800; color:var(--text); line-height:1.3;
+      text-align:center; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+      overflow:hidden; margin-bottom:2px; transition:color var(--trans);
+    }
+    .book-card:hover .bk-title { color:var(--accent); }
+    .bk-author {
+      font-size:.78rem; color:var(--muted); font-weight:500; text-align:center;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; margin-bottom:6px;
+    }
+    .bk-actions {
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      margin:2px 0 8px; border-top:none; padding-top:0;
+    }
+    .bk-badges-row {
+      display:flex; align-items:center; justify-content:center; gap:5px;
+      flex-wrap:wrap; margin-bottom:8px; max-width:100%; min-width:0;
+    }
     .bk-genre {
-      font-size:.6rem; font-weight:700; color:var(--accent); background:rgba(216,184,120,.12);
-      border:1px solid rgba(216,184,120,.2); padding:2px 8px; border-radius:50px;
+      font-size:.64rem; font-weight:700; color:#e5a93c; background:rgba(229,169,60,.14);
+      border:1px solid rgba(229,169,60,.28); padding:2.5px 8.5px; border-radius:50px;
       white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
-      display:inline-block; vertical-align:middle; line-height:1.4;
+      display:inline-flex; align-items:center; line-height:1.35;
+    }
+    .bk-genre-rak {
+      color:#38bdf8 !important; background:rgba(56,189,248,.13) !important;
+      border:1px solid rgba(56,189,248,.28) !important;
     }
 
     /* Status badge */
-    .status-badge { display:inline-flex; align-items:center; gap:5px; font-size:.62rem; font-weight:700; padding:3px 9px; border-radius:50px; white-space:nowrap; }
+    .status-badge {
+      display:inline-flex; align-items:center; gap:5px; font-size:.64rem;
+      font-weight:700; padding:2.5px 8.5px; border-radius:50px; white-space:nowrap;
+      flex-shrink:0; line-height:1.35;
+    }
     .status-badge .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
-    .status-tersedia { background:rgba(46,204,113,.12); color:#2ecc71; border:1px solid rgba(46,204,113,.25); }
+    .status-tersedia { background:rgba(46,204,113,.14); color:#2ecc71; border:1px solid rgba(46,204,113,.28); }
     .status-tersedia .dot { background:#2ecc71; }
-    .status-habis    { background:rgba(231,76,60,.12); color:#e74c3c; border:1px solid rgba(231,76,60,.25); }
+    .status-habis    { background:rgba(231,76,60,.14); color:#e74c3c; border:1px solid rgba(231,76,60,.28); }
     .status-habis .dot { background:#e74c3c; }
 
-    .bk-stock { font-size:.65rem; font-weight:700; color:var(--muted); }
-
-    .bk-actions { display:flex; align-items:center; gap:8px; margin-top:auto; padding-top:10px; border-top:1px solid var(--border-color, rgba(216,184,120,.15)); flex-wrap:nowrap; }
+    .bk-synopsis {
+      font-size:.74rem; color:var(--muted); line-height:1.5; text-align:center;
+      display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+      overflow:hidden; margin-top:2px; font-weight:400; opacity:.88;
+    }
 
     /* Empty state */
-    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:70px 20px; gap:14px; color:var(--muted); grid-column:1/-1; text-align:center; }
-    .empty-state svg { width:52px; height:52px; opacity:.3; color:var(--accent); }
-    .empty-state .empty-title { font-size:.95rem; font-weight:800; color:var(--text); }
-    .empty-state .empty-sub { font-size:.8rem; }
+    .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 24px; gap:14px; color:var(--muted); grid-column:1/-1; text-align:center; }
+    .empty-state svg { width:58px; height:58px; opacity:.35; color:var(--accent); }
+    .empty-state .empty-title { font-size:1.05rem; font-weight:800; color:var(--text); }
+    .empty-state .empty-sub { font-size:.82rem; max-width:420px; line-height:1.5; }
 
     /* Pagination */
-    .pagination-wrap { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; padding:18px 4px 4px; margin-top:6px; border-top:1px solid var(--border-color); }
-    .pagination-info { font-size:.75rem; color:var(--muted); font-weight:600; }
-    .pagination-btns { display:flex; gap:4px; flex-wrap:wrap; }
-    .page-btn { width:30px; height:30px; border-radius:8px; border:1px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.78rem; font-weight:700; color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--trans); text-decoration:none; }
-    .page-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.1); }
-    .page-btn.active { background:linear-gradient(135deg, #d8b878, #f0d9a8); color:#090c10; border-color:var(--accent); font-weight:800; }
-    .page-btn svg { width:13px; height:13px; }
+    .pagination-wrap { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px; padding:22px 4px 8px; margin-top:12px; border-top:1px solid var(--border-color); }
+    .pagination-info { font-size:.78rem; color:var(--muted); font-weight:600; }
+    .pagination-btns { display:flex; gap:6px; flex-wrap:wrap; }
+    .page-btn { width:34px; height:34px; border-radius:10px; border:1px solid var(--border-color); background:var(--card); font-family:var(--font-family,'Outfit',sans-serif); font-size:.8rem; font-weight:700; color:var(--muted); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all var(--trans); text-decoration:none; }
+    .page-btn:hover { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.1); transform:translateY(-1px); }
+    .page-btn.active { background:linear-gradient(135deg, #d8b878, #f0d9a8); color:#090c10; border-color:var(--accent); font-weight:800; box-shadow:0 3px 10px rgba(216,184,120,.35); }
+    .page-btn svg { width:14px; height:14px; }
 
     /* ── RESPONSIVE ── */
 
@@ -444,7 +604,8 @@ ob_start();
         color:var(--accent); letter-spacing:.04em; white-space:nowrap;
         overflow:hidden; text-overflow:ellipsis;
       }
-      .mobile-topbar .page-hud-controls {
+      .mobile-topbar .page-hud-controls,
+      .mobile-topbar .beranda-hud-controls {
         position:static; top:auto; right:auto; margin-left:auto;
       }
 
@@ -452,7 +613,9 @@ ob_start();
       .main { margin-left:0; padding:78px 14px 28px; }
 
       /* Topbar: stack search + buttons */
+      .mobile-btn-back { display: inline-flex; }
       .topbar { flex-wrap:wrap; gap:8px; }
+      .btn-topbar-back { height: 42px; padding: 0 14px; font-size: .8rem; flex: 0 0 auto; }
       .search-wrap { max-width:100%; flex:1 1 100%; height:44px; }
       .tab-btn { flex-shrink:0; padding:10px 18px; min-height:44px; display:inline-flex; align-items:center; }
 
@@ -472,7 +635,7 @@ ob_start();
       .page-sub { font-size:.78rem; }
 
       /* Grid buku tetap reflow, tanpa perlu geser ke samping */
-      .books-grid { grid-template-columns:repeat(auto-fill,minmax(145px,1fr)); }
+      .books-grid { grid-template-columns:1fr; gap:14px; }
 
       /* Pagination: stack info above buttons */
       .pagination-wrap { flex-direction:column; align-items:flex-start; gap:8px; }
@@ -487,12 +650,14 @@ ob_start();
     @media (max-width:480px) {
       .main { padding:74px 10px 24px; }
 
-      .books-grid { grid-template-columns:repeat(auto-fill,minmax(135px,1fr)); gap:12px; }
-      .bk-title { font-size:.78rem; min-height:2.1rem; }
+      .books-grid { grid-template-columns:1fr; gap:12px; }
+      .book-card { padding:12px; gap:12px; border-radius:18px; }
+      .book-cover-wrap { flex:0 0 110px; width:110px; border-radius:14px; }
+      .bk-title { font-size:.95rem; }
       .bk-badges-row { gap:4px; max-width:100%; }
-      .bk-genre { max-width:100%; font-size:.58rem; }
-      .status-badge { font-size:.58rem; padding:2px 7px; }
-      .bk-actions { flex-wrap:nowrap; gap:8px; margin-top:auto; }
+      .bk-genre { max-width:100%; font-size:.6rem; }
+      .status-badge { font-size:.6rem; padding:2px 7px; }
+      .bk-synopsis { -webkit-line-clamp:2; font-size:.71rem; }
 
       /* Pagination info & tombol lebih ringkas tapi tetap ≥44px touch */
       .pagination-info { font-size:.7rem; }
@@ -527,8 +692,10 @@ ob_start();
     /* Layar super kecil (≤375px) */
     @media (max-width:375px) {
       .main { padding:72px 8px 22px; }
-      .books-grid { grid-template-columns:repeat(2, 1fr); gap:10px; }
-      .bk-title { font-size:.75rem; min-height:2.05rem; }
+      .books-grid { grid-template-columns:1fr; gap:10px; }
+      .book-card { padding:10px; gap:10px; border-radius:16px; }
+      .book-cover-wrap { flex:0 0 95px; width:95px; border-radius:12px; }
+      .bk-title { font-size:.9rem; }
       .page-title { font-size:1.1rem; }
       .topbar { gap:6px; }
     }
@@ -559,28 +726,28 @@ ob_start();
     .btn-like.aktif .like-count-badge { border-color:#e74c3c; color:#e74c3c; }
 
     /* ── MODAL DETAIL BUKU ── */
-    .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.65); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:800; align-items:center; justify-content:center; }
+    .detail-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.68); backdrop-filter:blur(5px); -webkit-backdrop-filter:blur(5px); z-index:800; align-items:center; justify-content:center; }
     .detail-overlay.open { display:flex; }
-    .detail-modal { background:var(--card,#121820); border:1px solid rgba(216,184,120,.2); border-top:3px solid var(--accent,#d8b878); border-radius:16px; width:100%; max-width:500px; max-height:92vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:0 24px 70px rgba(0,0,0,.5); animation:modalIn .34s cubic-bezier(.16,1,.3,1) both; margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
+    .detail-modal { background:var(--card,#121820); border:1.5px solid rgba(216,184,120,.22); border-top:3.5px solid var(--accent,#d8b878); border-radius:20px; width:100%; max-width:520px; max-height:92vh; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; box-shadow:0 24px 70px rgba(0,0,0,.65); animation:modalIn .34s cubic-bezier(.16,1,.3,1) both; margin:16px; scrollbar-width:thin; scrollbar-color:rgba(216,184,120,.25) transparent; }
     .detail-modal::-webkit-scrollbar { width:4px; }
     .detail-modal::-webkit-scrollbar-thumb { background:rgba(216,184,120,.3); border-radius:10px; }
     .detail-modal::-webkit-scrollbar-track { background:transparent; }
     @keyframes modalIn { from{opacity:0;transform:scale(.975) translateY(10px)} to{opacity:1;transform:scale(1) translateY(0)} }
     @keyframes modalSlideUp { from{opacity:0;transform:translateY(100%)} to{opacity:1;transform:translateY(0)} }
-    .detail-cover { width:100%; aspect-ratio:16/9; border-radius:16px 16px 0 0; overflow:hidden; position:relative; background:#10151b; margin-top:0; }
+    .detail-cover { width:100%; aspect-ratio:16/9; border-radius:18px 18px 0 0; overflow:hidden; position:relative; background:#10151b; margin-top:0; }
     .detail-cover img { width:100%; height:100%; object-fit:cover; display:block; }
-    .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 50%, rgba(9,12,16,.75) 100%); pointer-events:none; }
+    .detail-cover::after { content:''; position:absolute; inset:0; background:linear-gradient(to bottom, transparent 40%, rgba(9,12,16,.8) 100%); pointer-events:none; }
     .detail-cover-placeholder { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
     .detail-cover-placeholder svg { width:56px; height:56px; color:rgba(216,184,120,.35); }
-    .detail-cover-badge { position:absolute; top:12px; left:12px; background:rgba(0,0,0,.65); color:var(--accent); border:1px solid rgba(216,184,120,.3); font-size:.65rem; font-weight:800; padding:4px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; backdrop-filter:blur(4px); }
+    .detail-cover-badge { position:absolute; top:12px; left:12px; background:rgba(9,12,16,.75); color:var(--accent); border:1px solid rgba(216,184,120,.35); font-size:.66rem; font-weight:800; padding:4px 11px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; backdrop-filter:blur(4px); box-shadow:0 2px 8px rgba(0,0,0,.4); }
     .detail-close-btn { position:absolute; top:12px; right:12px; width:40px; height:40px; border-radius:50%; background:rgba(18,24,32,0.92); border:2px solid var(--accent,#d8b878); display:flex; align-items:center; justify-content:center; cursor:pointer; backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); transition:background .2s, transform .15s, border-color .2s; box-shadow:0 4px 14px rgba(0,0,0,.6); z-index:10; }
     .detail-close-btn:hover { background:var(--accent,#d8b878); transform:scale(1.08); }
     .detail-close-btn:hover svg { color:#121820; }
     .detail-close-btn svg { width:20px; height:20px; color:var(--accent,#d8b878); transition:color .2s; }
-    .detail-body { padding:20px 22px 24px; }
-    .detail-genre-chip { display:inline-block; background:rgba(216,184,120,.12); color:var(--accent); border:1px solid rgba(216,184,120,.25); font-size:.65rem; font-weight:800; padding:3px 10px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px; }
-    .detail-title { font-family:'Cormorant Garamond',serif; font-size:1.45rem; font-weight:700; color:var(--text); line-height:1.2; margin-bottom:4px; }
-    .detail-author { font-size:.82rem; color:var(--muted); font-weight:600; margin-bottom:14px; }
+    .detail-body { padding:22px 24px 28px; }
+    .detail-genre-chip { display:inline-block; background:rgba(216,184,120,.12); color:var(--accent); border:1px solid rgba(216,184,120,.25); font-size:.66rem; font-weight:800; padding:3px 11px; border-radius:20px; letter-spacing:.05em; text-transform:uppercase; margin-bottom:8px; }
+    .detail-title { font-family:'Cormorant Garamond',serif; font-size:1.55rem; font-weight:700; color:var(--text); line-height:1.25; margin-bottom:6px; }
+    .detail-author { font-size:.84rem; color:var(--muted); font-weight:600; margin-bottom:16px; }
     .detail-stat-row { display:flex; gap:16px; margin-bottom:16px; }
     .detail-stat { display:flex; align-items:center; gap:6px; font-size:.78rem; font-weight:700; }
     .detail-stat svg { width:15px; height:15px; }
@@ -598,12 +765,12 @@ ob_start();
     .detail-body .btn-save.aktif { border-color:var(--accent); color:var(--accent); background:rgba(216,184,120,.18); }
     .detail-body .btn-save.aktif svg { fill:var(--accent); color:var(--accent); }
     .detail-body .btn-save.pop svg { transform:scale(1.4); }
-    .detail-meta-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
-    .detail-meta-chip { display:flex; align-items:center; gap:5px; background:rgba(255,255,255,.04); border:1px solid var(--card-border, rgba(216,184,120,.14)); border-radius:8px; padding:6px 11px; font-size:.71rem; font-weight:700; color:var(--muted); }
-    .detail-meta-chip svg { width:13px; height:13px; flex-shrink:0; }
+    .detail-meta-row { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px; }
+    .detail-meta-chip { display:flex; align-items:center; gap:6px; background:rgba(255,255,255,.04); border:1px solid var(--card-border, rgba(216,184,120,.14)); border-radius:10px; padding:7px 12px; font-size:.72rem; font-weight:700; color:var(--muted); }
+    .detail-meta-chip svg { width:14px; height:14px; flex-shrink:0; }
     .detail-meta-chip span { color:var(--text); }
-    .detail-section-label { font-size:.68rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:7px; }
-    .detail-sinopsis { font-size:.83rem; line-height:1.7; color:var(--text); background:rgba(255,255,255,.03); border-radius:10px; padding:14px 16px; border-left:3px solid var(--accent); border:1px solid var(--card-border, rgba(216,184,120,.12)); }
+    .detail-section-label { font-size:.68rem; font-weight:800; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:8px; margin-top:18px; }
+    .detail-sinopsis { font-size:.84rem; line-height:1.75; color:var(--text); background:rgba(255,255,255,.03); border-radius:12px; padding:16px 18px; border-left:3px solid var(--accent); border:1px solid var(--card-border, rgba(216,184,120,.12)); }
     .detail-sinopsis-empty { color:var(--muted); font-style:italic; }
 
     /* Rating bintang */
@@ -659,6 +826,14 @@ ob_start();
 <body>
 
 <header class="mobile-topbar" id="mobileTopbar">
+  <?php if ($is_guest): ?>
+  <a href="index.php" class="mobile-btn-back" id="mobileBtnBack" aria-label="Kembali ke Landing Page" title="Kembali ke Landing Page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"/>
+      <polyline points="12 19 5 12 12 5"/>
+    </svg>
+  </a>
+  <?php endif; ?>
   <button class="sidebar-toggle" id="sidebarToggle" aria-label="Menu">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <line x1="3" y1="6" x2="21" y2="6"/>
@@ -683,8 +858,8 @@ ob_start();
       </svg>
       <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
     </button>
-    <audio id="audioLatar" loop autoplay muted preload="auto">
-      <source src="<?= htmlspecialchars($musik_file) ?>">
+    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
+      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
     </audio>
     <?php endif; ?>
   </div>
@@ -704,6 +879,15 @@ ob_start();
   </div>
 
   <nav class="nav">
+    <?php if ($is_guest): ?>
+    <a href="index.php" class="nav-item nav-item-back" title="Kembali ke Landing Page (Halaman Utama)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Halaman Utama
+    </a>
+    <?php endif; ?>
     <a href="beranda.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Beranda
@@ -711,7 +895,7 @@ ob_start();
     <?php if (!$is_admin && !$is_guest): ?>
     <a href="dashboard_user.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-      Dashboard
+      Peminjaman Saya
     </a>
     <?php endif; ?>
     <a href="daftar_buku.php" class="nav-item active">
@@ -725,25 +909,20 @@ ob_start();
     </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Buku Simpan
+      Buku Disimpan
     </a>
     <a href="edit_kartu.php" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Edit Profil
-    </a>
-    <?php endif; ?>
-    <?php if ($is_admin): ?>
-    <a href="halaman_admin.php" class="nav-item admin-only">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Action Admin
+      Profil
     </a>
     <?php endif; ?>
+
   </nav>
 
   <div class="nav-bottom">
     <a href="#" class="nav-item"  onclick="bukaSettings(); return false;" title="Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </a>
     <?php if ($is_guest): ?>
     <a href="sign_in.php" class="nav-item" style="color:var(--accent);">
@@ -755,7 +934,7 @@ ob_start();
       Daftar
     </a>
     <?php else: ?>
-    <a href="logout.php" class="nav-item" style="color:#e74c3c;">
+    <a href="logout.php" class="nav-item sidebar-btn-logout" style="color:#e74c3c;" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Keluar
     </a>
@@ -791,7 +970,7 @@ ob_start();
           <?php endforeach; ?>
         </select>
       </div>
-      <?php if ($search || $kategori): ?><a href="daftar_buku.php" class="tab-btn" id="searchResetBtn">✕ Reset</a><?php endif; ?>
+      <?php if ($search || $kategori): ?><a href="daftar_buku.php" class="tab-btn" id="searchResetBtn"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reset</a><?php endif; ?>
     </div>
   </form>
 
@@ -825,6 +1004,19 @@ ob_start();
           Belum ada buku di katalog.
         <?php endif; ?>
       </div>
+      <div style="margin-top:16px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+        <?php if ($is_guest): ?>
+        <a href="index.php" class="tab-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Halaman Utama
+        </a>
+        <?php endif; ?>
+        <?php if ($search || $kategori): ?>
+          <a href="daftar_buku.php" class="tab-btn">
+            Lihat Semua Buku
+          </a>
+        <?php endif; ?>
+      </div>
     </div>
   <?php else: ?>
     <div class="books-grid">
@@ -853,12 +1045,8 @@ ob_start();
         </div>
         <div class="book-info">
           <div class="bk-title"><?= htmlspecialchars($buku["judul"]) ?></div>
-          <div class="bk-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></div>
-          <div class="bk-badges-row">
-            <?php if ($buku["genre"]): ?><span class="bk-genre"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
-            <?php if (!empty($buku["rak"])): ?><span class="bk-genre" style="border-color:rgba(216,184,120,.35);color:var(--accent,#d8b878);" title="Lokasi Rak"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><?= htmlspecialchars($buku["rak"]) ?></span><?php endif; ?>
-            <span class="status-badge status-<?= $status_cls ?>"><span class="dot"></span><?= $status_label ?> · <?= (int)$buku["stok"] ?></span>
-          </div>
+          <div class="bk-author"><?= htmlspecialchars($buku["penulis"] ?: "Penulis tidak diketahui") ?></div>
+
           <?php if (!$is_admin):
             $sudah_like = in_array($buku["id"], $liked_ids);
             $sudah_fav  = in_array($buku["id"], $fav_ids);
@@ -884,6 +1072,16 @@ ob_start();
             </button>
           </div>
           <?php endif; ?>
+
+          <div class="bk-badges-row">
+            <?php if ($buku["genre"]): ?><span class="bk-genre"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
+            <?php if (!empty($buku["rak"])): ?><span class="bk-genre bk-genre-rak" title="Lokasi Rak"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><?= htmlspecialchars($buku["rak"]) ?></span><?php endif; ?>
+            <span class="status-badge status-<?= $status_cls ?>"><span class="dot"></span><?= $status_label ?><?php if ((int)$buku["stok"] > 0): ?> · <?= (int)$buku["stok"] ?><?php endif; ?></span>
+          </div>
+
+          <p class="bk-synopsis">
+            <?= htmlspecialchars(!empty($buku["sinopsis"]) ? mb_strimwidth(strip_tags($buku["sinopsis"]), 0, 130, '…') : "Koleksi buku perpustakaan kategori " . ($buku["genre"] ?: "Umum") . " tersedia untuk dipinjam.") ?>
+          </p>
         </div>
       </div>
       <?php endforeach; ?>
@@ -1078,7 +1276,7 @@ ob_start();
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Ditambahkan: <span>${tglInput}</span>
           </div>
-          ${tglUpdate ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Diperbarui: <span>${tglUpdate}</span></div>` : ''}
+          ${tglUpdate ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Diperbarui: <span>${tglUpdate}</span></div>` : ''}
         </div>
 
         <div class="detail-section-label">Sinopsis / Ringkasan</div>
@@ -1384,6 +1582,21 @@ ob_start();
   }
 
 
+
+  // ─── Navigasi Pintar Tombol Kembali ───
+  function handleKembali(e, fallbackUrl) {
+    if (document.referrer && (document.referrer.indexOf(window.location.host) !== -1)) {
+      if (document.referrer.includes('index.php') || document.referrer.includes('beranda.php')) {
+        e.preventDefault();
+        window.history.back();
+        return;
+      }
+    }
+    if (fallbackUrl) {
+      e.preventDefault();
+      window.location.href = fallbackUrl;
+    }
+  }
 
   // ─── Musik Latar (Dikelola terpusat oleh AksaAudio di settings_include.php) ───
   if (window.AksaAudio) window.AksaAudio.init();

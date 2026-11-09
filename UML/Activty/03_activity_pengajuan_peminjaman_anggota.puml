@@ -1,0 +1,49 @@
+@startuml 03_activity_pengajuan_peminjaman_anggota
+skinparam activity {
+    BackgroundColor #FFF4C2
+    BorderColor #6B5A1E
+    DiamondBackgroundColor #FFE9A3
+    DiamondBorderColor #C0282D
+}
+skinparam ArrowColor #6B5A1E
+
+title Activity Diagram 03 — Pengajuan Peminjaman Buku Daring\n<i>File: pengajuan_peminjaman.php</i>
+
+|#DBEAFE|Anggota (Member)|
+|#F1F5F9|Sistem AKSA NOVA|
+
+|Anggota (Member)|
+start
+:Memilih buku di katalog dan membuka form pengajuan;
+
+|Sistem AKSA NOVA|
+:Cek status login anggota;
+if (Sudah Login & Kartu Aktif?) then (<color:green>Ya</color>)
+    :Ambil rincian stok buku dari basis data;
+    :Tampilkan form peminjaman dengan kuota 1 - 40 eksemplar;
+    |Anggota (Member)|
+    :Memilih jumlah buku (1 - 40) & opsi waktu pengambilan;
+    :Klik tombol "Kirim Pengajuan";
+    |Sistem AKSA NOVA|
+    :Validasi CSRF dan kuota jumlah buku;
+    if (Input Valid & Kuota Sesuai?) then (<color:green>Ya</color>)
+        :Simpan catatan tiket ke tabel pengajuan_peminjaman\n(status='pending', catatan=opsi_ambil);
+        :Tampilkan notifikasi pengajuan berhasil;
+        |Anggota (Member)|
+        :Menerima konfirmasi antrean peminjaman;
+        stop
+    else (<color:red>Tidak</color>)
+        |Sistem AKSA NOVA|
+        :Tampilkan pesan kesalahan validasi input;
+        |Anggota (Member)|
+        :Memperbaiki jumlah pinjaman;
+        stop
+    endif
+else (<color:red>Tidak</color>)
+    |Sistem AKSA NOVA|
+    :Redirect ke halaman sign_in.php?redirect=...;
+    |Anggota (Member)|
+    :Melakukan login terlebih dahulu;
+    stop
+endif
+@enduml

@@ -1,0 +1,64 @@
+@startuml 14_sequence_peminjaman_langsung
+autonumber "1:"
+skinparam sequence {
+    ArrowColor #1F4E79
+    ActorBorderColor #16A34A
+    ActorBackgroundColor #DCFCE7
+    LifeLineBorderColor #1F4E79
+    LifeLineBackgroundColor #9CC3E6
+    ParticipantBorderColor #1F4E79
+    ParticipantBackgroundColor #E2E8F0
+}
+
+title 14. Sequence Diagram — Layanan Peminjaman Langsung di Meja Sirkulasi\n<i>File: pinjam_buku.php</i>
+
+actor "Pustakawan\n(Admin)" as Admin
+boundary "Halaman Sirkulasi\n(pinjam_buku.php)" as Boundary
+control "SirkulasiController\n(pinjam_buku.php)" as Control
+entity "Tabel users" as UsersEntity
+entity "Tabel buku" as BukuEntity
+entity "Tabel peminjaman" as PinjamEntity
+
+activate Admin
+Admin -> Boundary: Pindai Barcode Kartu / Input No. Anggota & ISBN Buku
+activate Boundary
+Boundary -> Control: submitPinjamLangsung(no_anggota, buku_id, batas_kembali, csrf_token)
+activate Control
+Control -> Control: csrf_verify()
+
+Control -> UsersEntity: SELECT id, status, card_status FROM users WHERE no_anggota=?
+activate UsersEntity
+UsersEntity --> Control: Data anggota
+deactivate UsersEntity
+
+alt Anggota tidak aktif / kartu frozen
+    Control --> Boundary: Error: "Kartu anggota dibekukan atau tidak aktif"
+    Boundary --> Admin: Tampilkan peringatan blokir sirkulasi
+else Anggota valid
+    Control -> BukuEntity: SELECT stok FROM buku WHERE id=?
+    activate BukuEntity
+    BukuEntity --> Control: Stok buku
+    deactivate BukuEntity
+    
+    alt Stok buku = 0
+        Control --> Boundary: Error: "Stok buku habis"
+        Boundary --> Admin: Tampilkan peringatan stok kosong
+    else Stok mencukupi
+        Control -> BukuEntity: UPDATE buku SET stok = stok - 1 WHERE id=?
+        activate BukuEntity
+        BukuEntity --> Control: Stok terpotong
+        deactivate BukuEntity
+        
+        Control -> PinjamEntity: INSERT INTO peminjaman (buku_id, user_id, tgl_pinjam=CURRENT_DATE, batas_kembali=?, status='dipinjam')
+        activate PinjamEntity
+        PinjamEntity --> Control: ID Peminjaman baru
+        deactivate PinjamEntity
+        
+        Control --> Boundary: Sukses mencatat sirkulasi langsung
+        Boundary --> Admin: Tampilkan struk konfirmasi peminjaman
+    end
+end
+deactivate Control
+deactivate Boundary
+deactivate Admin
+@enduml

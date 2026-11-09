@@ -148,8 +148,9 @@
 
   <!-- Footer panel -->
   <div class="settings-footer" style="padding:14px 22px;border-top:1px solid var(--border-color,rgba(216,184,120,.18));display:flex;gap:10px;flex-shrink:0;background:var(--card,#121820);">
-    <button onclick="resetSettings()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:transparent;color:var(--muted,rgba(238,243,244,.6));font-family:var(--font-family,'Outfit',sans-serif);font-size:.78rem;font-weight:700;cursor:pointer;">
-      ↺ Reset Default
+    <button onclick="resetSettings()" style="flex:1;padding:10px;border-radius:10px;border:1px solid var(--border-color,rgba(216,184,120,.2));background:transparent;color:var(--muted,rgba(238,243,244,.6));font-family:var(--font-family,'Outfit',sans-serif);font-size:.78rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+      Reset Default
     </button>
     <button onclick="tutupSettings()" style="flex:1;padding:10px;border-radius:10px;border:none;background:linear-gradient(135deg,#d8b878,#f0d9a8);color:#1a1205;font-family:var(--font-family,'Outfit',sans-serif);font-size:.78rem;font-weight:800;cursor:pointer;">
       Simpan &amp; Tutup
@@ -526,7 +527,10 @@ body.settings-open .mobile-topbar {
   window.setUI = function(ui) {
     var s = saveSett({ ui: ui });
     var root = document.documentElement;
-    // Hapus kelas ui lama
+    ['ui-default','ui-minimal','ui-modern','ui-kuno','ui-gradasi'].forEach(function(cls) {
+      root.classList.remove(cls);
+    });
+    root.classList.add('ui-' + (ui || 'default'));
     applyColors(ui, s.mode || (localStorage.getItem('aksanova_theme') === 'light' ? 'light' : 'dark'));
     refreshUI();
   };
@@ -546,6 +550,7 @@ body.settings-open .mobile-topbar {
 
   window.resetSettings = function() {
     localStorage.removeItem('aksanova_settings');
+    localStorage.removeItem('aksanova_theme');
     location.reload();
   };
 
@@ -592,6 +597,35 @@ body.settings-open .mobile-topbar {
       if(el) el.classList.toggle('aktif', id === activeId);
     });
   }
+
+
+  // ── Universal Keyboard Shortcut: Alt + D atau Ctrl + Shift + D untuk Mode Gelap / Terang ──
+  document.addEventListener('keydown', function(e) {
+    // Jangan picu jika sedang mengetik di input / textarea
+    var tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+
+    if ((e.altKey && (e.key === 'd' || e.key === 'D')) || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'd' || e.key === 'D'))) {
+      e.preventDefault();
+      var s = getSett();
+      var curMode = s.mode || (localStorage.getItem('aksanova_theme') === 'light' ? 'light' : 'dark');
+      var newMode = curMode === 'dark' ? 'light' : 'dark';
+      window.setMode(newMode);
+
+      // Toast feedback
+      var toast = document.getElementById('shortcutThemeToast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'shortcutThemeToast';
+        toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:rgba(18,24,32,0.95);color:#eef3f4;border:1px solid rgba(216,184,120,0.4);padding:8px 18px;border-radius:999px;font-size:0.8rem;font-weight:600;z-index:999999;box-shadow:0 10px 30px rgba(0,0,0,0.4);pointer-events:none;transition:opacity 0.25s ease;';
+        document.body.appendChild(toast);
+      }
+      toast.textContent = newMode === 'dark' ? 'Mode Gelap diaktifkan (Alt+D)' : 'Mode Terang diaktifkan (Alt+D)';
+      toast.style.opacity = '1';
+      clearTimeout(window._shThemeTimer);
+      window._shThemeTimer = setTimeout(function() { toast.style.opacity = '0'; }, 2200);
+    }
+  });
 
   // Init refresh saat load
   document.addEventListener('DOMContentLoaded', refreshUI);

@@ -1,0 +1,62 @@
+@startuml 16_sequence_tambah_buku_isbn
+autonumber "1:"
+skinparam sequence {
+    ArrowColor #1F4E79
+    ActorBorderColor #16A34A
+    ActorBackgroundColor #DCFCE7
+    LifeLineBorderColor #1F4E79
+    LifeLineBackgroundColor #9CC3E6
+    ParticipantBorderColor #1F4E79
+    ParticipantBackgroundColor #E2E8F0
+    BoxBorderColor #64748b
+}
+
+title 16. Sequence Diagram — Penambahan Koleksi Buku via Pindai/Cari ISBN\n<i>File: daftar_buku.php & cari_isbn.php</i>
+
+actor "Pustakawan\n(Admin)" as Admin
+boundary "Modal Tambah Buku\n(daftar_buku.php)" as Boundary
+control "IsbnController\n(cari_isbn.php)" as Control
+box "Layanan Eksternal (External Objects)" #F8FAFC
+    participant "Google Books API" as GoogleBooks
+    participant "Open Library API" as OpenLibrary
+end box
+entity "Tabel buku" as BukuEntity
+
+activate Admin
+Admin -> Boundary: Input nomor ISBN & klik tombol "Cari ISBN"
+activate Boundary
+Boundary -> Control: cariIsbn(isbn)
+activate Control
+
+Control -> GoogleBooks: GET /volumes?q=isbn:{isbn}
+activate GoogleBooks
+alt Ditemukan di Google Books
+    GoogleBooks --> Control: JSON Volume Info (Judul, Penulis, Penerbit, Cover)
+else Tidak ditemukan / Kuota habis
+    GoogleBooks --> Control: Empty result / Error
+    deactivate GoogleBooks
+    Control -> OpenLibrary: GET /api/books?bibkeys=ISBN:{isbn}&format=json
+    activate OpenLibrary
+    OpenLibrary --> Control: JSON Fallback Book Data
+    deactivate OpenLibrary
+end
+
+Control --> Boundary: Response JSON metadata buku
+deactivate Control
+Boundary -> Boundary: Autofill form HANYA pada kolom yang masih kosong
+Boundary --> Admin: Tampilkan form terisi otomatis untuk diverifikasi
+
+Admin -> Boundary: Lengkapi stok, kategori, nomor rak, lalu klik "Simpan"
+Boundary -> Control: simpanBuku(data_buku, csrf_token)
+activate Control
+Control -> Control: csrf_verify()
+Control -> BukuEntity: INSERT INTO buku (judul, penulis, penerbit, tahun, isbn, stok, rak, deskripsi, gambar)
+activate BukuEntity
+BukuEntity --> Control: ID Buku baru berhasil disimpan
+deactivate BukuEntity
+Control --> Boundary: Notifikasi sukses simpan buku
+deactivate Control
+Boundary --> Admin: Tampilkan buku baru pada katalog admin
+deactivate Boundary
+deactivate Admin
+@enduml

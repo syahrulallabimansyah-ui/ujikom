@@ -1,32 +1,22 @@
 <?php
+/**
+ * db.php — Koneksi Database & Inisialisasi Layanan AKSA NOVA
+ */
+require_once __DIR__ . '/config.php';
 
-
-$host   = "localhost"; // host MySQL kamu
-$dbuser = "root";       // username MySQL kamu
-$dbpass = "";           // password MySQL kamu
+$host   = "localhost"; // host MySQL
+$dbuser = "root";       // username MySQL
+$dbpass = "";           // password MySQL
 $dbname = "aksa_nova";  // nama database
 
 $conn = mysqli_connect($host, $dbuser, $dbpass, $dbname);
 
 // Cek koneksi
 if (!$conn) {
-    die("Koneksi gagal: " . mysqli_connect_error());
+    die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// Set charset agar aman & mendukung seluruh karakter Unicode / emoji
+// Set charset utf8mb4 agar aman dari encoding-based injection & mendukung seluruh karakter
 mysqli_set_charset($conn, "utf8mb4");
-
-// Pastikan tabel pilihan kelas tersedia dan memiliki entri Guru
-mysqli_query($conn, "CREATE TABLE IF NOT EXISTS `kelas` (
-  `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `nama_kelas` VARCHAR(50) NOT NULL UNIQUE,
-  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-mysqli_query($conn, "INSERT IGNORE INTO `kelas` (`nama_kelas`) VALUES ('Guru')");
-
-// Pastikan kolom plain_password ada di tabel users (untuk melihat sandi anggota di card admin)
-$cek_col = @mysqli_query($conn, "SHOW COLUMNS FROM `users` LIKE 'plain_password'");
-if ($cek_col && mysqli_num_rows($cek_col) === 0) {
-    @mysqli_query($conn, "ALTER TABLE `users` ADD COLUMN `plain_password` VARCHAR(255) NOT NULL DEFAULT '' AFTER `password`");
-}
+@mysqli_query($conn, "SET time_zone = '+07:00'");
 ?>

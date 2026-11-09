@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<title>Diagram Use Case — AKSA NOVA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background-color: #ffffff;
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    color: #0f172a;
+    width: 2520px;
+    height: 1720px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .main-title-bar {
+    position: absolute;
+    top: 20px;
+    left: 40px;
+    right: 40px;
+    height: 65px;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 10px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.05);
+  }
+  .main-title-bar h1 {
+    font-size: 20px;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .main-title-bar .subtitle {
+    font-size: 12px;
+    color: #64748b;
+  }
+
+  /* Boundary */
+  .system-boundary {
+    position: absolute;
+    left: 360px;
+    top: 105px;
+    width: 1790px;
+    height: 1475px;
+    background-color: #FFFBEF;
+    border: 2.5px solid #333333;
+    border-radius: 12px;
+    z-index: 1;
+  }
+  .boundary-header {
+    position: absolute;
+    top: 14px;
+    left: 20px;
+    font-size: 17px;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: -0.3px;
+  }
+
+  /* Actor card */
+  .actor-wrap {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    z-index: 5;
+  }
+  .actor-icon {
+    width: 58px;
+    height: 78px;
+    margin-bottom: 6px;
+  }
+  .actor-name {
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 1.3;
+    padding: 4px 10px;
+    border-radius: 6px;
+  }
+
+  /* Use case ellipse */
+  .uc-ellipse {
+    position: absolute;
+    background: #CFE8FF;
+    border: 2px solid #1F4E79;
+    border-radius: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    font-size: 12px;
+    font-weight: 700;
+    color: #0F2C59;
+    padding: 6px 14px;
+    line-height: 1.25;
+    box-shadow: 0 2px 6px rgba(31, 78, 121, 0.12);
+    z-index: 3;
+  }
+  .uc-ellipse.shared {
+    background: #E2E8F0;
+    border-color: #475569;
+    color: #0F172A;
+    font-size: 13px;
+  }
+
+  /* SVG overlay */
+  svg.connections {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2520px;
+    height: 1720px;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  /* Legend */
+  .legend-box {
+    position: absolute;
+    bottom: 25px;
+    left: 360px;
+    width: 1790px;
+    height: 80px;
+    background: #ffffff;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    font-size: 12px;
+    font-weight: 600;
+    color: #334155;
+    z-index: 10;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+</style>
+</head>
+<body>
+
+<div class="main-title-bar">
+  <div>
+    <h1>DIAGRAM USE CASE — SISTEM INFORMASI PERPUSTAKAAN AKSA NOVA (SMKN 1 RONGGA)</h1>
+    <div class="subtitle">Standar Notasi: OMG UML 2.5 | 3 Aktor Primer | Dua Kolom Fungsional & Celah Akses Bersama | Engine: MySQL 8.0 & PHP 8 Prosedural</div>
+  </div>
+</div>
+
+<!-- ==================== SYSTEM BOUNDARY ==================== -->
+<div class="system-boundary">
+  <div class="boundary-header">Sistem Informasi Perpustakaan AKSA NOVA</div>
+</div>
+
+<!-- ==================== 3 AKTOR PRIMER ==================== -->
+
+<!-- 1. Tamu (Guest) - Merah #DC2626 -->
+<div class="actor-wrap" style="left: 60px; top: 250px; width: 170px;">
+  <svg class="actor-icon" viewBox="0 0 60 80">
+    <circle cx="30" cy="16" r="12" fill="#FEE2E2" stroke="#DC2626" stroke-width="2.5"/>
+    <line x1="30" y1="28" x2="30" y2="56" stroke="#DC2626" stroke-width="2.5"/>
+    <line x1="8" y1="38" x2="52" y2="38" stroke="#DC2626" stroke-width="2.5"/>
+    <line x1="30" y1="56" x2="12" y2="78" stroke="#DC2626" stroke-width="2.5"/>
+    <line x1="30" y1="56" x2="48" y2="78" stroke="#DC2626" stroke-width="2.5"/>
+  </svg>
+  <div class="actor-name" style="background:#FEE2E2; color:#991B1B; border:1.5px solid #F87171;">
+    :Tamu<br><span style="font-weight:500; font-size:11px;">(Pengunjung/Guest)</span>
+  </div>
+</div>
+
+<!-- 2. Anggota (Member: Siswa & Guru) - Biru #2563EB -->
+<div class="actor-wrap" style="left: 60px; top: 780px; width: 180px;">
+  <svg class="actor-icon" viewBox="0 0 60 80">
+    <circle cx="30" cy="16" r="12" fill="#DBEAFE" stroke="#2563EB" stroke-width="2.5"/>
+    <line x1="30" y1="28" x2="30" y2="56" stroke="#2563EB" stroke-width="2.5"/>
+    <line x1="8" y1="38" x2="52" y2="38" stroke="#2563EB" stroke-width="2.5"/>
+    <line x1="30" y1="56" x2="12" y2="78" stroke="#2563EB" stroke-width="2.5"/>
+    <line x1="30" y1="56" x2="48" y2="78" stroke="#2563EB" stroke-width="2.5"/>
+  </svg>
+  <div class="actor-name" style="background:#DBEAFE; color:#1E40AF; border:1.5px solid #60A5FA;">
+    :Anggota (Member)<br><span style="font-weight:500; font-size:11px;">[Siswa &amp; Guru]</span>
+  </div>
+</div>
+
+<!-- 3. Pustakawan (Admin) - Hijau #16A34A -->
+<div class="actor-wrap" style="left: 2260px; top: 700px; width: 180px;">
+  <svg class="actor-icon" viewBox="0 0 60 80">
+    <circle cx="30" cy="16" r="12" fill="#DCFCE7" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="30" y1="28" x2="30" y2="56" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="8" y1="38" x2="52" y2="38" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="30" y1="56" x2="12" y2="78" stroke="#16A34A" stroke-width="2.5"/>
+    <line x1="30" y1="56" x2="48" y2="78" stroke="#16A34A" stroke-width="2.5"/>
+  </svg>
+  <div class="actor-name" style="background:#DCFCE7; color:#166534; border:1.5px solid #4ADE80;">
+    :Pustakawan<br><span style="font-weight:500; font-size:11px;">(Administrator)</span>
+  </div>
+</div>
+
+<!-- ==================== USE CASE ELLIPSES ==================== -->
+
+<!-- KOLOM KIRI (Tamu & Anggota) -->
+<div class="uc-ellipse" style="left: 410px; top: 160px; width: 250px; height: 48px;">Menjelajahi Katalog Buku</div>
+<div class="uc-ellipse" style="left: 410px; top: 235px; width: 250px; height: 46px;">Melihat Detail Buku</div>
+<div class="uc-ellipse" style="left: 410px; top: 310px; width: 250px; height: 48px;">Melakukan Registrasi Anggota</div>
+<div class="uc-ellipse" style="left: 410px; top: 385px; width: 250px; height: 48px;">Lupa Kartu / Sandi</div>
+
+<div class="uc-ellipse" style="left: 700px; top: 355px; width: 220px; height: 44px; font-size:11px;">Meminta &amp; Mengirim OTP</div>
+<div class="uc-ellipse" style="left: 700px; top: 415px; width: 220px; height: 44px; font-size:11px;">Memverifikasi Kode OTP</div>
+
+<div class="uc-ellipse" style="left: 410px; top: 485px; width: 260px; height: 48px;">Mengakses Dashboard Anggota</div>
+<div class="uc-ellipse" style="left: 410px; top: 560px; width: 260px; height: 48px;">Mengajukan Peminjaman Buku</div>
+<div class="uc-ellipse" style="left: 410px; top: 635px; width: 260px; height: 48px;">Mengunduh &amp; Cetak Kartu Digital</div>
+<div class="uc-ellipse" style="left: 410px; top: 710px; width: 260px; height: 48px;">Mengubah Data Diri &amp; Sandi</div>
+<div class="uc-ellipse" style="left: 410px; top: 785px; width: 260px; height: 48px;">Menyimpan Buku (Wishlist)</div>
+<div class="uc-ellipse" style="left: 410px; top: 860px; width: 260px; height: 48px;">Memberikan Suka (Like) Buku</div>
+<div class="uc-ellipse" style="left: 410px; top: 935px; width: 260px; height: 48px;">Memberikan Rating Buku (1 - 5)</div>
+
+<!-- CELAH TENGAH (Akses Bersama) -->
+<div class="uc-ellipse shared" style="left: 1090px; top: 280px; width: 260px; height: 56px;">Melakukan Login</div>
+<div class="uc-ellipse shared" style="left: 1090px; top: 460px; width: 260px; height: 56px;">Melakukan Logout</div>
+<div class="uc-ellipse shared" style="left: 1090px; top: 640px; width: 260px; height: 56px;">Mengatur Tema &amp; Tampilan</div>
+
+<!-- KOLOM KANAN (Pustakawan / Admin) -->
+<div class="uc-ellipse" style="left: 1800px; top: 155px; width: 280px; height: 46px;">Mengakses Dashboard &amp; Statistik</div>
+<div class="uc-ellipse" style="left: 1800px; top: 225px; width: 280px; height: 46px;">Mengelola Data Buku (CRUD &amp; Stok)</div>
+<div class="uc-ellipse" style="left: 1470px; top: 225px; width: 240px; height: 44px; font-size:11px;">Mencari Data Buku via ISBN</div>
+
+<div class="uc-ellipse" style="left: 1800px; top: 295px; width: 280px; height: 46px;">Memproses Pengajuan Peminjaman</div>
+<div class="uc-ellipse" style="left: 1800px; top: 365px; width: 280px; height: 46px;">Memantau Notifikasi Pengajuan</div>
+<div class="uc-ellipse" style="left: 1800px; top: 435px; width: 280px; height: 46px;">Melakukan Peminjaman Langsung</div>
+<div class="uc-ellipse" style="left: 1800px; top: 505px; width: 280px; height: 46px;">Memproses Pengembalian Buku</div>
+
+<div class="uc-ellipse" style="left: 1470px; top: 480px; width: 240px; height: 44px; font-size:11px;">Menghitung Denda Keterlambatan</div>
+<div class="uc-ellipse" style="left: 1470px; top: 535px; width: 240px; height: 44px; font-size:11px;">Menandai Denda Lunas</div>
+
+<div class="uc-ellipse" style="left: 1800px; top: 575px; width: 280px; height: 46px;">Kirim Pengingat Terlambat via WA</div>
+<div class="uc-ellipse" style="left: 1800px; top: 645px; width: 280px; height: 46px;">Menghapus Riwayat Peminjaman</div>
+<div class="uc-ellipse" style="left: 1800px; top: 715px; width: 280px; height: 46px;">Mengelola Data Anggota</div>
+<div class="uc-ellipse" style="left: 1800px; top: 785px; width: 280px; height: 46px;">Mereset Kata Sandi Anggota</div>
+<div class="uc-ellipse" style="left: 1800px; top: 855px; width: 280px; height: 46px;">Mengatur Banner Promosi &amp; Literasi</div>
+<div class="uc-ellipse" style="left: 1800px; top: 925px; width: 280px; height: 46px;">Mengatur Musik Latar</div>
+<div class="uc-ellipse" style="left: 1800px; top: 995px; width: 280px; height: 46px;">Mengatur Lokasi &amp; Jam Operasional</div>
+<div class="uc-ellipse" style="left: 1800px; top: 1065px; width: 280px; height: 46px;">Mengatur Tarif &amp; Toleransi Denda</div>
+<div class="uc-ellipse" style="left: 1800px; top: 1135px; width: 280px; height: 46px;">Mengekspor Laporan ke Excel (.xls)</div>
+
+<!-- ==================== SVG CONNECTIONS ==================== -->
+<svg class="connections" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <!-- Arrow marker for include / extend -->
+    <marker id="arrow-rel" markerWidth="10" markerHeight="10" refX="8" refY="4" orient="auto">
+      <path d="M 1 1 L 8 4 L 1 7" fill="none" stroke="#991B1B" stroke-width="1.6"/>
+    </marker>
+  </defs>
+
+  <!-- TAMU BUS (Merah #DC2626) -->
+  <!-- Start at Tamu (x=230, y=285) -> bus at x=280, from y=184 to y=668 -->
+  <line x1="230" y1="285" x2="280" y2="285" stroke="#DC2626" stroke-width="2"/>
+  <line x1="280" y1="184" x2="280" y2="668" stroke="#DC2626" stroke-width="2"/>
+  <!-- Branches -->
+  <line x1="280" y1="184" x2="410" y2="184" stroke="#DC2626" stroke-width="2"/> <!-- Katalog -->
+  <line x1="280" y1="334" x2="410" y2="334" stroke="#DC2626" stroke-width="2"/> <!-- Registrasi -->
+  <line x1="280" y1="409" x2="410" y2="409" stroke="#DC2626" stroke-width="2"/> <!-- Lupa Kartu -->
+  <!-- To Center UC Login (y=308) -->
+  <path d="M 280 295 L 350 295 L 350 135 L 1000 135 L 1000 308 L 1090 308" fill="none" stroke="#DC2626" stroke-width="2"/>
+  <!-- To Center UC Tema (y=668) -->
+  <line x1="280" y1="668" x2="1090" y2="668" stroke="#DC2626" stroke-width="2"/>
+
+  <!-- ANGGOTA BUS (Biru #2563EB) -->
+  <!-- Start at Anggota (x=240, y=820) -> bus at x=320, from y=184 to y=959 -->
+  <line x1="240" y1="820" x2="320" y2="820" stroke="#2563EB" stroke-width="2"/>
+  <line x1="320" y1="184" x2="320" y2="959" stroke="#2563EB" stroke-width="2"/>
+  <!-- Branches -->
+  <line x1="320" y1="184" x2="410" y2="184" stroke="#2563EB" stroke-width="2"/> <!-- Katalog -->
+  <line x1="320" y1="509" x2="410" y2="509" stroke="#2563EB" stroke-width="2"/> <!-- Dash User -->
+  <line x1="320" y1="584" x2="410" y2="584" stroke="#2563EB" stroke-width="2"/> <!-- Ajukan Pinjam -->
+  <line x1="320" y1="659" x2="410" y2="659" stroke="#2563EB" stroke-width="2"/> <!-- Cetak Kartu -->
+  <line x1="320" y1="734" x2="410" y2="734" stroke="#2563EB" stroke-width="2"/> <!-- Edit Profil/Sandi -->
+  <line x1="320" y1="809" x2="410" y2="809" stroke="#2563EB" stroke-width="2"/> <!-- Simpan Buku -->
+  <line x1="320" y1="884" x2="410" y2="884" stroke="#2563EB" stroke-width="2"/> <!-- Like -->
+  <line x1="320" y1="959" x2="410" y2="959" stroke="#2563EB" stroke-width="2"/> <!-- Rating -->
+  <!-- To Center UC Login (y=308) -->
+  <path d="M 320 488 L 1020 488 L 1020 308 L 1090 308" fill="none" stroke="#2563EB" stroke-width="2"/>
+  <!-- To Center UC Logout (y=488) -->
+  <line x1="1020" y1="488" x2="1090" y2="488" stroke="#2563EB" stroke-width="2"/>
+  <!-- To Center UC Tema (y=668) -->
+  <path d="M 320 668 L 1090 668" fill="none" stroke="#2563EB" stroke-width="2"/>
+
+  <!-- PUSTAKAWAN BUS (Hijau #16A34A) -->
+  <!-- Start at Admin (x=2260, y=740) -> bus at x=2180, from y=178 to y=1158 -->
+  <line x1="2260" y1="740" x2="2180" y2="740" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="178" x2="2180" y2="1158" stroke="#16A34A" stroke-width="2"/>
+  <!-- Branches -->
+  <line x1="2180" y1="178" x2="2080" y2="178" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="248" x2="2080" y2="248" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="318" x2="2080" y2="318" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="388" x2="2080" y2="388" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="458" x2="2080" y2="458" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="528" x2="2080" y2="528" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="598" x2="2080" y2="598" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="668" x2="2080" y2="668" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="738" x2="2080" y2="738" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="808" x2="2080" y2="808" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="878" x2="2080" y2="878" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="948" x2="2080" y2="948" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="1018" x2="2080" y2="1018" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="1088" x2="2080" y2="1088" stroke="#16A34A" stroke-width="2"/>
+  <line x1="2180" y1="1158" x2="2080" y2="1158" stroke="#16A34A" stroke-width="2"/>
+  <!-- To Center UC Login (y=308) -->
+  <path d="M 2180 308 L 1350 308" fill="none" stroke="#16A34A" stroke-width="2"/>
+  <!-- To Center UC Logout (y=488) -->
+  <path d="M 2180 488 L 1350 488" fill="none" stroke="#16A34A" stroke-width="2"/>
+  <!-- To Center UC Tema (y=668) -->
+  <path d="M 2180 668 L 1350 668" fill="none" stroke="#16A34A" stroke-width="2"/>
+
+  <!-- ==================== RELASI INCLUDE & EXTEND ==================== -->
+  <!-- 1. Detail Buku .> Katalog (<<extend>>) -->
+  <line x1="535" y1="235" x2="535" y2="208" stroke="#991B1B" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arrow-rel)"/>
+  <text x="545" y="224" font-size="11" font-weight="bold" font-style="italic" fill="#991B1B">&lt;&lt;extend&gt;&gt;</text>
+
+  <!-- 2. Lupa Kartu .> Minta OTP (<<include>>) -->
+  <path d="M 660 395 L 700 377" stroke="#991B1B" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arrow-rel)"/>
+  <text x="645" y="375" font-size="10.5" font-weight="bold" font-style="italic" fill="#991B1B">&lt;&lt;include&gt;&gt;</text>
+
+  <!-- 3. Lupa Kartu .> Verif OTP (<<include>>) -->
+  <path d="M 660 415 L 700 437" stroke="#991B1B" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arrow-rel)"/>
+  <text x="645" y="445" font-size="10.5" font-weight="bold" font-style="italic" fill="#991B1B">&lt;&lt;include&gt;&gt;</text>
+
+  <!-- 4. Cari ISBN .> Kelola Buku (<<extend>>) -->
+  <line x1="1710" y1="247" x2="1800" y2="247" stroke="#991B1B" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arrow-rel)"/>
+  <text x="1725" y="240" font-size="11" font-weight="bold" font-style="italic" fill="#991B1B">&lt;&lt;extend&gt;&gt;</text>
+
+  <!-- 5. Pengembalian .> Hitung Denda (<<include>>) -->
+  <path d="M 1800 520 L 1710 502" stroke="#991B1B" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arrow-rel)"/>
+  <text x="1720" y="495" font-size="10.5" font-weight="bold" font-style="italic" fill="#991B1B">&lt;&lt;include&gt;&gt;</text>
+
+  <!-- 6. Denda Lunas .> Pengembalian (<<extend>>) -->
+  <path d="M 1710 557 L 1800 535" stroke="#991B1B" stroke-width="1.8" stroke-dasharray="5,3" marker-end="url(#arrow-rel)"/>
+  <text x="1720" y="565" font-size="10.5" font-weight="bold" font-style="italic" fill="#991B1B">&lt;&lt;extend&gt;&gt;</text>
+</svg>
+
+<!-- ==================== LEGENDA ==================== -->
+<div class="legend-box">
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-block; width:28px; height:3px; background:#DC2626;"></span>
+    <span>Asosiasi Tamu (Pengunjung)</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-block; width:28px; height:3px; background:#2563EB;"></span>
+    <span>Asosiasi Anggota (Siswa &amp; Guru)</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-block; width:28px; height:3px; background:#16A34A;"></span>
+    <span>Asosiasi Pustakawan (Administrator)</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-block; width:28px; height:2px; border-bottom:2px dashed #991B1B;"></span>
+    <span style="color:#991B1B; font-style:italic;">&lt;&lt;include&gt;&gt; / &lt;&lt;extend&gt;&gt;</span>
+  </div>
+  <div style="display:flex; align-items:center; gap:8px;">
+    <span style="display:inline-block; width:16px; height:16px; background:#E2E8F0; border:1.5px solid #475569; border-radius:4px;"></span>
+    <span>Use Case Celah Bersama</span>
+  </div>
+</div>
+
+</body>
+</html>

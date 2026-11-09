@@ -1,0 +1,65 @@
+@startuml 11_sequence_login
+autonumber "1:"
+skinparam sequence {
+    ArrowColor #1F4E79
+    ActorBorderColor #2563EB
+    ActorBackgroundColor #DBEAFE
+    LifeLineBorderColor #1F4E79
+    LifeLineBackgroundColor #9CC3E6
+    ParticipantBorderColor #1F4E79
+    ParticipantBackgroundColor #E2E8F0
+}
+
+title 11. Sequence Diagram — Autentikasi Pengguna & Role Redirection\n<i>File: sign_in.php</i>
+
+actor "Pengguna\n(Tamu/Anggota/Admin)" as User
+boundary "Halaman Login\n(sign_in.php)" as Boundary
+control "LoginController\n(sign_in.php)" as Control
+entity "Tabel users" as UsersEntity
+
+activate User
+User -> Boundary: Buka formulir login
+activate Boundary
+Boundary --> User: Tampilkan form login & token CSRF
+deactivate Boundary
+
+User -> Boundary: Input username/email & password (POST)
+activate Boundary
+Boundary -> Control: prosesLogin(identitas, password, csrf_token)
+activate Control
+Control -> Control: csrf_verify()
+alt Token CSRF tidak valid
+    Control --> Boundary: Error: "Token sesi tidak valid / kedaluwarsa"
+    Boundary --> User: Tampilkan pesan kesalahan CSRF
+else Token valid
+    Control -> UsersEntity: SELECT * FROM users WHERE (username=? OR email=? OR no_anggota=?) LIMIT 1
+    activate UsersEntity
+    UsersEntity --> Control: Record data user
+    deactivate UsersEntity
+    
+    alt User tidak ditemukan ATAU status != 'approved'
+        Control --> Boundary: Pesan error generik: "Identitas atau sandi salah"
+        Boundary --> User: Tampilkan notifikasi login gagal
+    else User valid
+        Control -> Control: password_verify(password_input, user.password)
+        alt Password salah
+            Control --> Boundary: Pesan error: "Username/Email atau kata sandi salah"
+            Boundary --> User: Tampilkan notifikasi gagal
+        else Password cocok
+            Control -> Control: session_regenerate_id(true)
+            Control -> Control: Simpan $_SESSION['user_id', 'role', 'full_name']
+            
+            alt user.role == 'admin'
+                Control --> Boundary: Redirect header("Location: dashboard.php")
+                Boundary --> User: Tampilkan Dashboard Pustakawan (Admin)
+            else user.role == 'member'
+                Control --> Boundary: Redirect header("Location: beranda.php")
+                Boundary --> User: Tampilkan Beranda Anggota
+            end
+        end
+    end
+end
+deactivate Control
+deactivate Boundary
+deactivate User
+@enduml

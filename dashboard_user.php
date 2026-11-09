@@ -8,7 +8,7 @@ if (!isset($_SESSION["user_id"])) {
 }
 
 if (($_SESSION["role"] ?? "") === "admin") {
-    header("Location: halaman_admin.php");
+    header("Location: dashboard.php");
     exit;
 }
 
@@ -18,7 +18,7 @@ $user_id   = (int)$_SESSION["user_id"];
 $user_name = $_SESSION["user_name"] ?? "Anggota";
 $is_guest  = false;
 $is_admin  = false;
-$page_title = "Dashboard Anggota – AKSA NOVA";
+$page_title = "Peminjaman Saya – AKSA NOVA";
 
 // ─── Ambil data profil lengkap pengguna ───
 $user_stmt = mysqli_prepare($conn, "SELECT * FROM users WHERE id = ?");
@@ -28,20 +28,23 @@ $user_res = mysqli_stmt_get_result($user_stmt);
 $user     = mysqli_fetch_assoc($user_res);
 mysqli_stmt_close($user_stmt);
 
-if (!$user) {
+if (!$user || ($user["status"] ?? "") !== "approved" || ($user["card_status"] ?? "active") === "frozen") {
+    session_unset();
     session_destroy();
     header("Location: sign_in.php");
     exit;
 }
 
-// ─── Pengaturan denda ───
-$denda_per_hari = 1000;
-$denda_aktif    = 0;
-$pgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('denda_per_hari','denda_aktif')");
+// ─── Pengaturan denda (selaras dengan telah_dipinjam.php & pengaturan_denda.php) ───
+$denda_per_hari     = 1000;
+$denda_aktif        = 0;
+$denda_grace_period = 0;
+$pgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('denda_per_hari','denda_aktif','denda_grace_period')");
 if ($pgt) {
     while ($p = mysqli_fetch_assoc($pgt)) {
-        if ($p["kunci"] === "denda_per_hari") $denda_per_hari = (int)$p["nilai"];
-        if ($p["kunci"] === "denda_aktif")    $denda_aktif    = (int)$p["nilai"];
+        if ($p["kunci"] === "denda_per_hari")     $denda_per_hari     = (int)$p["nilai"];
+        if ($p["kunci"] === "denda_aktif")        $denda_aktif        = (int)$p["nilai"];
+        if ($p["kunci"] === "denda_grace_period") $denda_grace_period = (int)$p["nilai"];
     }
 }
 
@@ -79,15 +82,25 @@ if ($r_aktif) {
 $sedang_dipinjam  = count($pinjaman_aktif);
 $terlambat_pinjam = 0;
 $denda_berjalan   = 0;
-foreach ($pinjaman_aktif as $pa) {
-    if (strtotime($pa["batas_kembali"]) < time()) {
+$now_dt = new DateTimeImmutable();
+foreach ($pinjaman_aktif as &$pa) {
+    $batas_dt = new DateTimeImmutable($pa["batas_kembali"]);
+    if ($now_dt > $batas_dt) {
         $terlambat_pinjam++;
-        $days_late = (int)ceil((time() - strtotime($pa["batas_kembali"])) / 86400);
-        if ($denda_aktif && $days_late > 0) {
-            $denda_berjalan += ($days_late * $denda_per_hari);
-        }
+        $days_late = (int)$batas_dt->diff($now_dt)->days;
+        $billable_days = max(0, $days_late - $denda_grace_period);
+        $est_denda = ($denda_aktif && $billable_days > 0) ? ($billable_days * $denda_per_hari) : 0;
+        $pa["_is_late"]   = true;
+        $pa["_days_late"] = $days_late;
+        $pa["_est_denda"] = $est_denda;
+        $denda_berjalan += $est_denda;
+    } else {
+        $pa["_is_late"]   = false;
+        $pa["_days_late"] = 0;
+        $pa["_est_denda"] = 0;
     }
 }
+unset($pa);
 $total_denda_semua = $total_denda_belum + $denda_berjalan;
 
 // ─── Riwayat pengembalian buku ───
@@ -141,8 +154,8 @@ if ($mgt) {
 }
 $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_file));
 
-// QR code anggota
-$qr_url = "https://api.qrserver.com/v1/create-qr-code/?size=160x160&margin=0&data=" . urlencode($user["no_anggota"] ?: $user["username"]);
+// Barcode Code 128 Anggota (Vector SVG Offline)
+require_once "barcode128.php";
 
 ob_start();
 ?>
@@ -247,6 +260,23 @@ ob_start();
     .btn-musik.playing { background: rgba(216,184,120,.18); box-shadow: 0 0 16px rgba(216,184,120,.3); }
     .btn-musik.playing .icon-off { display: none; }
     .btn-musik.playing .icon-eq  { display: flex; }
+    html.theme-light .btn-musik, html.light .btn-musik {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
+    }
+    html.theme-light .btn-musik:hover, html.light .btn-musik:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik.playing, html.light .btn-musik.playing {
+      background: rgba(138,99,35,.15) !important;
+      box-shadow: 0 0 16px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
+      background: #8a6323 !important;
+    }
 
     .mobile-topbar { display: contents; }
     .mobile-topbar-divider, .mobile-topbar-brand { display: none; }
@@ -254,7 +284,7 @@ ob_start();
 
     /* ── DASHBOARD HEADER BANNER ── */
     .user-hero {
-      background: linear-gradient(135deg, rgba(216,184,120,.12) 0%, rgba(18,24,32,.9) 100%);
+      background: linear-gradient(135deg, #161e28 0%, #111720 55%, #1e1810 100%);
       border: 1px solid var(--border-color);
       border-radius: var(--radius);
       padding: 24px 28px;
@@ -272,12 +302,12 @@ ob_start();
       position: absolute;
       top: -50%;
       right: -10%;
-      width: 250px;
-      height: 250px;
-      background: radial-gradient(circle, rgba(216,184,120,.15) 0%, transparent 70%);
+      width: 260px;
+      height: 260px;
+      background: radial-gradient(circle, rgba(216,184,120,.16) 0%, transparent 70%);
       pointer-events: none;
     }
-    .hero-profile-wrap { display: flex; align-items: center; gap: 18px; min-width: 0; }
+    .hero-profile-wrap { display: flex; align-items: center; gap: 18px; min-width: 0; position: relative; z-index: 1; }
     .hero-avatar {
       width: 64px; height: 64px; border-radius: 50%;
       border: 2px solid var(--accent); background: var(--book-card);
@@ -287,25 +317,82 @@ ob_start();
     .hero-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .hero-avatar svg { width: 30px; height: 30px; color: var(--accent); }
     .hero-text { min-width: 0; }
-    .hero-greeting { font-size: .8rem; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; font-weight: 700; }
-    .hero-name { font-family: 'Cormorant Garamond', serif; font-size: 1.65rem; font-weight: 700; color:#b89758; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .hero-sub { font-size: .78rem; color: var(--muted); margin-top: 4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .hero-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(39,174,96,.18); color: #4ade80; border: 1px solid rgba(39,174,96,.3); font-size: .68rem; font-weight: 700; padding: 2px 8px; border-radius: 20px; }
-    .hero-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .hero-greeting { font-size: .78rem; color: var(--accent); letter-spacing: .07em; text-transform: uppercase; font-weight: 800; margin-bottom: 2px; }
+    .hero-name { font-family: 'Cormorant Garamond', serif; font-size: 1.75rem; font-weight: 700; color: #f0d9a8; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .hero-sub { font-size: .78rem; color: rgba(238,243,244,.78); margin-top: 5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-weight: 500; }
+    .hero-badge { display: inline-flex; align-items: center; gap: 4px; background: rgba(39,174,96,.18); color: #4ade80; border: 1px solid rgba(39,174,96,.35); font-size: .68rem; font-weight: 700; padding: 2px 9px; border-radius: 20px; }
+    .hero-actions { display: flex; align-items: center; gap: 10px; flex-shrink: 0; position: relative; z-index: 1; }
     .btn-hero-action {
       display: inline-flex; align-items: center; gap: 7px;
       padding: 9px 16px; border-radius: 50px; font-size: .78rem; font-weight: 700;
       text-decoration: none; transition: all var(--trans); cursor: pointer;
     }
     .btn-hero-gold {
-      background: linear-gradient(135deg, var(--accent) 0%, #b89758 100%);
-      color: #090c10; box-shadow: 0 4px 14px rgba(216,184,120,.3);
+      background: linear-gradient(135deg, #d8b878 0%, #c49a52 100%);
+      color: #121820; box-shadow: 0 4px 14px rgba(216,184,120,.3);
     }
-    .btn-hero-gold:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(216,184,120,.4); }
+    .btn-hero-gold:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(216,184,120,.45); }
     .btn-hero-outline {
-      background: rgba(18,24,32,.7); border: 1px solid var(--border-color); color: var(--text);
+      background: rgba(255,255,255,.05); border: 1.5px solid var(--border-color); color: var(--text);
     }
     .btn-hero-outline:hover { border-color: var(--accent); color: var(--accent); transform: translateY(-2px); }
+
+    /* Adaptasi Mode Terang untuk Banner & Tombol Hero Anggota */
+    html:not(.dark) .user-hero,
+    html.light .user-hero,
+    html.theme-light .user-hero {
+      background: linear-gradient(135deg, #ffffff 0%, #fcf7eb 55%, #f4e7cb 100%) !important;
+      border: 1px solid rgba(180, 134, 45, 0.3) !important;
+      box-shadow: 0 6px 24px rgba(138, 99, 35, 0.08) !important;
+    }
+    html:not(.dark) .user-hero::before,
+    html.light .user-hero::before {
+      background: radial-gradient(circle, rgba(216,184,120,.32) 0%, transparent 70%) !important;
+    }
+    html:not(.dark) .hero-avatar,
+    html.light .hero-avatar {
+      background: #fffaf0 !important;
+      border-color: #b8860b !important;
+      box-shadow: 0 4px 14px rgba(138, 99, 35, 0.16) !important;
+    }
+    html:not(.dark) .hero-avatar svg,
+    html.light .hero-avatar svg {
+      color: #8a6100 !important;
+    }
+    html:not(.dark) .hero-greeting,
+    html.light .hero-greeting {
+      color: #8a6100 !important;
+    }
+    html:not(.dark) .hero-name,
+    html.light .hero-name {
+      color: #221d14 !important;
+    }
+    html:not(.dark) .hero-sub,
+    html.light .hero-sub {
+      color: #5c4f3a !important;
+    }
+    html:not(.dark) .hero-badge,
+    html.light .hero-badge {
+      background: #dcfce7 !important;
+      color: #15803d !important;
+      border-color: #86efac !important;
+    }
+    html:not(.dark) .btn-hero-outline,
+    html.light .btn-hero-outline {
+      background: #ffffff !important;
+      border: 1.5px solid rgba(150, 110, 45, 0.32) !important;
+      color: #221d14 !important;
+      box-shadow: 0 2px 8px rgba(138, 99, 35, 0.08) !important;
+    }
+    html:not(.dark) .btn-hero-outline:hover,
+    html.light .btn-hero-outline:hover {
+      background: #fcf6e8 !important;
+      border-color: #8a6100 !important;
+      color: #785008 !important;
+    }
+    .badge-menunggu { background: rgba(245,158,11,.15); color: #fbbf24; border: 1px solid rgba(245,158,11,.3); padding: 3px 9px; border-radius: 6px; font-size: .68rem; font-weight: 700; display: inline-block; }
+    .badge-disetujui { background: rgba(5,150,105,.15); color: #4ade80; border: 1px solid rgba(5,150,105,.3); padding: 3px 9px; border-radius: 6px; font-size: .68rem; font-weight: 700; display: inline-block; }
+    .badge-ditolak { background: rgba(220,38,38,.15); color: #f87171; border: 1px solid rgba(220,38,38,.3); padding: 3px 9px; border-radius: 6px; font-size: .68rem; font-weight: 700; display: inline-block; }
 
     /* ── STATS CARDS ── */
     .stats-grid {
@@ -385,12 +472,12 @@ ob_start();
     .loan-thumb img { width: 100%; height: 100%; object-fit: cover; }
     .loan-thumb svg { width: 20px; height: 20px; color: var(--accent); }
     .loan-info { flex: 1; min-width: 0; }
-    .loan-title { font-size: .84rem; font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .loan-author { font-size: .72rem; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .loan-dates { display: flex; align-items: center; gap: 10px; font-size: .68rem; color: var(--muted); margin-top: 5px; flex-wrap: wrap; }
+    .loan-title { font-size: .92rem; font-weight: 800; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .loan-author { font-size: .78rem; color: var(--muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .loan-dates { display: flex; align-items: center; gap: 10px; font-size: .74rem; color: var(--muted); margin-top: 5px; flex-wrap: wrap; }
     .loan-status-badge {
       display: inline-flex; align-items: center; gap: 4px;
-      font-size: .68rem; font-weight: 700; padding: 4px 10px; border-radius: 20px;
+      font-size: .72rem; font-weight: 700; padding: 4px 11px; border-radius: 20px;
       white-space: nowrap; flex-shrink: 0;
     }
     .loan-status-badge.ontime { background: rgba(39,174,96,.15); color: #4ade80; border: 1px solid rgba(39,174,96,.3); }
@@ -408,15 +495,18 @@ ob_start();
     .history-title { font-weight: 700; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .history-date { font-size: .7rem; color: var(--muted); white-space: nowrap; }
 
-    /* Digital Card Widget — meniru desain kartu_anggota.php */
+    /* Digital Card Widget — Responsif, Elegan & Tidak Pernah Terpotong */
     .mc-card {
       background: linear-gradient(150deg, #1c1c28 0%, #2e2e40 55%, #46465c 100%);
       border-radius: 16px;
-      padding: 18px 18px 16px;
+      padding: 18px 20px 16px;
       position: relative;
       overflow: hidden;
       color: #fff;
       box-shadow: 0 10px 28px rgba(0,0,0,.4);
+      display: flex;
+      flex-direction: column;
+      box-sizing: border-box;
     }
     .mc-card::before {
       content: '';
@@ -453,17 +543,36 @@ ob_start();
 
     .mc-divider { height: 1px; background: rgba(255,255,255,.14); margin-bottom: 14px; position: relative; }
 
-    .mc-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; position: relative; }
+    .mc-foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; position: relative; margin-top: 2px; }
     .mc-cred { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
     .mc-credrow { display: flex; align-items: baseline; gap: 6px; }
     .mc-credlabel { font-size: .56rem; letter-spacing: .08em; text-transform: uppercase; color: #adadc7; width: 56px; flex-shrink: 0; }
     .mc-credvalue { font-family: 'JetBrains Mono', monospace; font-size: .76rem; font-weight: 600; color: #fff; letter-spacing: .02em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .mc-credvalue.muted { color: #e0ac78; font-weight: 500; font-size: .7rem; }
 
-    .mc-qrwrap { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; text-align: center; }
-    .mc-qrbox { background: #fff; padding: 5px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; width: 62px; height: 62px; box-sizing: border-box; line-height: 0; box-shadow: 0 3px 8px rgba(0,0,0,.2); }
-    .mc-qrbox img { display: block; width: 52px; height: 52px; object-fit: contain; image-rendering: pixelated; }
-    .mc-noanggota { font-family: 'JetBrains Mono', monospace; font-size: .6rem; color: #d8d8e8; margin-top: 5px; letter-spacing: .03em; white-space: nowrap; }
+    .mc-barcodewrap { display: flex; flex-direction: column; align-items: center; justify-content: center; flex-shrink: 0; text-align: center; }
+    .mc-barcodebox {
+      background: #ffffff;
+      padding: 5px 8px 3px;
+      border-radius: 7px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 148px;
+      box-sizing: border-box;
+      box-shadow: 0 3px 8px rgba(0,0,0,.25);
+    }
+    .mc-barcodebox svg { width: 100%; height: 28px; display: block; }
+    .mc-barcodelabel {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: .56rem;
+      font-weight: 700;
+      color: #111111;
+      margin-top: 2px;
+      letter-spacing: .06em;
+      white-space: nowrap;
+    }
 
     /* Shelf Mini */
     .shelf-mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
@@ -550,12 +659,12 @@ ob_start();
       .section-card { padding:16px 14px; margin-bottom:16px; }
       .section-title { font-size:.88rem; }
 
-      .loan-item { padding:10px 12px; gap:10px; }
-      .loan-thumb { width:36px; height:52px; }
-      .loan-title { font-size:.8rem; }
-      .loan-author { font-size:.68rem; }
-      .loan-dates { font-size:.64rem; gap:6px; }
-      .loan-status-badge { font-size:.64rem; padding:3px 8px; }
+      .loan-item { padding:12px 14px; gap:12px; }
+      .loan-thumb { width:38px; height:54px; }
+      .loan-title { font-size:.88rem; }
+      .loan-author { font-size:.74rem; }
+      .loan-dates { font-size:.72rem; gap:6px; }
+      .loan-status-badge { font-size:.70rem; padding:4px 10px; }
 
       .mc-card { padding:16px; }
       .mc-name { font-size:.9rem; }
@@ -666,8 +775,8 @@ ob_start();
       </svg>
       <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
     </button>
-    <audio id="audioLatar" loop autoplay muted preload="auto">
-      <source src="<?= htmlspecialchars($musik_file) ?>">
+    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
+      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
     </audio>
     <?php endif; ?>
   </div>
@@ -693,7 +802,7 @@ ob_start();
     </a>
     <a href="dashboard_user.php" class="nav-item active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-      Dashboard
+      Peminjaman Saya
     </a>
     <a href="daftar_buku.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
@@ -705,20 +814,20 @@ ob_start();
     </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Buku Simpan
+      Buku Disimpan
     </a>
     <a href="edit_kartu.php" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Edit Profil
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profil
     </a>
   </nav>
 
   <div class="nav-bottom">
     <a href="#" class="nav-item" onclick="bukaSettings(); return false;" title="Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </a>
-    <a href="logout.php" class="nav-item" style="color:#e74c3c;">
+    <a href="logout.php" class="nav-item sidebar-btn-logout" style="color:#e74c3c;" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Keluar
     </a>
@@ -742,8 +851,10 @@ ob_start();
         <h1 class="hero-name"><?= htmlspecialchars($user["full_name"]) ?></h1>
         <div class="hero-sub">
           <span><?= htmlspecialchars($user["no_anggota"] ?: "—") ?></span>
-          <span>·</span>
-          <span><?= htmlspecialchars($user["kelas"] ?: "Umum") ?></span>
+          <?php if (!empty($user["nik"])): ?>
+            <span>·</span>
+            <span><?= (strcasecmp($user["kelas"] ?? "", "Guru") === 0 ? "NIP " : "NIS ") . htmlspecialchars($user["nik"]) ?></span>
+          <?php endif; ?>
           <span class="hero-badge">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
             Anggota Aktif
@@ -782,9 +893,9 @@ ob_start();
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
       </div>
       <div>
-        <div class="stat-value" style="<?= $terlambat_pinjam > 0 ? 'color:#f87171;' : '' ?>"><?= $terlambat_pinjam ?></div>
+        <div class="stat-value <?= $terlambat_pinjam > 0 ? 'text-danger-adaptive' : '' ?>"><?= $terlambat_pinjam ?></div>
         <div class="stat-label">Terlambat Kembali</div>
-        <div class="stat-desc" style="<?= $total_denda_semua > 0 ? 'color:#f87171;' : '' ?>">
+        <div class="stat-desc <?= $total_denda_semua > 0 ? 'text-danger-adaptive' : '' ?>">
           <?= $total_denda_semua > 0 ? "Denda: Rp " . number_format($total_denda_semua, 0, ",", ".") : "Bebas denda" ?>
         </div>
       </div>
@@ -819,8 +930,9 @@ ob_start();
             <?php foreach ($pinjaman_aktif as $p):
               $tgl_pinjam = date("d M Y", strtotime($p["waktu_pinjam"]));
               $tgl_batas  = date("d M Y", strtotime($p["batas_kembali"]));
-              $is_late    = (strtotime($p["batas_kembali"]) < time());
-              $diff_days  = abs((int)round((time() - strtotime($p["batas_kembali"])) / 86400));
+              $is_late    = !empty($p["_is_late"]);
+              $diff_days  = (int)($p["_days_late"] ?? 0);
+              $row_denda  = (int)($p["_est_denda"] ?? 0);
             ?>
             <div class="loan-item" onclick="bukaDetailBuku(<?= (int)$p['buku_id'] ?>)" style="cursor:pointer;" title="Klik untuk melihat detail buku">
               <div class="loan-thumb">
@@ -836,15 +948,17 @@ ob_start();
                 <div class="loan-dates">
                   <span>Pinjam: <strong><?= $tgl_pinjam ?></strong></span>
                   <span>·</span>
-                  <span>Jatuh Tempo: <strong style="<?= $is_late ? 'color:#f87171;' : '' ?>"><?= $tgl_batas ?></strong></span>
+                  <span>Jatuh Tempo: <strong class="<?= $is_late ? 'text-danger-adaptive' : '' ?>"><?= $tgl_batas ?></strong></span>
                 </div>
               </div>
               <div>
                 <?php if ($is_late): ?>
                   <span class="loan-status-badge late" style="flex-direction:column;align-items:flex-end;gap:1px;text-align:right;">
-                    <span>Terlambat <?= $diff_days ?> Hari</span>
-                    <?php if ($denda_aktif && $diff_days > 0): ?>
-                      <span style="font-size:.62rem;opacity:.9;">Denda: Rp <?= number_format($diff_days * $denda_per_hari, 0, ',', '.') ?></span>
+                    <span><?= $diff_days > 0 ? 'Terlambat ' . $diff_days . ' Hari' : 'Lewat Jatuh Tempo (&lt; 1 Hari)' ?></span>
+                    <?php if ($denda_aktif && $row_denda > 0): ?>
+                      <span style="font-size:.62rem;opacity:.9;">Denda: Rp <?= number_format($row_denda, 0, ',', '.') ?></span>
+                    <?php elseif ($denda_aktif && $diff_days > 0 && $denda_grace_period > 0): ?>
+                      <span style="font-size:.62rem;opacity:.9;">Masa toleransi denda</span>
                     <?php endif; ?>
                   </span>
                 <?php else: ?>
@@ -866,13 +980,13 @@ ob_start();
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
             Status Pengajuan Peminjaman Saya
           </div>
-          <a href="pengajuan_peminjaman.php" style="font-size:.75rem;color:var(--accent);font-weight:700;text-decoration:none;">+ Ajukan Baru</a>
+          <a href="pengajuan_peminjaman.php" class="view-all-link">+ Ajukan Baru</a>
         </div>
 
         <?php if (empty($riwayat_pengajuan)): ?>
           <div style="text-align:center;padding:18px 0;color:var(--muted);font-size:.75rem;">
             Kamu belum memiliki pengajuan peminjaman buku.<br>
-            <a href="daftar_buku.php" style="color:var(--accent);font-weight:700;display:inline-block;margin-top:6px;text-decoration:none;">Jelajahi Katalog Buku &rarr;</a>
+            <a href="daftar_buku.php" class="view-all-link" style="display:inline-block;margin-top:6px;">Jelajahi Katalog Buku &rarr;</a>
           </div>
         <?php else: ?>
           <div>
@@ -881,11 +995,11 @@ ob_start();
               $st = $pg["status"];
               $st_badge = '';
               if ($st === 'menunggu') {
-                  $st_badge = '<span style="background:rgba(245,158,11,.15);color:#fbbf24;border:1px solid rgba(245,158,11,.3);padding:3px 8px;border-radius:6px;font-size:.68rem;font-weight:700;">Menunggu</span>';
+                  $st_badge = '<span class="badge-menunggu">Menunggu</span>';
               } elseif ($st === 'disetujui') {
-                  $st_badge = '<span style="background:rgba(5,150,105,.15);color:#4ade80;border:1px solid rgba(5,150,105,.3);padding:3px 8px;border-radius:6px;font-size:.68rem;font-weight:700;">Disetujui</span>';
+                  $st_badge = '<span class="badge-disetujui">Disetujui</span>';
               } else {
-                  $st_badge = '<span style="background:rgba(220,38,38,.15);color:#f87171;border:1px solid rgba(220,38,38,.3);padding:3px 8px;border-radius:6px;font-size:.68rem;font-weight:700;">Ditolak</span>';
+                  $st_badge = '<span class="badge-ditolak">Ditolak</span>';
               }
             ?>
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--card-border);gap:10px;">
@@ -896,11 +1010,11 @@ ob_start();
                 <div style="font-size:.7rem;color:var(--muted);margin-top:2px;">
                   <?= $tgl_aju ?> · <?= (int)$pg['total_buku'] ?> Buku · Ambil: <strong><?= $pg['waktu_pengambilan'] === 'sekarang' ? 'Sekarang' : 'Nanti' ?></strong>
                   <?php if ($pg['waktu_pengambilan'] === 'nanti' && !empty($pg['catatan_pengambilan'])): ?>
-                    <span style="color:var(--accent);font-size:.68rem;display:inline-block;margin-left:4px;">(<?= htmlspecialchars($pg['catatan_pengambilan']) ?>)</span>
+                    <span class="view-all-link" style="font-size:.68rem;display:inline-block;margin-left:4px;text-decoration:none;">(<?= htmlspecialchars($pg['catatan_pengambilan']) ?>)</span>
                   <?php endif; ?>
                 </div>
                 <?php if ($st === 'ditolak' && !empty($pg['alasan_penolakan'])): ?>
-                  <div style="font-size:.68rem;color:#f87171;margin-top:2px;font-style:italic;">
+                  <div class="text-danger-adaptive" style="font-size:.68rem;margin-top:2px;font-style:italic;">
                     Alasan: <?= htmlspecialchars($pg['alasan_penolakan']) ?>
                   </div>
                 <?php endif; ?>
@@ -972,14 +1086,23 @@ ob_start();
               <div class="mc-name"><?= htmlspecialchars($user["full_name"]) ?></div>
               <?php
               $raw_k = $user["kelas"] ?? "";
-              $disp_k = (stripos($raw_k, "kelas ") === 0) ? trim(substr($raw_k, 6)) : $raw_k;
               ?>
-              <div class="mc-meta"><?= strcasecmp($raw_k, "Guru") === 0 ? "Tenaga Pendidik / Guru" : ("Kelas " . htmlspecialchars($disp_k ?: "Umum")) ?></div>
+              <div class="mc-meta"><?= strcasecmp($raw_k, "Guru") === 0 ? "Tenaga Pendidik / Guru" : (!empty($user["nik"]) ? ("NIS: " . htmlspecialchars($user["nik"])) : "Anggota Terdaftar") ?></div>
             </div>
           </div>
 
           <div class="mc-divider"></div>
 
+          <?php
+          $th_reg = (int)date('Y');
+          if (!empty($user["created_at"])) {
+              $th_reg = (int)date('Y', strtotime($user["created_at"]));
+          } elseif (!empty($user["no_anggota"]) && preg_match('/AN-(\d{4})-/', $user["no_anggota"], $m_th)) {
+              $th_reg = (int)$m_th[1];
+          }
+          $is_pendidik = strcasecmp($user["kelas"] ?? "", "Guru") === 0;
+          $masa_berlaku_user = $is_pendidik ? "Selama Bertugas" : "s/d " . ($th_reg + 3);
+          ?>
           <div class="mc-foot">
             <div class="mc-cred">
               <div class="mc-credrow">
@@ -987,15 +1110,15 @@ ob_start();
                 <span class="mc-credvalue"><?= htmlspecialchars($user["username"]) ?></span>
               </div>
               <div class="mc-credrow">
-                <span class="mc-credlabel">Password</span>
-                <span class="mc-credvalue" style="letter-spacing:3px;font-size:.85rem;color:rgba(216,184,120,.7);">••••••••</span>
+                <span class="mc-credlabel">Berlaku</span>
+                <span class="mc-credvalue" style="color:#e0ac78;font-weight:600;font-size:.78rem;"><?= htmlspecialchars($masa_berlaku_user) ?></span>
               </div>
             </div>
-            <div class="mc-qrwrap">
-              <div class="mc-qrbox">
-                <img src="<?= htmlspecialchars($qr_url) ?>" alt="QR anggota"/>
+            <div class="mc-barcodewrap">
+              <div class="mc-barcodebox">
+                <?= render_code128_svg($user["no_anggota"] ?: "MEMBER-AKSA", 28) ?>
+                <div class="mc-barcodelabel"><?= htmlspecialchars($user["no_anggota"] ?: "MEMBER-AKSA") ?></div>
               </div>
-              <div class="mc-noanggota"><?= htmlspecialchars($user["no_anggota"] ?: "MEMBER-AKSA") ?></div>
             </div>
           </div>
         </div>
@@ -1006,8 +1129,8 @@ ob_start();
             Unduh Kartu
           </a>
           <a href="edit_kartu.php" class="btn-hero-action btn-hero-outline" style="flex:1;justify-content:center;font-size:.74rem;padding:8px 12px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            Edit Profil
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            Profil
           </a>
         </div>
       </div>
@@ -1098,7 +1221,7 @@ ob_start();
                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                    Ajukan Peminjaman Buku Ini
                  </a>`
-              : `<button disabled style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;background:rgba(255,255,255,.08);color:var(--muted);font-weight:700;font-size:.82rem;margin-top:14px;border:none;cursor:not-allowed;">
+              : `<button disabled class="btn-disabled-stok" style="display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border-radius:10px;font-weight:700;font-size:.82rem;margin-top:14px;cursor:not-allowed;">
                    Stok Buku Kosong
                  </button>`}
           </div>

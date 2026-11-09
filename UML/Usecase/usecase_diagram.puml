@@ -1,0 +1,125 @@
+@startuml
+!theme plain
+title DIAGRAM USE CASE — SISTEM INFORMASI PERPUSTAKAAN AKSA NOVA (SMKN 1 RONGGA)
+left to right direction
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI", Arial, sans-serif
+
+skinparam actor {
+    BackgroundColor white
+    BorderThickness 2
+}
+
+skinparam usecase {
+    BackgroundColor #CFE8FF
+    BorderColor #1F4E79
+    BorderThickness 1.8
+    FontColor #0F2C59
+    FontStyle bold
+    FontSize 11
+}
+
+skinparam arrow {
+    FontColor #991B1B
+    FontStyle italic
+    FontSize 10
+}
+
+actor ":Tamu\n(Guest):" as Tamu #FEE2E2;line:DC2626;line.bold
+actor ":Anggota (Member)\n[Siswa & Guru]:" as Anggota #DBEAFE;line:2563EB;line.bold
+actor ":Pustakawan\n(Admin):" as Admin #DCFCE7;line:16A34A;line.bold
+
+rectangle "Sistem Informasi Perpustakaan AKSA NOVA" #FFFBEF {
+
+    ' --- USE CASE TAMU & ANGGOTA (KOLOM KIRI) ---
+    usecase "Menjelajahi Katalog Buku" as UC_Katalog
+    usecase "Melihat Detail Buku" as UC_DetailBuku
+    usecase "Melakukan Registrasi Anggota" as UC_Registrasi
+    usecase "Lupa Kartu / Sandi" as UC_LupaKartu
+    usecase "Meminta & Mengirim Kode OTP" as UC_MintaOTP
+    usecase "Memverifikasi Kode OTP" as UC_VerifOTP
+
+    usecase "Mengakses Dashboard Anggota" as UC_DashUser
+    usecase "Mengajukan Peminjaman Buku" as UC_AjukanPinjam
+    usecase "Mengunduh & Mencetak Kartu Digital" as UC_KartuDigital
+    usecase "Mengubah Data Diri & Sandi" as UC_ProfilUser
+    usecase "Menyimpan Buku (Wishlist)" as UC_SimpanBuku
+    usecase "Memberikan Suka (Like) Buku" as UC_LikeBuku
+    usecase "Memberikan Rating Buku (1 - 5)" as UC_RatingBuku
+
+    ' --- USE CASE BERSAMA (TENGAH / CELAH) ---
+    usecase "Melakukan Login" as UC_Login
+    usecase "Melakukan Logout" as UC_Logout
+    usecase "Mengatur Tema & Tampilan" as UC_Tema
+
+    ' --- USE CASE PUSTAKAWAN / ADMIN (KOLOM KANAN) ---
+    usecase "Mengakses Dashboard & Statistik Admin" as UC_DashAdmin
+    usecase "Mengelola Data Buku (CRUD & Stok)" as UC_KelolaBuku
+    usecase "Mencari Data Buku via ISBN" as UC_CariISBN
+    usecase "Memproses Pengajuan Peminjaman" as UC_ProsesPengajuan
+    usecase "Memantau Notifikasi Pengajuan (Polling 4s)" as UC_NotifPengajuan
+    usecase "Melakukan Peminjaman Langsung" as UC_PinjamLangsung
+    usecase "Memproses Pengembalian Buku" as UC_Pengembalian
+    usecase "Menghitung Denda Keterlambatan" as UC_HitungDenda
+    usecase "Menandai Denda Lunas" as UC_DendaLunas
+    usecase "Mengirim Pengingat Terlambat via WhatsApp" as UC_PengingatWA
+    usecase "Menghapus Riwayat Peminjaman" as UC_HapusRiwayat
+    usecase "Mengelola Data Anggota" as UC_KelolaAnggota
+    usecase "Mereset Kata Sandi Anggota" as UC_ResetSandi
+    usecase "Mengatur Banner Promosi & Literasi" as UC_KelolaBanner
+    usecase "Mengatur Musik Latar" as UC_AturMusik
+    usecase "Mengatur Lokasi & Jam Operasional" as UC_AturLokasi
+    usecase "Mengatur Tarif & Toleransi Denda" as UC_AturDenda
+    usecase "Mengekspor Laporan Perpustakaan ke Excel" as UC_EksporExcel
+}
+
+' Relasi Extend & Include
+UC_DetailBuku .> UC_Katalog : <<extend>>
+UC_LupaKartu .> UC_MintaOTP : <<include>>
+UC_LupaKartu .> UC_VerifOTP : <<include>>
+UC_CariISBN .> UC_KelolaBuku : <<extend>>
+UC_Pengembalian .> UC_HitungDenda : <<include>>
+UC_DendaLunas .> UC_Pengembalian : <<extend>>
+
+' Asosiasi Tamu (Merah)
+Tamu -[#DC2626]-> UC_Katalog
+Tamu -[#DC2626]-> UC_Registrasi
+Tamu -[#DC2626]-> UC_LupaKartu
+Tamu -[#DC2626]-> UC_Login
+Tamu -[#DC2626]-> UC_Tema
+
+' Asosiasi Anggota (Biru)
+Anggota -[#2563EB]-> UC_DashUser
+Anggota -[#2563EB]-> UC_Katalog
+Anggota -[#2563EB]-> UC_AjukanPinjam
+Anggota -[#2563EB]-> UC_KartuDigital
+Anggota -[#2563EB]-> UC_ProfilUser
+Anggota -[#2563EB]-> UC_SimpanBuku
+Anggota -[#2563EB]-> UC_LikeBuku
+Anggota -[#2563EB]-> UC_RatingBuku
+Anggota -[#2563EB]-> UC_Login
+Anggota -[#2563EB]-> UC_Logout
+Anggota -[#2563EB]-> UC_Tema
+
+' Asosiasi Admin / Pustakawan (Hijau)
+Admin -[#16A34A]-> UC_DashAdmin
+Admin -[#16A34A]-> UC_KelolaBuku
+Admin -[#16A34A]-> UC_ProsesPengajuan
+Admin -[#16A34A]-> UC_NotifPengajuan
+Admin -[#16A34A]-> UC_PinjamLangsung
+Admin -[#16A34A]-> UC_Pengembalian
+Admin -[#16A34A]-> UC_PengingatWA
+Admin -[#16A34A]-> UC_HapusRiwayat
+Admin -[#16A34A]-> UC_KelolaAnggota
+Admin -[#16A34A]-> UC_ResetSandi
+Admin -[#16A34A]-> UC_KelolaBanner
+Admin -[#16A34A]-> UC_AturMusik
+Admin -[#16A34A]-> UC_AturLokasi
+Admin -[#16A34A]-> UC_AturDenda
+Admin -[#16A34A]-> UC_EksporExcel
+Admin -[#16A34A]-> UC_Login
+Admin -[#16A34A]-> UC_Logout
+Admin -[#16A34A]-> UC_Tema
+
+@enduml

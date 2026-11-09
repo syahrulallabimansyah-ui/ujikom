@@ -1,0 +1,36 @@
+@startuml activity_15_reset_sandi_anggota
+skinparam activity {
+    BackgroundColor #FFF4C2
+    BorderColor #6B5A1E
+    DiamondBackgroundColor #FFE9A3
+    DiamondBorderColor #C0282D
+}
+skinparam ArrowColor #6B5A1E
+
+title Activity Diagram — Reset Kata Sandi Anggota oleh Pustakawan\n<i>File: admin/reset_password.php</i>
+
+|#FEE2E2|Pustakawan|
+|#F1F5F9|Sistem AKSA NOVA|
+
+|Pustakawan|
+start
+:Mengakses halaman dan memilih fitur Reset Kata Sandi Anggota oleh Pustakawan;
+:Mengisi formulir / memicu perintah tindakan;
+
+|Sistem AKSA NOVA|
+:Validasi sesi pengguna dan token keamanan CSRF;
+if (Permintaan Valid & Otoritas Sesuai?) then (<color:green>Ya</color>)
+    :Proses logika bisnis pada modul admin/reset_password.php;
+    :Eksekusi operasi baca / tulis ke basis data MySQL;
+    :Perbarui status tampilan pada antarmuka;
+    |Pustakawan|
+    :Menerima hasil konfirmasi / tampilan termutakhir;
+    stop
+else (<color:red>Tidak</color>)
+    |Sistem AKSA NOVA|
+    :Tolak aksi & tampilkan pesan kesalahan;
+    |Pustakawan|
+    :Memperbaiki input atau memuat ulang halaman;
+    stop
+endif
+@enduml

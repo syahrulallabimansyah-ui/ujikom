@@ -1,0 +1,157 @@
+erDiagram
+    %% ==========================================
+    %% PHYSICAL ERD 12 TABEL - AKSA NOVA (MySQL 8.0 / InnoDB)
+    %% Sistem Perpustakaan Digital SMK Negeri 1 Rongga
+    %% ==========================================
+
+    USERS ||--o| ADMIN_PROFILE : "user_id (1:1, ON DELETE CASCADE)"
+    USERS ||--o{ PASSWORD_OTP : "user_id (1:N, ON DELETE CASCADE)"
+    USERS ||--o{ PEMINJAMAN : "user_id (1:N, ON DELETE SET NULL)"
+    USERS ||..o{ PENGAJUAN_PEMINJAMAN : "user_id [Relasi Logis Tanpa FK DB]"
+    USERS ||--o{ BUKU_FAVORITES : "user_id (1:N, ON DELETE CASCADE)"
+    USERS ||--o{ BUKU_LIKES : "user_id (1:N, ON DELETE CASCADE)"
+    USERS ||--o{ BUKU_RATINGS : "user_id (1:N, ON DELETE CASCADE)"
+
+    BUKU ||--o{ PEMINJAMAN : "buku_id (1:N, ON DELETE RESTRICT)"
+    BUKU ||..o{ PENGAJUAN_PEMINJAMAN : "buku_id [Relasi Logis Tanpa FK DB]"
+    BUKU ||--o{ BUKU_FAVORITES : "buku_id (1:N, ON DELETE CASCADE)"
+    BUKU ||--o{ BUKU_LIKES : "buku_id (1:N, ON DELETE CASCADE)"
+    BUKU ||--o{ BUKU_RATINGS : "buku_id (1:N, ON DELETE CASCADE)"
+
+    PEMINJAMAN ||--o{ REMINDER_LOG : "peminjaman_id (1:N, ON DELETE CASCADE)"
+
+    USERS {
+        int id PK
+        varchar full_name "100"
+        varchar nik "30, NIS / NIP (Bukan UK)"
+        varchar kelas "50, Rombel / Guru"
+        varchar no_hp "20"
+        varchar no_anggota UK "30"
+        varchar username UK "50"
+        varchar email UK "100"
+        varchar password "255, Bcrypt Hash"
+        varchar plain_password "255, Legacy (Selalu Kosong)"
+        varchar foto "255"
+        enum role "admin, member"
+        enum status "pending, approved, rejected"
+        enum card_status "active, frozen"
+        timestamp created_at
+    }
+
+    ADMIN_PROFILE {
+        int id PK
+        int user_id FK,UK "Relasi 1:1, CASCADE"
+        varchar display_name "100"
+        varchar foto "255"
+        timestamp updated_at
+    }
+
+    PASSWORD_OTP {
+        int id PK
+        int user_id FK "Relasi 1:N, CASCADE"
+        char otp_hash "64, HMAC-SHA256"
+        datetime expires_at "Masa berlaku 10 menit"
+        tinyint attempts "Maksimal 5x coba"
+        datetime used_at "Nullable"
+        datetime last_sent_at "Jeda kirim 60s"
+        timestamp created_at
+        varchar request_ip "45, Nullable"
+    }
+
+    BUKU {
+        int id PK
+        varchar judul "255"
+        varchar penulis "255"
+        varchar isbn "50"
+        varchar genre "100"
+        text sinopsis
+        int stok "Stok fisik atomik"
+        varchar rak "100, Lokasi rak fisik"
+        varchar gambar "500"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PEMINJAMAN {
+        int id PK
+        int buku_id FK "ON DELETE RESTRICT"
+        int user_id FK "Nullable, ON DELETE SET NULL"
+        varchar nama_peminjam "150"
+        datetime waktu_pinjam
+        datetime batas_kembali
+        datetime waktu_kembali "Nullable"
+        int terlambat_hari "Dibulatkan ke bawah"
+        decimal denda "12,0"
+        enum status_denda "tidak_ada, belum_bayar, lunas"
+        enum status "dipinjam, dikembalikan"
+        timestamp created_at
+    }
+
+    PENGAJUAN_PEMINJAMAN {
+        int id PK
+        int user_id "Relasi logis ke USERS (Tanpa FK DB)"
+        int buku_id "Relasi logis ke BUKU (Tanpa FK DB)"
+        varchar nama_peminjam "150"
+        varchar file_kartu "255"
+        int total_buku "1 s/d 40 eksemplar"
+        date batas_kembali
+        enum waktu_pengambilan "sekarang, nanti"
+        varchar catatan_pengambilan "255, Nullable"
+        enum status "menunggu, disetujui, ditolak"
+        text alasan_penolakan
+        datetime approved_at "Nullable"
+        timestamp created_at
+    }
+
+    BUKU_FAVORITES {
+        int id PK
+        int buku_id FK,UK "CASCADE"
+        int user_id FK,UK "CASCADE"
+        timestamp created_at
+    }
+
+    BUKU_LIKES {
+        int id PK
+        int buku_id FK,UK "CASCADE"
+        int user_id FK,UK "CASCADE"
+        timestamp created_at
+    }
+
+    BUKU_RATINGS {
+        int id PK
+        int user_id FK,UK "CASCADE"
+        int buku_id FK,UK "CASCADE"
+        tinyint rating "Skala angka 1 - 5"
+        datetime created_at
+        datetime updated_at
+    }
+
+    REMINDER_LOG {
+        int id PK
+        int peminjaman_id FK,UK "CASCADE"
+        date tanggal UK "Audit per hari"
+        int terlambat_hari
+        tinyint wa_terkirim "0 / 1"
+        datetime wa_terkirim_at "Nullable"
+        timestamp created_at
+    }
+
+    BANNER {
+        int id PK
+        varchar judul "150"
+        varchar subjudul "255"
+        varchar gambar "500"
+        varchar link_url "255"
+        int urutan "Urutan slide"
+        tinyint aktif "1=aktif, 0=nonaktif"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PENGATURAN {
+        int id PK
+        varchar kunci UK "100"
+        text nilai
+        varchar keterangan "255"
+        timestamp updated_at
+    }

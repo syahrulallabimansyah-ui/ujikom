@@ -13,14 +13,22 @@ $user_name  = $_SESSION["user_name"]  ?? "Pengguna";
 $role       = $_SESSION["role"]       ?? "member";
 $is_admin   = ($role === "admin");
 
-// Halaman ini hanya untuk member
+// Halaman ini hanya untuk member (admin diarahkan ke Dashboard Admin)
 if ($is_admin) {
-    header("Location: beranda.php");
+    header("Location: dashboard.php");
     exit;
 }
 
-$user_id    = (int)$_SESSION["user_id"];
-$page_title = "Buku Simpan – AKSA NOVA";
+$user_id = (int)$_SESSION["user_id"];
+$u_chk   = mysqli_query($conn, "SELECT status, card_status, full_name FROM users WHERE id = $user_id LIMIT 1");
+$u_row   = $u_chk ? mysqli_fetch_assoc($u_chk) : null;
+if (!$u_row || ($u_row["status"] ?? "") !== "approved" || ($u_row["card_status"] ?? "active") === "frozen") {
+    session_destroy();
+    header("Location: sign_in.php");
+    exit;
+}
+$user_name = $u_row["full_name"] ?: $user_name;
+$page_title = "Buku Disimpan – AKSA NOVA";
 
 // ─── Search, Filter Kategori & AJAX ───
 $search   = trim($_GET["q"] ?? "");
@@ -81,6 +89,14 @@ if (!empty($saved_books)) {
         $rating_avg[$row["buku_id"]] = ["avg" => (float)$row["avg_r"], "total" => (int)$row["total"]];
 }
 
+// Status stok
+if (!function_exists('getStatus')) {
+    function getStatus(int $stok): array {
+        if ($stok <= 0) return ["habis",   "Kosong"];
+        return ["tersedia","Ada"];
+    }
+}
+
 $cover_cls = ["c1","c2","c3","c4","c5","c6","c7","c8"];
 
 // ─── Pengaturan musik latar ───
@@ -95,7 +111,7 @@ if ($mgt) {
         if ($m["kunci"] === "musik_judul") $musik_judul = $m["nilai"] ?: $musik_judul;
     }
 }
-$musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_file));
+$musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && (file_exists($musik_file) || file_exists(__DIR__ . '/' . $musik_file)));
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -231,12 +247,30 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     }
     .btn-musik.playing .icon-off { display: none; }
     .btn-musik.playing .icon-eq  { display: flex; }
+    html.theme-light .btn-musik, html.light .btn-musik {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
+    }
+    html.theme-light .btn-musik:hover, html.light .btn-musik:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik.playing, html.light .btn-musik.playing {
+      background: rgba(138,99,35,.15) !important;
+      box-shadow: 0 0 16px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
+      background: #8a6323 !important;
+    }
 
     /* ══════════ NAVBAR ATAS (HUD): dudukan tombol mode & musik ══════════ */
     .mobile-topbar { display: contents; }
     .mobile-topbar-divider,
     .mobile-topbar-brand { display: none; }
-    .page-hud-controls {
+    .page-hud-controls,
+    .beranda-hud-controls {
       position: fixed; top: 16px; right: 20px; z-index: 150;
       display: flex; align-items: center; gap: 10px;
     }
@@ -286,19 +320,28 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     .page-title { font-family:'Cormorant Garamond',serif; font-size:1.5rem; font-weight:700; color:var(--text); }
     .page-subtitle { font-size:.78rem; color:var(--muted); margin-top:2px; }
 
-    /* Buku Grid */
-    .books-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px, 1fr)); gap:16px; animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
+    /* Buku Grid: Desain Modern Horizontal Book Card */
+    .books-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:20px; animation:fadeUp .5s cubic-bezier(.22,1,.36,1) both; }
     @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
 
     .book-card {
-      background:var(--card); border:1px solid var(--card-border, rgba(216,184,120,.12)); border-radius:var(--radius);
-      box-shadow:var(--shadow-sm); overflow:hidden;
-      cursor:pointer; transition:box-shadow var(--trans), transform var(--trans), border-color var(--trans);
-      display:flex; flex-direction:column;
+      background:var(--card); border:1.5px solid var(--card-border, rgba(216,184,120,.14)); border-radius:22px;
+      box-shadow:var(--shadow-sm); overflow:hidden; min-width:0;
+      cursor:pointer; transition:box-shadow .25s cubic-bezier(.22,1,.36,1), transform .25s cubic-bezier(.22,1,.36,1), border-color .25s cubic-bezier(.22,1,.36,1);
+      display:flex; flex-direction:row; align-items:center; padding:14px; gap:16px;
     }
-    .book-card:hover { box-shadow:var(--shadow-md); transform:translateY(-3px); border-color:var(--accent); }
-    .book-cover-wrap { aspect-ratio:2/3; overflow:hidden; position:relative; flex-shrink:0; }
-    .book-cover-wrap img { width:100%; height:100%; object-fit:cover; display:block; }
+    .book-card:hover {
+      box-shadow:0 12px 32px rgba(0,0,0,.5), 0 0 20px rgba(216,184,120,.16);
+      transform:translateY(-4px);
+      border-color:var(--accent);
+    }
+    .book-cover-wrap {
+      flex:0 0 125px; width:125px; aspect-ratio:2/3; border-radius:16px;
+      overflow:hidden; position:relative; flex-shrink:0; background:#0b0f14;
+      box-shadow:0 6px 18px rgba(0,0,0,.35); align-self:center;
+    }
+    .book-cover-wrap img { width:100%; height:100%; object-fit:cover; display:block; transition:transform .35s cubic-bezier(.22,1,.36,1); }
+    .book-card:hover .book-cover-wrap img { transform:scale(1.05); }
     .c1 { background:linear-gradient(135deg,#f5a623,#d4820a); }
     .c2 { background:linear-gradient(135deg,#9b59b6,#6c3483); }
     .c3 { background:linear-gradient(135deg,#e74c3c,#922b21); }
@@ -307,28 +350,72 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     .c6 { background:linear-gradient(135deg,#e91e63,#880e4f); }
     .c7 { background:linear-gradient(135deg,#ff5722,#bf360c); }
     .c8 { background:linear-gradient(135deg,#607d8b,#263238); }
-    .cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.4rem; font-weight:800; color:rgba(255,255,255,.8); }
-    .cover-rating { position:absolute; bottom:6px; right:6px; background:rgba(0,0,0,.7); border:1px solid rgba(216,184,120,.3); color:#d8b878; font-size:.6rem; font-weight:800; padding:2px 7px; border-radius:20px; display:flex; align-items:center; gap:2px; backdrop-filter:blur(3px); }
-    .cover-rating svg { width:9px; height:9px; }
-    .book-info { padding:10px 12px 12px; flex:1; display:flex; flex-direction:column; gap:4px; }
-    .bk-title { font-size:.82rem; font-weight:800; color:var(--text); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-    .bk-author { font-size:.7rem; color:var(--muted); font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .bk-badges-row { display:flex; align-items:center; gap:6px; flex-wrap:wrap; margin-top:2px; min-height:22px; }
-    .bk-genre {
-      font-size:.6rem; font-weight:700; color:var(--accent); background:rgba(216,184,120,.12);
-      border:1px solid rgba(216,184,120,.2); padding:2px 8px; border-radius:50px;
-      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
-      display:inline-block; vertical-align:middle; line-height:1.4;
+    .cover-initial { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:1.4rem; font-weight:800; color:rgba(255,255,255,.8); text-shadow:0 2px 8px rgba(0,0,0,.5); }
+    .cover-rating { position:absolute; bottom:8px; right:8px; background:rgba(9,12,16,.85); border:1px solid rgba(216,184,120,.35); color:#d8b878; font-size:.64rem; font-weight:800; padding:2.5px 8px; border-radius:20px; display:flex; align-items:center; gap:3px; backdrop-filter:blur(4px); box-shadow:0 2px 8px rgba(0,0,0,.4); }
+    .cover-rating svg { width:10px; height:10px; }
+
+    .book-info {
+      padding:4px 2px; flex:1; display:flex; flex-direction:column;
+      align-items:center; text-align:center; justify-content:center; min-width:0;
     }
-    .bk-actions { display:flex; align-items:center; margin-top:auto; padding-top:10px; border-top:1px solid var(--border-color, rgba(216,184,120,.15)); }
+    .bk-title {
+      font-size:1.05rem; font-weight:800; color:var(--text); line-height:1.3;
+      text-align:center; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical;
+      overflow:hidden; margin-bottom:2px; transition:color var(--trans);
+    }
+    .book-card:hover .bk-title { color:var(--accent); }
+    .bk-author {
+      font-size:.78rem; color:var(--muted); font-weight:500; text-align:center;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%; margin-bottom:6px;
+    }
+    .bk-actions {
+      display:flex; align-items:center; justify-content:center; gap:10px;
+      margin:2px 0 8px; border-top:none; padding-top:0;
+    }
     .btn-hapus-simpan {
-      width:100%; display:inline-flex; align-items:center; justify-content:center; gap:6px;
-      padding:6px 12px; border-radius:50px; border:1.5px solid var(--border-color);
-      background:rgba(255,255,255,.04); font-family:var(--font-family,'Outfit',sans-serif); font-size:.72rem;
-      font-weight:700; color:var(--muted); cursor:pointer; transition:all .18s;
+      display:inline-flex; align-items:center; justify-content:center; gap:6px;
+      height:32px; padding:0 14px; border-radius:50px;
+      border:1.5px solid rgba(231,76,60,.28); background:rgba(231,76,60,.08);
+      font-family:var(--font-family,'Outfit',sans-serif); font-size:.74rem;
+      font-weight:700; color:#f87171; cursor:pointer; transition:all .2s;
     }
-    .btn-hapus-simpan:hover { border-color:#e74c3c; color:#e74c3c; background:rgba(231,76,60,.12); }
-    .btn-hapus-simpan svg { width:12px; height:12px; }
+    .btn-hapus-simpan:hover {
+      border-color:#e74c3c; color:#fff; background:#e74c3c;
+      transform:translateY(-1px); box-shadow:0 4px 12px rgba(231,76,60,.35);
+    }
+    .btn-hapus-simpan svg { width:13px; height:13px; }
+    .bk-badges-row {
+      display:flex; align-items:center; justify-content:center; gap:5px;
+      flex-wrap:wrap; margin-bottom:8px; max-width:100%; min-width:0;
+    }
+    .bk-genre {
+      font-size:.64rem; font-weight:700; color:#e5a93c; background:rgba(229,169,60,.14);
+      border:1px solid rgba(229,169,60,.28); padding:2.5px 8.5px; border-radius:50px;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+      display:inline-flex; align-items:center; line-height:1.35;
+    }
+    .bk-genre-rak {
+      color:#38bdf8 !important; background:rgba(56,189,248,.13) !important;
+      border:1px solid rgba(56,189,248,.28) !important;
+    }
+
+    /* Status badge */
+    .status-badge {
+      display:inline-flex; align-items:center; gap:5px; font-size:.64rem;
+      font-weight:700; padding:2.5px 8.5px; border-radius:50px; white-space:nowrap;
+      flex-shrink:0; line-height:1.35;
+    }
+    .status-badge .dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .status-tersedia { background:rgba(46,204,113,.14); color:#2ecc71; border:1px solid rgba(46,204,113,.28); }
+    .status-tersedia .dot { background:#2ecc71; }
+    .status-habis    { background:rgba(231,76,60,.14); color:#e74c3c; border:1px solid rgba(231,76,60,.28); }
+    .status-habis .dot { background:#e74c3c; }
+
+    .bk-synopsis {
+      font-size:.74rem; color:var(--muted); line-height:1.5; text-align:center;
+      display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical;
+      overflow:hidden; margin-top:2px; font-weight:400; opacity:.88;
+    }
 
     /* Empty */
     .empty-state { display:flex; flex-direction:column; align-items:center; justify-content:center; padding:80px 20px; gap:14px; color:var(--muted); }
@@ -444,7 +531,8 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
         color:var(--accent); letter-spacing:.04em; white-space:nowrap;
         overflow:hidden; text-overflow:ellipsis;
       }
-      .mobile-topbar .page-hud-controls { position:static; top:auto; right:auto; margin-left:auto; }
+      .mobile-topbar .page-hud-controls,
+      .mobile-topbar .beranda-hud-controls { position:static; top:auto; right:auto; margin-left:auto; }
 
       /* Topbar: stack search + buttons */
       .topbar { flex-wrap:wrap; gap:8px; }
@@ -473,15 +561,15 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     /* Mobile portrait (≤480px) */
     @media (max-width:480px) {
       .main { padding:74px 10px 24px; }
-      .books-grid { grid-template-columns:repeat(auto-fill,minmax(135px,1fr)); gap:12px; }
-      .bk-title { font-size:.78rem; }
-      .bk-actions { flex-wrap:nowrap; gap:6px; margin-top:auto; }
-
-      /* Tombol hapus — touch target lebih lebar */
-      .btn-hapus-simpan {
-        width:100%; padding:7px 12px; font-size:.7rem;
-        min-height:36px;
-      }
+      .books-grid { grid-template-columns:1fr; gap:12px; }
+      .book-card { padding:12px; gap:12px; border-radius:18px; }
+      .book-cover-wrap { flex:0 0 110px; width:110px; border-radius:14px; }
+      .bk-title { font-size:.95rem; }
+      .bk-badges-row { gap:4px; max-width:100%; }
+      .bk-genre { max-width:100%; font-size:.6rem; }
+      .status-badge { font-size:.6rem; padding:2px 7px; }
+      .bk-synopsis { -webkit-line-clamp:2; font-size:.71rem; }
+      .btn-hapus-simpan { height:32px; padding:0 14px; font-size:.72rem; }
 
       /* Empty state compact */
       .empty-state { padding:48px 16px; gap:10px; }
@@ -572,8 +660,8 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       </svg>
       <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
     </button>
-    <audio id="audioLatar" loop autoplay muted preload="auto">
-      <source src="<?= htmlspecialchars($musik_file) ?>">
+    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
+      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
     </audio>
     <?php endif; ?>
   </div>
@@ -599,7 +687,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     </a>
     <a href="dashboard_user.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-      Dashboard
+      Peminjaman Saya
     </a>
     <a href="daftar_buku.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
@@ -611,20 +699,20 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     </a>
     <a href="buku_simpan.php" class="nav-item active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Buku Simpan
+      Buku Disimpan
     </a>
     <a href="edit_kartu.php" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Edit Profil
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profil
     </a>
   </nav>
 
   <div class="nav-bottom">
     <a href="#" class="nav-item" onclick="bukaSettings(); return false;" title="Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </a>
-    <a href="logout.php" class="nav-item" style="color:#e74c3c;">
+    <a href="logout.php" class="nav-item sidebar-btn-logout" style="color:#e74c3c;" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Keluar
     </a>
@@ -638,7 +726,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
     <div class="topbar">
       <div class="search-wrap">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-        <input type="text" id="searchInput" name="q" placeholder="Cari di buku simpan…" value="<?= htmlspecialchars($search) ?>" autocomplete="off"/>
+        <input type="text" id="searchInput" name="q" placeholder="Cari buku yang disimpan…" value="<?= htmlspecialchars($search) ?>" autocomplete="off"/>
       </div>
       <div class="kategori-dropdown" id="kategoriDropdown">
         <button type="button" class="kategori-trigger <?= $kategori !== "" ? "has-value" : "" ?>" id="kategoriTrigger" aria-haspopup="listbox" aria-expanded="false">
@@ -659,7 +747,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
           <?php endforeach; ?>
         </select>
       </div>
-      <a href="buku_simpan.php" class="tab-btn" id="searchResetBtn" style="<?= ($search || $kategori) ? '' : 'display:none;' ?>">✕ Reset</a>
+      <a href="buku_simpan.php" class="tab-btn" id="searchResetBtn" style="<?= ($search || $kategori) ? '' : 'display:none;' ?>"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> Reset</a>
     </div>
   </form>
 
@@ -670,7 +758,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
     </div>
     <div>
-      <div class="page-title">Buku Simpan</div>
+      <div class="page-title">Buku Disimpan</div>
       <div class="page-subtitle">
         <?php if ($search && $kategori): ?>
           <?= $total_simpan ?> buku cocok dengan "<strong><?= htmlspecialchars($search) ?></strong>" dalam kategori <strong><?= htmlspecialchars($kategori) ?></strong>
@@ -702,6 +790,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   <div class="books-grid">
     <?php foreach ($saved_books as $i => $buku):
       $col = $cover_cls[$i % count($cover_cls)];
+      [$status_cls, $status_label] = getStatus((int)$buku["stok"]);
       $words = preg_split('/\s+/', trim($buku["judul"]));
       $initial = mb_strtoupper(mb_substr($words[0], 0, 1)) . (isset($words[1]) ? mb_strtoupper(mb_substr($words[1], 0, 1)) : "");
       $rat = $rating_avg[$buku["id"]] ?? null;
@@ -722,18 +811,24 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
       </div>
       <div class="book-info">
         <div class="bk-title"><?= htmlspecialchars($buku["judul"]) ?></div>
-        <div class="bk-author"><?= htmlspecialchars($buku["penulis"] ?: "—") ?></div>
-        <?php if ($buku["genre"]): ?>
-        <div class="bk-badges-row">
-          <span class="bk-genre" title="<?= htmlspecialchars($buku["genre"]) ?>"><?= htmlspecialchars($buku["genre"]) ?></span>
-        </div>
-        <?php endif; ?>
-        <div class="bk-actions">
-          <button class="btn-hapus-simpan" onclick="event.stopPropagation(); hapusSimpan(this, <?= $buku['id'] ?>)" title="Hapus dari simpan">
+        <div class="bk-author"><?= htmlspecialchars($buku["penulis"] ?: "Penulis tidak diketahui") ?></div>
+
+        <div class="bk-actions" onclick="event.stopPropagation()">
+          <button class="btn-hapus-simpan" onclick="hapusSimpan(this, <?= $buku['id'] ?>, '<?= htmlspecialchars(addslashes($buku['judul']), ENT_QUOTES) ?>')" title="Hapus dari Buku Disimpan">
             <svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-            Hapus
+            Hapus Simpanan
           </button>
         </div>
+
+        <div class="bk-badges-row">
+          <?php if ($buku["genre"]): ?><span class="bk-genre"><?= htmlspecialchars($buku["genre"]) ?></span><?php endif; ?>
+          <?php if (!empty($buku["rak"])): ?><span class="bk-genre bk-genre-rak" title="Lokasi Rak"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:middle;margin-right:2px;"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><?= htmlspecialchars($buku["rak"]) ?></span><?php endif; ?>
+          <span class="status-badge status-<?= $status_cls ?>"><span class="dot"></span><?= $status_label ?><?php if ((int)$buku["stok"] > 0): ?> · <?= (int)$buku["stok"] ?><?php endif; ?></span>
+        </div>
+
+        <p class="bk-synopsis">
+          <?= htmlspecialchars(!empty($buku["sinopsis"]) ? mb_strimwidth(strip_tags($buku["sinopsis"]), 0, 130, '…') : "Koleksi buku perpustakaan kategori " . ($buku["genre"] ?: "Umum") . " tersedia untuk dipinjam.") ?>
+        </p>
       </div>
     </div>
     <?php endforeach; ?>
@@ -894,29 +989,39 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
   }
 
   // ─── Hapus dari simpan ───
-  function hapusSimpan(btn, buku_id) {
-    const fd = new FormData();
-    fd.append('buku_id', buku_id);
-    fd.append('type', 'favorite');
-    fetch('like_handler.php', { method: 'POST', body: fd })
-      .then(r => r.json())
-      .then(data => {
-        if (!data.ok) return;
-        if (!data.aktif) {
-          const card = document.getElementById('card_buku_' + buku_id);
-          if (card) {
-            card.style.transition = 'opacity .3s, transform .3s';
-            card.style.opacity = '0';
-            card.style.transform = 'scale(.95)';
-            setTimeout(() => {
-              card.remove();
-              const grid = document.querySelector('.books-grid');
-              if (grid && grid.children.length === 0) location.reload();
-            }, 300);
+  function hapusSimpan(btn, buku_id, judul) {
+    AksaConfirm({
+      title: 'Lepas dari Buku Disimpan?',
+      message: `Hapus buku <strong>"${judul || 'Buku ini'}"</strong> dari koleksi tersimpan Anda?`,
+      confirmText: 'Ya, Lepas',
+      cancelText: 'Batal',
+      type: 'warning',
+      icon: 'bookmark-remove'
+    }).then(function(confirmed) {
+      if (!confirmed) return;
+      const fd = new FormData();
+      fd.append('buku_id', buku_id);
+      fd.append('type', 'favorite');
+      fetch('like_handler.php', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+          if (!data.ok) return;
+          if (!data.aktif) {
+            const card = document.getElementById('card_buku_' + buku_id);
+            if (card) {
+              card.style.transition = 'opacity .3s, transform .3s';
+              card.style.opacity = '0';
+              card.style.transform = 'scale(.95)';
+              setTimeout(() => {
+                card.remove();
+                const grid = document.querySelector('.books-grid');
+                if (grid && grid.children.length === 0) location.reload();
+              }, 300);
+            }
+            showToast('Buku dihapus dari koleksi disimpan');
           }
-          showToast('Buku dihapus dari simpan');
-        }
-      });
+        });
+    });
   }
 
   // ─── Modal Detail Buku ───
@@ -1062,7 +1167,7 @@ $musik_tampil = ($musik_aktif === 1 && $musik_file !== "" && file_exists($musik_
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             Ditambahkan: <span>${tglInput}</span>
           </div>
-          ${tglUpdate ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Diperbarui: <span>${tglUpdate}</span></div>` : ''}
+          ${tglUpdate ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Diperbarui: <span>${tglUpdate}</span></div>` : ''}
         </div>
         <div class="detail-section-label">Sinopsis / Ringkasan</div>
         ${b.sinopsis

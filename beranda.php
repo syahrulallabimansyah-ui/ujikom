@@ -2,11 +2,27 @@
 // beranda.php — Halaman dashboard utama AKSA NOVA (dinamis & responsif)
 session_start();
 
+// Admin diarahkan langsung ke Dashboard Admin
+if (isset($_SESSION["role"]) && $_SESSION["role"] === "admin") {
+    header("Location: dashboard.php");
+    exit;
+}
+
 require_once "db.php";
 
 // ─── Mode tamu: pengunjung boleh langsung melihat beranda tanpa login ───
 $is_guest    = !isset($_SESSION["user_id"]);
 $user_id_int = $is_guest ? 0 : (int)$_SESSION["user_id"];
+if (!$is_guest && $user_id_int > 0) {
+    $u_chk = mysqli_query($conn, "SELECT status, card_status, full_name FROM users WHERE id = $user_id_int LIMIT 1");
+    $u_row = $u_chk ? mysqli_fetch_assoc($u_chk) : null;
+    if (!$u_row || ($u_row["status"] ?? "") !== "approved" || ($u_row["card_status"] ?? "active") === "frozen") {
+        session_destroy();
+        header("Location: sign_in.php");
+        exit;
+    }
+    $_SESSION["user_name"] = $u_row["full_name"] ?: ($_SESSION["user_name"] ?? "Pengguna");
+}
 $user_name   = $is_guest ? "Tamu" : ($_SESSION["user_name"] ?? "Pengguna");
 $role        = $is_guest ? "guest" : ($_SESSION["role"] ?? "member");
 $is_admin    = (!$is_guest && $role === "admin");
@@ -98,7 +114,7 @@ $profil_foto = $profil["foto"] ?? "";
 // ─── Profil user yang sedang login ───
 $my_profile = null;
 if (!$is_guest && !$is_admin) {
-    $res_my = mysqli_query($conn, "SELECT full_name, foto, no_anggota, kelas FROM users WHERE id = $user_id_int");
+    $res_my = mysqli_query($conn, "SELECT full_name, foto, no_anggota, nik FROM users WHERE id = $user_id_int");
     if ($res_my) $my_profile = mysqli_fetch_assoc($res_my);
 }
 
@@ -410,6 +426,52 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     .nav-item svg    { width:17px; height:17px; flex-shrink:0; }
     .nav-item.admin-only { color:#e67e22; }
     .nav-item.admin-only:hover { background:rgba(230,126,34,.12); color:#f39c12; }
+    /* Tombol Kembali / Halaman Utama Khusus Tamu di Sidebar */
+    .nav-item.nav-item-back {
+      background: rgba(216,184,120,.09);
+      border: 1px dashed var(--border-color, rgba(216,184,120,.35));
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+    .nav-item.nav-item-back:hover {
+      background: rgba(216,184,120,.18);
+      border-style: solid;
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateX(-2px);
+    }
+    .nav-item.nav-item-back svg {
+      color: var(--accent);
+    }
+
+    /* Tombol Kembali Khusus Header Mobile */
+    .mobile-btn-back {
+      display: none;
+      align-items: center;
+      justify-content: center;
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      border: 1.5px solid var(--border-color, rgba(216,184,120,.3));
+      background: var(--card, rgba(18,24,32,.85));
+      color: var(--accent, #d8b878);
+      text-decoration: none;
+      flex-shrink: 0;
+      transition: all var(--trans);
+    }
+    .mobile-btn-back:hover {
+      border-color: var(--accent);
+      background: rgba(216,184,120,.15);
+      transform: translateX(-2px);
+    }
+    .mobile-btn-back svg {
+      width: 18px;
+      height: 18px;
+    }
+    @media (max-width: 768px) {
+      .mobile-btn-back { display: inline-flex; }
+    }
     
     .nav-bottom { padding:10px 10px 0; border-top:1px solid var(--border-color, rgba(216,184,120,.15)); display:flex; flex-direction:column; gap:2px; flex-shrink:0; }
 
@@ -511,6 +573,23 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     }
     .btn-musik.playing .icon-off { display: none; }
     .btn-musik.playing .icon-eq  { display: flex; }
+    html.theme-light .btn-musik, html.light .btn-musik {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
+    }
+    html.theme-light .btn-musik:hover, html.light .btn-musik:hover {
+      border-color: #8a6323 !important;
+      box-shadow: 0 6px 20px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik.playing, html.light .btn-musik.playing {
+      background: rgba(138,99,35,.15) !important;
+      box-shadow: 0 0 16px rgba(138,99,35,.25) !important;
+    }
+    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
+      background: #8a6323 !important;
+    }
 
     /* ─── Hero Carousel & Welcome Card ─── */
     .hero-carousel-wrap {
@@ -664,6 +743,63 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       height: 86px;
       color: var(--accent);
       opacity: .8;
+    }
+
+    /* Adaptasi Mode Terang untuk Hero Welcome Card & Kontrol Carousel */
+    html:not(.dark) .hero-welcome-card,
+    html.light .hero-welcome-card,
+    html.theme-light .hero-welcome-card {
+      background: linear-gradient(135deg, #fffdf9 0%, #f9f1e0 58%, #f1e2c4 100%) !important;
+    }
+    html:not(.dark) .hero-greet,
+    html.light .hero-greet,
+    html:not(.dark) .hero-quote-author,
+    html.light .hero-quote-author {
+      color: #8a6100 !important;
+    }
+    html:not(.dark) .hero-title,
+    html.light .hero-title {
+      color: #221d14 !important;
+    }
+    html:not(.dark) .hero-quote-box,
+    html.light .hero-quote-box {
+      color: #4a3f2f !important;
+      border-left-color: #b8860b !important;
+    }
+    html:not(.dark) .btn-hero-secondary,
+    html.light .btn-hero-secondary {
+      background: rgba(184, 134, 11, 0.12) !important;
+      color: #785008 !important;
+      border-color: rgba(184, 134, 11, 0.42) !important;
+    }
+    html:not(.dark) .btn-hero-secondary:hover,
+    html.light .btn-hero-secondary:hover {
+      background: rgba(184, 134, 11, 0.22) !important;
+    }
+    html:not(.dark) .hero-welcome-right svg,
+    html.light .hero-welcome-right svg {
+      color: #9a6b16 !important;
+      opacity: .85 !important;
+    }
+    html:not(.dark) .hero-nav-arrow,
+    html.light .hero-nav-arrow {
+      background: rgba(255, 255, 255, 0.9) !important;
+      border-color: rgba(138, 99, 35, 0.4) !important;
+      color: #785008 !important;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14) !important;
+    }
+    html:not(.dark) .hero-nav-arrow:hover,
+    html.light .hero-nav-arrow:hover {
+      background: #d8b878 !important;
+      color: #121820 !important;
+    }
+    html:not(.dark) .hero-dot-btn:not(.active),
+    html.light .hero-dot-btn:not(.active) {
+      background: rgba(138, 99, 35, 0.35) !important;
+    }
+    html:not(.dark) .hero-dot-btn.active,
+    html.light .hero-dot-btn.active {
+      background: #8a6100 !important;
     }
 
     /* Slides 2+: Dynamic Image Banners — tinggi 100% mengikuti --hero-h,
@@ -1789,6 +1925,14 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
 
 <!-- Navbar Atas Mobile: Hamburger + Tiang Pemisah + Kontrol Musik/Mode -->
 <header class="mobile-topbar" id="mobileTopbar">
+  <?php if ($is_guest): ?>
+  <a href="index.php" class="mobile-btn-back" id="mobileBtnBack" aria-label="Kembali ke Landing Page" title="Kembali ke Landing Page">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="19" y1="12" x2="5" y2="12"/>
+      <polyline points="12 19 5 12 12 5"/>
+    </svg>
+  </a>
+  <?php endif; ?>
   <button class="sidebar-toggle" id="sidebarToggle" aria-label="Buka Menu">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
       <line x1="3" y1="6" x2="21" y2="6"/>
@@ -1813,8 +1957,8 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       </svg>
       <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
     </button>
-    <audio id="audioLatar" loop autoplay muted preload="auto">
-      <source src="<?= htmlspecialchars($musik_file) ?>">
+    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
+      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
     </audio>
     <?php endif; ?>
   </div>
@@ -1835,6 +1979,15 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
   </div>
 
   <nav class="nav">
+    <?php if ($is_guest): ?>
+    <a href="index.php" class="nav-item nav-item-back" title="Kembali ke Landing Page (Halaman Utama)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="19" y1="12" x2="5" y2="12"/>
+        <polyline points="12 19 5 12 12 5"/>
+      </svg>
+      Halaman Utama
+    </a>
+    <?php endif; ?>
     <a href="beranda.php" class="nav-item active">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
       Beranda
@@ -1842,7 +1995,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     <?php if (!$is_admin && !$is_guest): ?>
     <a href="dashboard_user.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-      Dashboard
+      Peminjaman Saya
     </a>
     <?php endif; ?>
     <a href="daftar_buku.php" class="nav-item">
@@ -1856,25 +2009,20 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
     </a>
     <a href="buku_simpan.php" class="nav-item">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
-      Buku Simpan
+      Buku Disimpan
     </a>
     <a href="edit_kartu.php" class="nav-item">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-      Edit Profil
-    </a>
-    <?php endif; ?>
-    <?php if ($is_admin): ?>
-    <a href="halaman_admin.php" class="nav-item admin-only">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-      Action Admin
+      Profil
     </a>
     <?php endif; ?>
+
   </nav>
 
   <div class="nav-bottom">
     <a href="#" class="nav-item" onclick="bukaSettings(); return false;" title="Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </a>
     <?php if ($is_guest): ?>
     <a href="sign_in.php" class="nav-item" style="color:var(--accent);">
@@ -1886,7 +2034,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
       Daftar
     </a>
     <?php else: ?>
-    <a href="logout.php" class="nav-item" style="color:#e74c3c;">
+    <a href="logout.php" class="nav-item sidebar-btn-logout" style="color:#e74c3c;" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       Keluar
     </a>
@@ -2255,7 +2403,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
           </div>
           <div style="display:flex;justify-content:space-between;">
             <span>Minggu / Libur</span>
-            <span style="color:#f87171;font-weight:700;">Tutup</span>
+            <span class="text-danger-adaptive" style="font-weight:700;">Tutup</span>
           </div>
         </div>
       </div>
@@ -2279,7 +2427,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
         <ul class="footer-links">
           <li><a href="beranda.php">Beranda</a></li>
           <li><a href="daftar_buku.php">Daftar Buku</a></li>
-          <?php if (!$is_admin): ?><li><a href="buku_simpan.php">Buku Simpan</a></li><?php endif; ?>
+          <?php if (!$is_admin): ?><li><a href="buku_simpan.php">Buku Disimpan</a></li><?php endif; ?>
           <?php if ($is_admin): ?><li><a href="halaman_admin.php">Panel Admin</a></li><?php endif; ?>
         </ul>
       </div>
@@ -2402,7 +2550,7 @@ $berita = berita_ambil($berita_feeds, $berita_jumlah, $berita_cache_ttl);
           <div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>Stok: <span style="color:${stokColor};font-weight:800;">${escHTML(String(b.stok))} — ${stokLabel}</span></div>
           ${b.rak ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18"/></svg>Lokasi: <span style="color:var(--accent,#d8b878);font-weight:700;">${escHTML(b.rak)}</span></div>` : ''}
           <div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Ditambahkan: <span>${tglInput}</span></div>
-          ${tglUpdate ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>Diperbarui: <span>${tglUpdate}</span></div>` : ''}
+          ${tglUpdate ? `<div class="detail-meta-chip"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Diperbarui: <span>${tglUpdate}</span></div>` : ''}
         </div>
         <div class="detail-section-label">Sinopsis / Ringkasan</div>
         ${b.sinopsis ? `<div class="detail-sinopsis${b.sinopsis.length > 300 ? ' sinopsis-collapsed' : ''}" id="sinopsis_${b.id}">${escHTML(b.sinopsis).replace(/\n/g,'<br>')}</div>${b.sinopsis.length > 300 ? `<button class="sinopsis-toggle-btn" onclick="toggleSinopsis('sinopsis_${b.id}',this)">Lihat Selengkapnya ▾</button>` : ''}` : `<div class="detail-sinopsis"><span style="color:var(--muted);font-style:italic;">Sinopsis belum tersedia untuk buku ini.</span></div>`}

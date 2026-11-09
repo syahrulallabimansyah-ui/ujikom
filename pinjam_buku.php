@@ -28,6 +28,20 @@ date_default_timezone_set('Asia/Jakarta');
 mysqli_query($conn, "SET time_zone = '+07:00'");
 
 $page_title = 'Pinjam Buku – AKSA NOVA';
+
+// Pengaturan musik latar
+$musik_aktif = 0;
+$musik_file  = '';
+$musik_judul = 'Musik Latar';
+$mgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('musik_aktif','musik_file','musik_judul')");
+if ($mgt) {
+    while ($m = mysqli_fetch_assoc($mgt)) {
+        if ($m['kunci'] === 'musik_aktif') $musik_aktif = (int)$m['nilai'];
+        if ($m['kunci'] === 'musik_file')  $musik_file  = (string)$m['nilai'];
+        if ($m['kunci'] === 'musik_judul') $musik_judul = (string)($m['nilai'] ?: $musik_judul);
+    }
+}
+$musik_tampil = ($musik_aktif === 1 && $musik_file !== '' && (file_exists($musik_file) || file_exists(__DIR__ . '/' . $musik_file)));
 $msg        = '';
 $msg_type   = '';
 
@@ -43,6 +57,10 @@ $admin_foto = $profil['foto'] ?? '';
 $action = $_POST['action'] ?? '';
 
 if ($action === 'pinjam') {
+    if (!csrf_verify()) {
+        $msg = 'Sesi keamanan formulir kedaluwarsa. Silakan muat ulang halaman.';
+        $msg_type = 'error';
+    } else {
     $buku_id       = (int)($_POST['buku_id']       ?? 0);
     $user_id       = (int)($_POST['user_id']        ?? 0);
     $batas_kembali = trim($_POST['batas_kembali']   ?? '');
@@ -51,15 +69,15 @@ if ($action === 'pinjam') {
         $msg = 'Pilih anggota dan isi tanggal pengembalian terlebih dahulu.';
         $msg_type = 'error';
     } else {
-        // Pastikan yang dipilih benar-benar anggota (punya akun) yang sudah disetujui
+        // Pastikan yang dipilih benar-benar anggota aktif & kartunya tidak sedang dibekukan
         $anggota_res = mysqli_query($conn,
             "SELECT full_name FROM users
-             WHERE id=$user_id AND role='member' AND status='approved' LIMIT 1"
+             WHERE id=$user_id AND role='member' AND status='approved' AND (card_status IS NULL OR card_status != 'frozen') LIMIT 1"
         );
         $anggota_row = $anggota_res ? mysqli_fetch_assoc($anggota_res) : null;
 
         if (!$anggota_row) {
-            $msg = 'Anggota tidak ditemukan atau akunnya belum disetujui.';
+            $msg = 'Anggota tidak ditemukan, belum disetujui, atau kartunya sedang dibekukan.';
             $msg_type = 'error';
         } else {
             // Cek stok — hanya dari buku yang masih ada
@@ -97,6 +115,7 @@ if ($action === 'pinjam') {
             }
         }
     }
+    }
 }
 
 // ─────────────────────────────────────────────
@@ -131,9 +150,9 @@ $total_dipinjam = (int)(mysqli_fetch_assoc($total_dipinjam_res)['c'] ?? 0);
 // ─────────────────────────────────────────────
 $anggota_list = [];
 $anggota_res  = mysqli_query($conn,
-    "SELECT id, full_name, no_anggota, kelas, username, foto
+    "SELECT id, full_name, no_anggota, nik, kelas, username, foto
      FROM users
-     WHERE role = 'member' AND status = 'approved'
+     WHERE role = 'member' AND status = 'approved' AND (card_status IS NULL OR card_status != 'frozen')
      ORDER BY full_name ASC"
 );
 if ($anggota_res) {
@@ -277,6 +296,24 @@ ob_start();
     }
     .sidebar-btn svg { width:16px; height:16px; flex-shrink:0; color:var(--accent,#d8b878); stroke:var(--accent,#d8b878); stroke-width:2px; transition:stroke .2s, transform .2s; }
     .sidebar-btn:hover { background:rgba(216,184,120,.16); border-color:var(--accent,#d8b878); color:#fff; }
+    .sidebar-btn.sidebar-btn-logout {
+      color: #e74c3c !important;
+      margin-top: 10px;
+    }
+    .sidebar-btn.sidebar-btn-logout svg {
+      color: #e74c3c !important;
+      stroke: #e74c3c !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover {
+      background: rgba(231,76,60,.14) !important;
+      border-color: #e74c3c !important;
+      color: #ff6b6b !important;
+    }
+    .sidebar-btn.sidebar-btn-logout:hover svg {
+      color: #ff6b6b !important;
+      stroke: #ff6b6b !important;
+      transform: translateX(2px);
+    }
     .sidebar-btn:hover svg { color:#fff; stroke:#fff; }
     .sidebar-btn.active {
       background:linear-gradient(135deg,#d8b878,#c8a060);
@@ -538,11 +575,78 @@ ob_start();
       :root { --sidebar-w:170px; }
       .avatar-circle { width:76px; height:76px; }
     }
+    .page-hud-controls {
+      position: fixed;
+      top: 16px;
+      right: 20px;
+      z-index: 150;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-musik {
+      appearance: none;
+      cursor: pointer;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: 1.5px solid var(--accent, #d8b878);
+      background: rgba(18,24,32,.85);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--accent, #d8b878);
+      transition: all var(--trans);
+      box-shadow: 0 4px 16px rgba(0,0,0,.35);
+      flex-shrink: 0;
+    }
+    .btn-musik:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(216,184,120,.35);
+    }
+    .btn-musik svg { width: 18px; height: 18px; }
+    .btn-musik .icon-off { display: block; }
+    .btn-musik .icon-eq  { display: none; align-items: flex-end; gap: 2.5px; height: 16px; }
+    .btn-musik .icon-eq span {
+      display: block;
+      width: 3px;
+      background: var(--accent, #d8b878);
+      border-radius: 2px;
+      animation: eqBar 1s ease-in-out infinite;
+    }
+    .btn-musik .icon-eq span:nth-child(1) { height: 40%; animation-delay: -.6s; }
+    .btn-musik .icon-eq span:nth-child(2) { height: 100%; animation-delay: -.2s; }
+    .btn-musik .icon-eq span:nth-child(3) { height: 65%; animation-delay: -.9s; }
+    @keyframes eqBar { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
+    .btn-musik.playing {
+      background: rgba(216,184,120,.18);
+      box-shadow: 0 0 16px rgba(216,184,120,.3);
+    }
+    .btn-musik.playing .icon-off { display: none; }
+    .btn-musik.playing .icon-eq  { display: flex; }
+    html.theme-light .btn-musik, html.light .btn-musik {
+      background: rgba(255,255,255,.9) !important;
+      border-color: rgba(138,99,35,.35) !important;
+      color: #8a6323 !important;
+      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
+    }
+    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
+      background: #8a6323 !important;
+    }
+
     @media (max-width: 640px) {
       .sidebar { transform:translateX(-100%); }
       .sidebar.open { transform:translateX(0); }
       .sidebar-toggle { display:flex; }
       .main { margin-left:0; padding:16px; padding-top:60px; }
+      .mobile-topbar .page-hud-controls {
+        position: static;
+        top: auto;
+        right: auto;
+        margin-left: auto;
+      }
     }
   </style>
 </head>
@@ -559,6 +663,20 @@ ob_start();
   <div class="mobile-topbar-brand">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
     <span>AKSA NOVA • Pinjam Buku</span>
+  </div>
+
+  <div class="page-hud-controls" id="pageHudControls">
+    <?php if ($musik_tampil): ?>
+    <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
+      <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
+      </svg>
+      <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
+    </button>
+    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
+      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
+    </audio>
+    <?php endif; ?>
   </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -616,9 +734,9 @@ ob_start();
   ?>
   <a class="sidebar-btn" href="pengajuan_buku.php">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-    Pengajuan Buku
+    Pengajuan Pinjam
     <?php if ($cnt_aju_badge > 0): ?>
-      <span class="aksa-notif-badge" style="margin-left:auto;background:rgba(245,158,11,.2);color:#fbbf24;border:1px solid rgba(245,158,11,.4);font-size:.65rem;font-weight:800;padding:2px 7px;border-radius:20px;"><?= $cnt_aju_badge ?></span>
+      <span class="aksa-notif-badge"><?= $cnt_aju_badge ?></span>
     <?php endif; ?>
   </a>
   <a class="sidebar-btn" href="telah_dipinjam.php">
@@ -638,15 +756,25 @@ ob_start();
       </svg>
       Pengaturan Musik
     </a>
+    <a class="sidebar-btn" href="pengaturan_lokasi.php">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 21s-7-6.1-7-11a7 7 0 1 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/>
+      </svg>
+      Peta & Jam Buka
+    </a>
   
-    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Buka Pengaturan">
+    <button class="sidebar-btn btn-settings-nav" onclick="if(typeof bukaSettings==='function')bukaSettings()" title="Tema & Pengaturan Tampilan">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
-      Pengaturan
+      Tema & Tampilan
     </button>
-    <a class="sidebar-btn" href="beranda.php">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg>
-    Kembali
-  </a>
+    <a class="sidebar-btn sidebar-btn-logout" href="logout.php" onclick="return window.konfirmasiLogoutAksa ? window.konfirmasiLogoutAksa(event, this) : confirm('Apakah Anda yakin ingin keluar (logout)?');">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+        <polyline points="16 17 21 12 16 7"/>
+        <line x1="21" y1="12" x2="9" y2="12"/>
+      </svg>
+      Keluar
+    </a>
   </nav>
 </aside>
 
@@ -756,6 +884,7 @@ ob_start();
     <div class="modal-book-info" id="modalBookInfo"></div>
 
     <form method="POST" action="pinjam_buku.php<?= $search ? '?q=' . urlencode($search) : '' ?>">
+      <?= csrf_field() ?>
       <input type="hidden" name="action" value="pinjam"/>
       <input type="hidden" name="buku_id" id="inputBukuId"/>
 
@@ -878,7 +1007,7 @@ function renderAnggotaList(list) {
 
   wrap.innerHTML = list.map(a => {
     const inisial = (a.full_name || '?').trim().charAt(0).toUpperCase();
-    const meta = [a.no_anggota, a.kelas].filter(Boolean).join(' • ');
+    const meta = [a.no_anggota, a.nik ? ((a.kelas && a.kelas.toLowerCase() === 'guru' ? 'NIP: ' : 'NIS: ') + a.nik) : ''].filter(Boolean).join(' • ');
     const avatarInner = (a.foto_ok && a.foto)
       ? `<img src="${escapeAttr(a.foto)}" alt="">`
       : inisial;
@@ -1043,6 +1172,8 @@ document.getElementById('inputFotoAdmin').addEventListener('change', function(e)
     runSearch('');
   });
 })();
+  // Musik Latar
+  if (window.AksaAudio) window.AksaAudio.init();
 </script>
 <?php require_once 'modal_profil_admin.php';
 require_once 'pengaturan_panel.php'; ?>
