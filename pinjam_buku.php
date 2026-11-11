@@ -29,19 +29,7 @@ mysqli_query($conn, "SET time_zone = '+07:00'");
 
 $page_title = 'Pinjam Buku – AKSA NOVA';
 
-// Pengaturan musik latar
-$musik_aktif = 0;
-$musik_file  = '';
-$musik_judul = 'Musik Latar';
-$mgt = @mysqli_query($conn, "SELECT kunci, nilai FROM pengaturan WHERE kunci IN ('musik_aktif','musik_file','musik_judul')");
-if ($mgt) {
-    while ($m = mysqli_fetch_assoc($mgt)) {
-        if ($m['kunci'] === 'musik_aktif') $musik_aktif = (int)$m['nilai'];
-        if ($m['kunci'] === 'musik_file')  $musik_file  = (string)$m['nilai'];
-        if ($m['kunci'] === 'musik_judul') $musik_judul = (string)($m['nilai'] ?: $musik_judul);
-    }
-}
-$musik_tampil = ($musik_aktif === 1 && $musik_file !== '' && (file_exists($musik_file) || file_exists(__DIR__ . '/' . $musik_file)));
+// Admin area — bebas dari pemutaran musik latar operasional
 $msg        = '';
 $msg_type   = '';
 
@@ -575,78 +563,24 @@ ob_start();
       :root { --sidebar-w:170px; }
       .avatar-circle { width:76px; height:76px; }
     }
-    .page-hud-controls {
-      position: fixed;
-      top: 16px;
-      right: 20px;
-      z-index: 150;
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .mobile-topbar-actions { margin-left:auto; display:flex; align-items:center; gap:8px; flex-shrink:0; }
+    .mobile-topbar-actions a {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:34px; height:34px; border-radius:8px; cursor:pointer; text-decoration:none;
+      background:rgba(255,255,255,.05); border:1px solid var(--border-color,rgba(216,184,120,.18)); color:var(--accent,#d8b878);
+      transition: background .2s, border-color .2s, color .2s;
     }
-    .btn-musik {
-      appearance: none;
-      cursor: pointer;
-      width: 40px;
-      height: 40px;
-      border-radius: 50%;
-      border: 1.5px solid var(--accent, #d8b878);
-      background: rgba(18,24,32,.85);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: var(--accent, #d8b878);
-      transition: all var(--trans);
-      box-shadow: 0 4px 16px rgba(0,0,0,.35);
-      flex-shrink: 0;
+    .mobile-topbar-actions a:hover {
+      background:rgba(216,184,120,.18); border-color:var(--accent,#d8b878); color:#fff;
     }
-    .btn-musik:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(216,184,120,.35);
-    }
-    .btn-musik svg { width: 18px; height: 18px; }
-    .btn-musik .icon-off { display: block; }
-    .btn-musik .icon-eq  { display: none; align-items: flex-end; gap: 2.5px; height: 16px; }
-    .btn-musik .icon-eq span {
-      display: block;
-      width: 3px;
-      background: var(--accent, #d8b878);
-      border-radius: 2px;
-      animation: eqBar 1s ease-in-out infinite;
-    }
-    .btn-musik .icon-eq span:nth-child(1) { height: 40%; animation-delay: -.6s; }
-    .btn-musik .icon-eq span:nth-child(2) { height: 100%; animation-delay: -.2s; }
-    .btn-musik .icon-eq span:nth-child(3) { height: 65%; animation-delay: -.9s; }
-    @keyframes eqBar { 0%,100% { transform: scaleY(.35); } 50% { transform: scaleY(1); } }
-    .btn-musik.playing {
-      background: rgba(216,184,120,.18);
-      box-shadow: 0 0 16px rgba(216,184,120,.3);
-    }
-    .btn-musik.playing .icon-off { display: none; }
-    .btn-musik.playing .icon-eq  { display: flex; }
-    html.theme-light .btn-musik, html.light .btn-musik {
-      background: rgba(255,255,255,.9) !important;
-      border-color: rgba(138,99,35,.35) !important;
-      color: #8a6323 !important;
-      box-shadow: 0 4px 16px rgba(138,99,35,.15) !important;
-    }
-    html.theme-light .btn-musik .icon-eq span, html.light .btn-musik .icon-eq span {
-      background: #8a6323 !important;
-    }
+    .mobile-topbar-actions a svg { width:16px; height:16px; }
 
     @media (max-width: 640px) {
       .sidebar { transform:translateX(-100%); }
       .sidebar.open { transform:translateX(0); }
       .sidebar-toggle { display:flex; }
       .main { margin-left:0; padding:16px; padding-top:60px; }
-      .mobile-topbar .page-hud-controls {
-        position: static;
-        top: auto;
-        right: auto;
-        margin-left: auto;
-      }
+
     }
   </style>
 </head>
@@ -665,18 +599,13 @@ ob_start();
     <span>AKSA NOVA • Pinjam Buku</span>
   </div>
 
-  <div class="page-hud-controls" id="pageHudControls">
-    <?php if ($musik_tampil): ?>
-    <button type="button" class="btn-musik" id="btnMusik" aria-label="Musik Latar" title="<?= htmlspecialchars($musik_judul) ?>">
-      <svg class="icon-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-        <path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>
-      </svg>
-      <span class="icon-eq" aria-hidden="true"><span></span><span></span><span></span></span>
-    </button>
-    <audio id="audioLatar" loop preload="auto" src="<?= htmlspecialchars($musik_file) ?>">
-      <source src="<?= htmlspecialchars($musik_file) ?>" type="audio/mpeg">
-    </audio>
-    <?php endif; ?>
+  <div class="mobile-topbar-actions">
+    <a href="halaman_admin.php" title="Kelola Buku">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+    </a>
+    <a href="beranda.php" title="Lihat Beranda">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    </a>
   </div>
 </header>
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
@@ -1172,8 +1101,7 @@ document.getElementById('inputFotoAdmin').addEventListener('change', function(e)
     runSearch('');
   });
 })();
-  // Musik Latar
-  if (window.AksaAudio) window.AksaAudio.init();
+  // Halaman admin sirkulasi — bebas musik latar
 </script>
 <?php require_once 'modal_profil_admin.php';
 require_once 'pengaturan_panel.php'; ?>

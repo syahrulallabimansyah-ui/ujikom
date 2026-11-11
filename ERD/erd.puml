@@ -84,8 +84,8 @@ entity "peminjaman" as peminjaman {
 entity "pengajuan_peminjaman" as pengajuan_peminjaman {
     * id : int <<PK, AI>>
     --
-    user_id : int <<Relasi Logis Tanpa FK DB>>
-    buku_id : int <<Relasi Logis Tanpa FK DB>>
+    * user_id : int <<FK>>
+    * buku_id : int <<FK>>
     * nama_peminjam : varchar(150)
     * file_kartu : varchar(255)
     total_buku : int
@@ -159,14 +159,14 @@ entity "pengaturan" as pengaturan {
 
 users ||--o| admin_profile : "user_id (1:1, CASCADE)"
 users ||--o{ password_otp : "user_id (1:N, CASCADE)"
-users ||--o{ peminjaman : "user_id (1:N, SET NULL)"
-users ||..o{ pengajuan_peminjaman : "user_id (Relasi Logis Tanpa FK DB)"
+users |o--o{ peminjaman : "user_id (1:N, SET NULL)"
+users ||--o{ pengajuan_peminjaman : "user_id (1:N, CASCADE)"
 users ||--o{ buku_favorites : "user_id (1:N, CASCADE)"
 users ||--o{ buku_likes : "user_id (1:N, CASCADE)"
 users ||--o{ buku_ratings : "user_id (1:N, CASCADE)"
 
 buku ||--o{ peminjaman : "buku_id (1:N, RESTRICT)"
-buku ||..o{ pengajuan_peminjaman : "buku_id (Relasi Logis Tanpa FK DB)"
+buku ||--o{ pengajuan_peminjaman : "buku_id (1:N, CASCADE)"
 buku ||--o{ buku_favorites : "buku_id (1:N, CASCADE)"
 buku ||--o{ buku_likes : "buku_id (1:N, CASCADE)"
 buku ||--o{ buku_ratings : "buku_id (1:N, CASCADE)"

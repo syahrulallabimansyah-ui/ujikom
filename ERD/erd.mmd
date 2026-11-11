@@ -6,14 +6,14 @@ erDiagram
 
     USERS ||--o| ADMIN_PROFILE : "user_id (1:1, ON DELETE CASCADE)"
     USERS ||--o{ PASSWORD_OTP : "user_id (1:N, ON DELETE CASCADE)"
-    USERS ||--o{ PEMINJAMAN : "user_id (1:N, ON DELETE SET NULL)"
-    USERS ||..o{ PENGAJUAN_PEMINJAMAN : "user_id [Relasi Logis Tanpa FK DB]"
+    USERS |o--o{ PEMINJAMAN : "user_id (1:N, ON DELETE SET NULL)"
+    USERS ||--o{ PENGAJUAN_PEMINJAMAN : "user_id (1:N, ON DELETE CASCADE)"
     USERS ||--o{ BUKU_FAVORITES : "user_id (1:N, ON DELETE CASCADE)"
     USERS ||--o{ BUKU_LIKES : "user_id (1:N, ON DELETE CASCADE)"
     USERS ||--o{ BUKU_RATINGS : "user_id (1:N, ON DELETE CASCADE)"
 
     BUKU ||--o{ PEMINJAMAN : "buku_id (1:N, ON DELETE RESTRICT)"
-    BUKU ||..o{ PENGAJUAN_PEMINJAMAN : "buku_id [Relasi Logis Tanpa FK DB]"
+    BUKU ||--o{ PENGAJUAN_PEMINJAMAN : "buku_id (1:N, ON DELETE CASCADE)"
     BUKU ||--o{ BUKU_FAVORITES : "buku_id (1:N, ON DELETE CASCADE)"
     BUKU ||--o{ BUKU_LIKES : "buku_id (1:N, ON DELETE CASCADE)"
     BUKU ||--o{ BUKU_RATINGS : "buku_id (1:N, ON DELETE CASCADE)"
@@ -89,8 +89,8 @@ erDiagram
 
     PENGAJUAN_PEMINJAMAN {
         int id PK
-        int user_id "Relasi logis ke USERS (Tanpa FK DB)"
-        int buku_id "Relasi logis ke BUKU (Tanpa FK DB)"
+        int user_id FK "Relasi 1:N, CASCADE"
+        int buku_id FK "Relasi 1:N, CASCADE"
         varchar nama_peminjam "150"
         varchar file_kartu "255"
         int total_buku "1 s/d 40 eksemplar"
